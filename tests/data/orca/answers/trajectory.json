@@ -65,18 +65,19 @@
         "method": "hf",
         "basis": "sto-3g"
       },
-      "calctype": "gradient"
+      "calctype": "gradient",
+      "program": "orca"
     },
     "success": true,
-    "data": {
+    "logs": null,
+    "traceback": null,
+    "results": {
       "calcinfo_natoms": 3,
       "calcinfo_nalpha": null,
       "calcinfo_nbeta": null,
       "calcinfo_nbasis": null,
       "calcinfo_nmo": null,
-      "extras": {
-        "program_version": "6.1.0"
-      },
+      "extras": {},
       "files": {},
       "energy": -76.320385565717,
       "gradient": [
@@ -102,19 +103,19 @@
       "freqs_wavenumber": [],
       "normal_modes_cartesian": null,
       "gibbs_free_energy": null,
-      "scf_dipole_moment": null
+      "scf_dipole_moment": null,
+      "provenance": {
+        "extras": {},
+        "program": "orca",
+        "program_version": "6.1.0"
+      }
     },
-    "logs": null,
-    "traceback": null,
-    "provenance": {
-      "extras": {},
-      "program": "orca",
-      "program_version": "6.1.0",
+    "execution": {
       "scratch_dir": null,
       "wall_time": null,
       "hostname": null,
-      "hostcpus": null,
-      "hostmem": null
+      "host_cpu": null,
+      "host_mem_gib": null
     }
   },
   {
@@ -183,18 +184,19 @@
         "method": "hf",
         "basis": "sto-3g"
       },
-      "calctype": "gradient"
+      "calctype": "gradient",
+      "program": "orca"
     },
     "success": true,
-    "data": {
+    "logs": null,
+    "traceback": null,
+    "results": {
       "calcinfo_natoms": 3,
       "calcinfo_nalpha": null,
       "calcinfo_nbeta": null,
       "calcinfo_nbasis": null,
       "calcinfo_nmo": null,
-      "extras": {
-        "program_version": "6.1.0"
-      },
+      "extras": {},
       "files": {},
       "energy": -76.321113618631,
       "gradient": [
@@ -220,19 +222,19 @@
       "freqs_wavenumber": [],
       "normal_modes_cartesian": null,
       "gibbs_free_energy": null,
-      "scf_dipole_moment": null
+      "scf_dipole_moment": null,
+      "provenance": {
+        "extras": {},
+        "program": "orca",
+        "program_version": "6.1.0"
+      }
     },
-    "logs": null,
-    "traceback": null,
-    "provenance": {
-      "extras": {},
-      "program": "orca",
-      "program_version": "6.1.0",
+    "execution": {
       "scratch_dir": null,
       "wall_time": null,
       "hostname": null,
-      "hostcpus": null,
-      "hostmem": null
+      "host_cpu": null,
+      "host_mem_gib": null
     }
   },
   {
@@ -301,18 +303,19 @@
         "method": "hf",
         "basis": "sto-3g"
       },
-      "calctype": "gradient"
+      "calctype": "gradient",
+      "program": "orca"
     },
     "success": true,
-    "data": {
+    "logs": null,
+    "traceback": null,
+    "results": {
       "calcinfo_natoms": 3,
       "calcinfo_nalpha": null,
       "calcinfo_nbeta": null,
       "calcinfo_nbasis": null,
       "calcinfo_nmo": null,
-      "extras": {
-        "program_version": "6.1.0"
-      },
+      "extras": {},
       "files": {},
       "energy": -76.32125161185,
       "gradient": [
@@ -338,19 +341,19 @@
       "freqs_wavenumber": [],
       "normal_modes_cartesian": null,
       "gibbs_free_energy": null,
-      "scf_dipole_moment": null
+      "scf_dipole_moment": null,
+      "provenance": {
+        "extras": {},
+        "program": "orca",
+        "program_version": "6.1.0"
+      }
     },
-    "logs": null,
-    "traceback": null,
-    "provenance": {
-      "extras": {},
-      "program": "orca",
-      "program_version": "6.1.0",
+    "execution": {
       "scratch_dir": null,
       "wall_time": null,
       "hostname": null,
-      "hostcpus": null,
-      "hostmem": null
+      "host_cpu": null,
+      "host_mem_gib": null
     }
   },
   {
@@ -419,18 +422,19 @@
         "method": "hf",
         "basis": "sto-3g"
       },
-      "calctype": "gradient"
+      "calctype": "gradient",
+      "program": "orca"
     },
     "success": true,
-    "data": {
+    "logs": null,
+    "traceback": null,
+    "results": {
       "calcinfo_natoms": 3,
       "calcinfo_nalpha": null,
       "calcinfo_nbeta": null,
       "calcinfo_nbasis": null,
       "calcinfo_nmo": null,
-      "extras": {
-        "program_version": "6.1.0"
-      },
+      "extras": {},
       "files": {},
       "energy": -76.321270536009,
       "gradient": [
@@ -456,19 +460,19 @@
       "freqs_wavenumber": [],
       "normal_modes_cartesian": null,
       "gibbs_free_energy": null,
-      "scf_dipole_moment": null
+      "scf_dipole_moment": null,
+      "provenance": {
+        "extras": {},
+        "program": "orca",
+        "program_version": "6.1.0"
+      }
     },
-    "logs": null,
-    "traceback": null,
-    "provenance": {
-      "extras": {},
-      "program": "orca",
-      "program_version": "6.1.0",
+    "execution": {
       "scratch_dir": null,
       "wall_time": null,
       "hostname": null,
-      "hostcpus": null,
-      "hostmem": null
+      "host_cpu": null,
+      "host_mem_gib": null
     }
   }
 ]

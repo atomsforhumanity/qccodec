@@ -2,7 +2,7 @@ from qcdata import Structure
 
 conformers = {
     "conformers": [
-        Structure(**conf)
+        Structure.model_validate(conf)
         for conf in [
             {
                 "extras": {"xyz_comments": ["-107.04437987"]},
@@ -269,7 +269,7 @@ conformers = {
 
 rotamers = {
     "rotamers": [
-        Structure(**rot)
+        Structure.model_validate(rot)
         for rot in [
             {
                 "extras": {

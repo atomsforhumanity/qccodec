@@ -2,12 +2,12 @@ import inspect
 import shutil
 from collections.abc import Callable
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 import pytest
-from qcdata import CalcType, ProgramInput
+from qcdata import CalcType, ProgramInput, ProgramOutput
 from qcdata.utils import water
 
 from qccodec.codec import decode
@@ -50,8 +50,9 @@ def crest_file(test_data_dir):
 def prog_input_factory():
     """Create a function that returns a ProgramInput object with a specified calculation type."""
 
-    def create_input(calctype):
+    def create_input(calctype, program="terachem"):
         return ProgramInput(
+            program=program,
             structure=water,
             calctype=calctype,
             # Tests depend up this model; do not change
@@ -211,13 +212,14 @@ def _test_decode_integration(tc, stdout, directory, proginp, program, parser_spe
             final_value = get_target_value(result, parser_spec.target)
         else:
             # If the target is None, we assume the entire result is the value.
-            final_value = result
+            final_value = {key: result[key] for key in tc.answer}
+            assert result["provenance"]["program"] == program
         assert final_value == tc.answer, (
             f"{tc.name}: decode() returned {final_value} for target '{parser_spec.target}' "
             f"instead of expected {tc.answer}"
         )
     else:
-        if tc.decode_exc:
+        if tc.decode_exc and parser_spec.required:
             # Failed execution and required is True
             with pytest.raises(MatchNotFoundError):
                 decode(
@@ -273,7 +275,7 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
     # Get the spec for the parser under test.
     parser_spec = registry.get_spec(tc.parser)
 
-    proginput = tc.program_input or input_factory(tc.calctype)
+    proginput = tc.program_input or input_factory(tc.calctype, program=program)
 
     # Copy over extra files if provided.
     if tc.extra_files:
@@ -285,6 +287,27 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
                 test_data_dir / program / extra_file,
                 tmp_path / extra_file_name,
             )
+
+    if (
+        isinstance(tc.answer, list)
+        and tc.answer
+        and isinstance(tc.answer[0], ProgramOutput)
+    ):
+        tc = replace(
+            tc,
+            answer=[
+                ProgramOutput.model_validate(
+                    {
+                        **entry.model_dump(),
+                        "execution": {
+                            **entry.execution.model_dump(),
+                            "scratch_dir": tmp_path,
+                        },
+                    }
+                )
+                for entry in tc.answer
+            ],
+        )
 
     # Test the parser directly.
     _test_parser_direct(tc, stdout, tmp_path, proginput, parser_spec)

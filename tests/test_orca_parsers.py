@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
 
@@ -133,18 +134,21 @@ test_cases = [
         answer=trajectories.trajectory_ch3,
         clear_registry=False,
         program_input=ProgramInput(
+            program="orca",
             structure=Structure(
                 symbols=["C", "H", "H", "H"],
-                geometry=[
+                geometry=np.array(
                     [
-                        2.2960172429784643e-07,
-                        -5.47453658675606e-07,
-                        -0.13371279750931814,
-                    ],
-                    [1.20598062158438, 1.4745349158139784, 0.5311114980010905],
-                    [-1.879974623959173, 0.3071463406992686, 0.5311113957669071],
-                    [0.6739912652954723, -1.7816747322337971, 0.5311139136379973],
-                ],
+                        [
+                            2.2960172429784643e-07,
+                            -5.47453658675606e-07,
+                            -0.13371279750931814,
+                        ],
+                        [1.20598062158438, 1.4745349158139784, 0.5311114980010905],
+                        [-1.879974623959173, 0.3071463406992686, 0.5311113957669071],
+                        [0.6739912652954723, -1.7816747322337971, 0.5311139136379973],
+                    ]
+                ),
                 charge=0,
                 multiplicity=2,
             ),

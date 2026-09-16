@@ -260,7 +260,7 @@ def test_terachem_parsers(test_data_dir, prog_input_factory, tmp_path, test_case
         # Update scratch_dir to the tmp_path for the trajectory test case
         for i in range(len(test_case.answer)):
             po_dict = test_case.answer[i].model_dump()
-            po_dict["provenance"]["scratch_dir"] = tmp_path
+            po_dict["execution"]["scratch_dir"] = tmp_path
             test_case.answer[i] = ProgramOutput(**po_dict)
 
     run_test_harness(test_data_dir, prog_input_factory, tmp_path, test_case)

@@ -62,7 +62,7 @@ from qccodec import register
 from qcdata import CalcType, ProgramInput
 
 @register(filetype=CrestFileType.DIRECTORY, calctypes=[CalcType.conformer_search])
-def parse_conformers(directory: Path, stdout: Optional[str], input_data: ProgramInput) -> dict[str, Any]:
+def parse_conformers(directory: Path, stdout: Optional[str], input_data: ProgramInput, *, failed: bool = False) -> dict[str, Any]:
     """Parse the conformers from the output directory of a CREST conformer search calculation.
 
     Args:
@@ -102,7 +102,7 @@ Directory parsers may also return a single target value instead of a dictionary.
     calctypes=[CalcType.optimization],
     target="trajectory", # Note target!
 )
-def parse_trajectory(directory: Path, stdout: str, input_data: ProgramInput) -> list[Results]:
+def parse_trajectory(directory: Path, stdout: str, input_data: ProgramInput, *, failed: bool = False) -> list[ProgramOutput]:
     """Parse the output directory of a TeraChem optimization calculation into a trajectory.
 
     Args:
@@ -111,10 +111,10 @@ def parse_trajectory(directory: Path, stdout: str, input_data: ProgramInput) -> 
         input_data: The input object used for the calculation.
 
     Returns:
-        A list of Results objects.
+        A list of ProgramOutput objects.
     """
     # Create the trajectory
-    trajectory: list[Results] = []
+    trajectory: list[ProgramOutput] = []
     # Parsing logic here...
     return trajectory
 ```
@@ -140,3 +140,15 @@ The decode function orchestrates the parsing process:
 ## Duplicate Target Registration
 
 The registry enforces unique targets per program per `CalcType`. This ensures that each parsed value is uniquely associated with a key in the final results. For example, if two parsers attempt to register with the same target for a given program for a given `CalcType`, the registry will raise an error, preventing ambiguity in the final result.
+
+## Parsing failed calculations
+
+`decode(..., failed=True)` returns the appropriate scientific data type with all
+recoverable values and program provenance. Missing matches and missing files are
+tolerated; malformed recovered values still fail validation. The default remains
+strict about required parser matches and artifacts.
+
+Directory parsers accept a keyword-only `failed=False` argument and forward it to
+nested `decode()` calls. Use `MatchNotFoundError` or `FileNotFoundError` for absent
+content. Other parser errors remain errors. Reconstructed energy-only trajectory
+snapshots use energy inputs; a missing gradient file does not imply a failed step.

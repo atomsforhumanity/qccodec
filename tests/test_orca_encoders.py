@@ -62,6 +62,7 @@ def test_write_input_files(
 ):
     """Test write_input_files method."""
     program_input = ProgramInput(
+        program="orca",
         calctype=calctype,
         model=Model(method=method, basis=basis),
         structure=water,
@@ -84,7 +85,10 @@ def test_write_input_files(
 def test_no_none_fields():
     """Tests 'None' not in input file when basis not provided."""
     program_input = ProgramInput(
-        calctype=CalcType.optimization, model=Model(method="xTB"), structure=water
+        program="orca",
+        calctype=CalcType.optimization,
+        model=Model(method="xTB"),
+        structure=water,
     )
     native_input = encode(program_input)
     input_file = native_input.input_file

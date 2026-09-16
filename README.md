@@ -1,6 +1,6 @@
 # qccodec
 
-Encode `qcdata` inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects.. Uses data structures from [qcdata](https://github.com/atomsforhumanity/qcdata).
+Encode `qcdata` inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects. Uses data structures from [qcdata](https://github.com/atomsforhumanity/qcdata).
 
 [![image](https://img.shields.io/pypi/v/qccodec.svg)](https://pypi.python.org/pypi/qccodec)
 [![image](https://img.shields.io/pypi/l/qccodec.svg)](https://pypi.python.org/pypi/qccodec)
@@ -51,6 +51,8 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
   stdout = Path("tc.out").read_text()
   data = decode("terachem", CalcType.hessian, stdout=stdout)
 
+  data.provenance.program  # Producer identity
+  data.provenance.program_version  # Parsed version, or None when unavailable
   data.energy
   data.gradient # If a gradient calc
   data.hessian # If a hessian calc
@@ -61,7 +63,7 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
 
   ```py
   with open("data.json", "w") as f:
-      f.write(data.model_dumps_json())
+      f.write(data.model_dump_json())
   ```
 
 - And read from disk like this:
@@ -80,7 +82,7 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
   qccodec terachem hessian tests/data/terachem/water.frequencies.out > data.json # Parse TeraChem stdout to json
   ```
 
-- More complex parsing can be accomplished by passing the directory containing the scratch files to `decode` and optionally the input data used to generate the calculation (usually done from `qcop` which uses structure data):
+- More complex parsing can be accomplished by passing the directory containing the scratch files to `decode` and optionally the input data used to generate the calculation (usually done from `qccompute` which uses structure data):
 
   ```python
   from pathlib import Path
@@ -99,3 +101,40 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
 Please see the [contributing guide](./CONTRIBUTING.md) for details on how to contribute new parsers to this project :)
 
 If there's data you'd like parsed from output files or want to support input files for a new program, please open an issue in this repo explaining the data items you'd like parsed and include an example output file containing the data, like [this](https://github.com/atomsforhumanity/qccodec/issues/2).
+
+## Development
+
+qccodec requires published `qcdata>=0.19.0`. Run `uv sync --all-groups --locked`
+to install the project and development dependencies; no sibling checkouts are needed.
+
+## Encoding inputs
+
+```python
+from qcdata import ProgramInput, Structure
+from qccodec import encode
+
+input_data = ProgramInput(
+    program="terachem",
+    calctype="energy",
+    structure=Structure.open("molecule.xyz"),
+    model={"method": "hf", "basis": "sto-3g"},
+)
+native = encode(input_data)
+```
+
+`decode(program, calctype, ...)` still takes the producer explicitly because a
+standalone output file may have no associated input object. Decoded `*Data`
+objects save producer provenance themselves. Parsed optimization trajectories
+contain `ProgramOutput` records with scientific values in `.results` and runtime
+metadata in `.execution`.
+
+## Recovering failed calculations
+
+```python
+partial = decode("terachem", "gradient", stdout=logs, directory=scratch_dir, failed=True)
+```
+
+The decoder owns partial-data construction and provenance. Missing values and
+artifacts are tolerated in this mode; recovered values remain validated. The CLI
+supports the same behavior with `--failed`. This does not relax qcdata's strict
+contract for successful `ProgramOutput` records.

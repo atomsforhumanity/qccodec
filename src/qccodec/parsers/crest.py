@@ -5,10 +5,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from qcconst import constants
 from qcdata import (
     CalcType,
+    ExecutionInfo,
     ProgramInput,
     ProgramOutput,
     Provenance,
@@ -16,7 +16,7 @@ from qcdata import (
     Structure,
 )
 
-from qccodec.exceptions import ParserError
+from qccodec.exceptions import MatchNotFoundError, ParserError
 
 from ..registry import register
 from .utils import re_finditer, re_search
@@ -78,7 +78,11 @@ def iter_files(
                     yield filetype, file_path.read_text()
 
 
-@register(filetype=CrestFileType.STDOUT, target=("extras", "program_version"))
+@register(
+    filetype=CrestFileType.STDOUT,
+    target=("provenance", "program_version"),
+    required=False,
+)
 def parse_version(string: str) -> str:
     """Parse version string from CREST stdout.
 
@@ -91,7 +95,11 @@ def parse_version(string: str) -> str:
 
 @register(filetype=CrestFileType.DIRECTORY, calctypes=[CalcType.conformer_search])
 def parse_conformers(
-    directory: Path | str, stdout: str | None, input_data: ProgramInput
+    directory: Path | str,
+    stdout: str | None,
+    input_data: ProgramInput,
+    *,
+    failed: bool = False,
 ) -> dict[str, Any]:
     """Parse the conformers from the output directory of a CREST conformer search calculation.
 
@@ -126,7 +134,11 @@ def parse_conformers(
 
 @register(filetype=CrestFileType.DIRECTORY, calctypes=[CalcType.conformer_search])
 def parse_rotamers(
-    directory: Path | str, stdout: str | None, input_data: ProgramInput
+    directory: Path | str,
+    stdout: str | None,
+    input_data: ProgramInput,
+    *,
+    failed: bool = False,
 ) -> dict[str, Any]:
     """Parse the rotamers from the output directory of a CREST conformer search calculation.
 
@@ -313,6 +325,8 @@ def parse_trajectory(
     directory: Path | str,
     stdout: str,
     input_data: ProgramInput,
+    *,
+    failed: bool = False,
 ) -> list[ProgramOutput]:
     """Parse the output directory of a CREST optimization calculation.
 
@@ -324,6 +338,8 @@ def parse_trajectory(
     Returns:
         The parsed optimization results as a list of ProgramOutput objects.
     """
+    if input_data is None:
+        raise ParserError("Optimization trajectory parsing requires input_data.")
     # Read in the xyz file containing the trajectory
     directory = Path(directory)
     xyz_text = (directory / "crestopt.log").read_text()
@@ -338,43 +354,43 @@ def parse_trajectory(
         float(struct.extras[Structure._xyz_comment_key][1]) for struct in structures
     ]
 
-    # Fake gradient for each step because CREST does not output it
-    fake_gradient = np.zeros(len(input_data.structure.symbols) * 3)
-
-    # Parse program version
-    program_version = parse_version(stdout)
-
-    # Create the optimization trajectory
+    # Intermediate CREST steps expose energies, not gradients. Record only observed data.
+    try:
+        version = parse_version(stdout) if stdout else None
+    except MatchNotFoundError:
+        version = None
+    provenance = Provenance(program="crest", program_version=version)
     trajectory: list[ProgramOutput] = [
         ProgramOutput(
-            input_data=ProgramInput(
-                calctype=CalcType.gradient,
-                structure=struct,
-                model=input_data.model,
+            input_data=ProgramInput.model_validate(
+                {
+                    **input_data.model_dump(),
+                    "calctype": CalcType.energy,
+                    "structure": struct,
+                }
             ),
             success=True,
-            data=SinglePointData(energy=energy, gradient=fake_gradient),
-            provenance=Provenance(
-                program="crest",
-                program_version=program_version,
-            ),
+            results=SinglePointData(provenance=provenance, energy=energy),
+            execution=ExecutionInfo(scratch_dir=directory),
         )
         for struct, energy in zip(structures, energies)
     ]
+    if not trajectory:
+        if failed:
+            return []
+        raise ParserError("CREST optimization trajectory is empty.")
 
-    # Collect final gradient if calculation succeeded
+    final = trajectory[-1].model_dump()
     enegrad = directory / CrestFileType.ENGRAD.value
     if enegrad.exists():
-        # Parse the energy and gradient from the file
-        contents = enegrad.read_text()
-        gradient = parse_gradient(contents)
-        # Fill in final gradient
-        trajectory[-1].data.gradient[:] = gradient
-
-    else:
-        # Calculation failed, so set the last .success = False
-        final_po = trajectory[-1].model_dump()
-        final_po["success"] = False
-        trajectory[-1] = ProgramOutput(**final_po)
+        try:
+            gradient = parse_gradient(enegrad.read_text())
+        except MatchNotFoundError:
+            if not failed:
+                raise
+        else:
+            final["input_data"]["calctype"] = CalcType.gradient
+            final["results"]["gradient"] = gradient
+    trajectory[-1] = ProgramOutput.model_validate(final)
 
     return trajectory

@@ -27,12 +27,11 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      # uv pip resolves & installs deps like pip (not an environment sync)
-      - name: Install package + test deps (uv pip)
-        run: uv pip install --system --group dev .
+      - name: Install package and test dependencies
+        run: uv sync --all-groups --locked
 
       - name: Run tests
-        run: python -m pytest --cov-report=term-missing --cov-report html:htmlcov --cov-config=pyproject.toml --cov=qccodec --cov=tests .
+        run: uv run pytest --cov-report=term-missing --cov-report html:htmlcov --cov-config=pyproject.toml --cov=qccodec --cov=tests .
 
       - name: Upload coverage HTML
         if: ${{ matrix.coverage == true }}
@@ -44,8 +43,8 @@ jobs:
       # To catch manifest issues, we build and install from sdist on one version
       - name: Build sdist (only on 3.12)
         if: ${{ matrix.coverage == true }}
-        run: python -m pip install build && python -m build --sdist
+        run: uv build --sdist
 
       - name: Install from sdist (only on 3.12)
         if: ${{ matrix.coverage == true }}
-        run: python -m pip install dist/*.tar.gz
+        run: uv pip install --no-deps dist/*.tar.gz
