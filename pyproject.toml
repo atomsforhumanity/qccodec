@@ -1,6 +1,6 @@
 [project]
 name = "qccodec"
-version = "0.11.2"
+version = "0.12.0"
 description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
