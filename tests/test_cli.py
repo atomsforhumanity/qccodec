@@ -21,3 +21,17 @@ def test_cli(test_data_dir):
         indent=4, exclude_unset=True, exclude_defaults=True
     )
     assert sp_proc.stdout.strip() == expected_output
+
+
+def test_cli_failed_without_artifacts():
+    from qcdata import OptimizationData
+
+    process = subprocess.run(
+        [sys.executable, "-m", "qccodec.cli", "crest", "optimization", "--failed"],
+        capture_output=True,
+        text=True,
+    )
+    assert process.returncode == 0, process.stderr
+    data = OptimizationData.model_validate_json(process.stdout)
+    assert data.provenance.program == "crest"
+    assert data.trajectory == []

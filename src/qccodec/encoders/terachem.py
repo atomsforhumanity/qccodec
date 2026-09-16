@@ -24,6 +24,9 @@ def encode(program_input: ProgramInput) -> NativeInput:
         NativeInput with .input being a tc.in file and .geometry an xyz file.
     """
 
+    if program_input.model is None:
+        raise EncoderError("terachem input requires a scientific model.")
+
     # calctype
     if program_input.calctype == CalcType.hessian:
         calctype = "frequencies"

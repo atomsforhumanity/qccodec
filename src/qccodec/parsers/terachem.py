@@ -8,9 +8,9 @@ from pathlib import Path
 from qcconst import constants
 from qcdata import (
     CalcType,
+    ExecutionInfo,
     ProgramInput,
     ProgramOutput,
-    Provenance,
     SinglePointData,
     Structure,
 )
@@ -147,7 +147,11 @@ def parse_hessian(contents: str) -> list[list[float]]:
     return hessian
 
 
-@register(filetype=TeraChemFileType.STDOUT, target=("extras", "program_version"))
+@register(
+    filetype=TeraChemFileType.STDOUT,
+    target=("provenance", "program_version"),
+    required=False,
+)
 def parse_version(contents: str) -> str:
     """Parse version contents plus git commit from TeraChem stdout.
 
@@ -198,6 +202,8 @@ def parse_trajectory(
     directory: Path | str,
     stdout: str,
     input_data: ProgramInput,
+    *,
+    failed: bool = False,
 ) -> list[ProgramOutput]:
     """Parse the output directory of a TeraChem optimization calculation into a trajectory.
 
@@ -209,6 +215,10 @@ def parse_trajectory(
     Returns:
         A list of ProgramOutput objects.
     """
+    if input_data is None:
+        raise ParserError("Optimization trajectory parsing requires input_data.")
+    if not stdout and failed:
+        return []
     directory = Path(directory)
 
     # Parse the structures
@@ -248,33 +258,32 @@ def parse_trajectory(
     trajectory: list[ProgramOutput] = []
 
     for structure, grad_stdout in zip(structures, per_gradient_stdout):
-        # Create input data object for each structure and gradient in the trajectory.
-        input_data_obj = ProgramInput(
-            calctype=CalcType.gradient,
-            structure=structure,
-            model=input_data.model,
-            keywords=input_data.keywords,
-        )
         # Create the results object for each structure and gradient in the trajectory.
         full_grad_stdout = initialization_stdout + grad_stdout
-        parsed_results = decode("terachem", CalcType.gradient, stdout=full_grad_stdout)
+        parsed_results = decode(
+            "terachem", CalcType.gradient, stdout=full_grad_stdout, failed=failed
+        )
         assert isinstance(parsed_results, SinglePointData)  # for mypy
 
         spr_data = parsed_results.model_dump()
         spr_data["energy"] = structure.extras[Structure._xyz_comment_key][0]
         results_obj = SinglePointData(**spr_data)
-        # Create the provenance object for each structure and gradient in the trajectory.
-        prov = Provenance(
-            program="terachem",
-            program_version=parsed_results.extras["program_version"],
-            scratch_dir=directory,
+        # Create input data object for each structure and gradient in the trajectory.
+        input_data_obj = ProgramInput.model_validate(
+            {
+                **input_data.model_dump(),
+                "calctype": CalcType.gradient
+                if results_obj.gradient is not None
+                else CalcType.energy,
+                "structure": structure,
+            }
         )
         # Create the ProgramOutput object for each structure and gradient in the trajectory.
         traj_entry: ProgramOutput = ProgramOutput(
             input_data=input_data_obj,
             success=True,
-            data=results_obj,
-            provenance=prov,
+            results=results_obj,
+            execution=ExecutionInfo(scratch_dir=directory),
             logs=full_grad_stdout,
         )
         trajectory.append(traj_entry)

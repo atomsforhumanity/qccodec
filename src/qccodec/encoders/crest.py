@@ -46,6 +46,9 @@ def validate_input(program_input: ProgramInput):
     Raises:
         EncoderError: If the input is invalid.
     """
+    if program_input.model is None:
+        raise EncoderError("crest input requires a scientific model.")
+
     # These values come from other parts of the ProgramInput and should not be set
     # in the keywords.
     non_allowed_keywords = ["charge", "uhf"]
@@ -99,6 +102,9 @@ def _to_toml_dict(program_input: ProgramInput, struct_filename: str) -> dict[str
 
     This function makes it easier to test for the correct TOML structure.
     """
+    if program_input.model is None:
+        raise EncoderError("crest input requires a scientific model.")
+
     # Start with existing keywords
     toml_dict = copy.deepcopy(program_input.keywords)
 

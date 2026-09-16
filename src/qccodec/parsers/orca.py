@@ -8,9 +8,9 @@ from typing import Generator
 
 from qcdata import (
     CalcType,
+    ExecutionInfo,
     ProgramInput,
     ProgramOutput,
-    Provenance,
     SinglePointData,
     Structure,
 )
@@ -182,6 +182,8 @@ def parse_trajectory(
     directory: Path | str,
     stdout: str,
     input_data: ProgramInput,
+    *,
+    failed: bool = False,
 ) -> list[ProgramOutput]:
     """Parse the output directory of a Orca optimization calculation into a trajectory.
 
@@ -193,10 +195,16 @@ def parse_trajectory(
     Returns:
         A list of ProgramOutput objects.
     """
+    if input_data is None:
+        raise ParserError("Optimization trajectory parsing requires input_data.")
+    if not stdout and failed:
+        return []
     basename = parse_basename(stdout)
     directory = Path(directory)
     file = directory / f"{basename}_trj.xyz"
     if not file.exists():
+        if failed:
+            return []
         raise ParserError(f"Trajectory file does not exist: {file}")
 
     # Parse the structures, energies, and gradients
@@ -233,39 +241,43 @@ def parse_trajectory(
     trajectory: list[ProgramOutput] = []
 
     for structure, grad_stdout in zip(structures, per_gradient_stdout):
-        # Create input data object for each structure and gradient in the trajectory.
-        input_data_obj = ProgramInput(
-            calctype=CalcType.gradient,
-            structure=structure,
-            model=input_data.model,
-            keywords=input_data.keywords,
-        )
         # Create the results object for each structure and gradient in the trajectory.
         full_grad_stdout = initialization_stdout + grad_stdout
-        parsed_results = decode("orca", CalcType.gradient, stdout=full_grad_stdout)
+        parsed_results = decode(
+            "orca", CalcType.gradient, stdout=full_grad_stdout, failed=failed
+        )
         assert isinstance(parsed_results, SinglePointData)  # for mypy
 
         spr_data = parsed_results.model_dump()
         spr_data["energy"] = structure.extras[Structure._xyz_comment_key][-1]
         results_obj = SinglePointData(**spr_data)
-        # Create the provenance object for each structure and gradient in the trajectory.
-        prov = Provenance(
-            program="orca",
-            program_version=parsed_results.extras["program_version"],
+        # Create input data object for each structure and gradient in the trajectory.
+        input_data_obj = ProgramInput.model_validate(
+            {
+                **input_data.model_dump(),
+                "calctype": CalcType.gradient
+                if results_obj.gradient is not None
+                else CalcType.energy,
+                "structure": structure,
+            }
         )
         # Create the ProgramOutput object for each structure and gradient in the trajectory.
         traj_entry: ProgramOutput = ProgramOutput(
             input_data=input_data_obj,
             success=True,
-            data=results_obj,
-            provenance=prov,
+            results=results_obj,
+            execution=ExecutionInfo(scratch_dir=directory),
         )
         trajectory.append(traj_entry)
 
     return trajectory
 
 
-@register(filetype=OrcaFileType.STDOUT, target=("extras", "program_version"))
+@register(
+    filetype=OrcaFileType.STDOUT,
+    target=("provenance", "program_version"),
+    required=False,
+)
 def parse_version(contents: str) -> str:
     """Parse version string from Orca stdout."""
     regex = r"Program Version (\d+\.\d+\.\d+)"

@@ -25,11 +25,20 @@ def main():
         nargs="?",
         default=None,
     )
+    parser.add_argument(
+        "--failed",
+        action="store_true",
+        help="Recover partial data from a failed calculation",
+    )
     args = parser.parse_args()
 
     stdout_contents = Path(args.stdout).read_text() if args.stdout else None
     results = decode(
-        args.program, args.calctype, stdout=stdout_contents, directory=args.directory
+        args.program,
+        args.calctype,
+        stdout=stdout_contents,
+        directory=args.directory,
+        failed=args.failed,
     )
     print(results.model_dump_json(indent=4, exclude_unset=True))
 

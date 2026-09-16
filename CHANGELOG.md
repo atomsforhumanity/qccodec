@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Changed
+
+- Regenerate `uv.lock` before release commits and tags; restore it with the version and changelog if release preparation fails.
+- Use qcdata’s shared data-type lookup and preserve partial scientific values on failed executions.
+- Add `decode(..., failed=True)` and CLI `--failed` for recovering partial data; keep CREST energy-only trajectory snapshots successful when no gradient is available.
+
+#### Breaking changes for qcdata 0.19.0
+
+- `encode(input_data)` selects the encoder from `input_data.program`.
+- Decoded scientific data now carries its own `provenance.program` and `provenance.program_version`, including partial data on parser errors. Unknown versions remain `None`.
+- Trajectories use `ProgramOutput.results` and `execution`, preserving the input's requested executor separately from the parsed producer.
+- CREST intermediate optimization records contain actual energies without fabricated gradients; the final record uses the parsed gradient when available.
+- Leaf encoders reject a missing model with an intentional `EncoderError`.
+
 ## [0.11.2] - 2026-08-28
 
 ### Fixed

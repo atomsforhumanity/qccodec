@@ -76,6 +76,9 @@ def encode(program_input: ProgramInput) -> NativeInput:
             (equivalent to `{"numgrad": "true"}`).
     """
 
+    if program_input.model is None:
+        raise EncoderError("orca input requires a scientific model.")
+
     # Handle ORCA's case-insensitive keywords by doing caseless lookups
     kw_lower = {k.casefold(): v for k, v in program_input.keywords.items()}
     _validate_keywords(kw_lower)

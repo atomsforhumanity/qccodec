@@ -28,6 +28,7 @@ def test_toml_dict():
 
     weird_water = water.model_copy(update={"charge": -1, "multiplicity": 2})
     inp_obj = ProgramInput(
+        program="crest",
         structure=weird_water,
         calctype="conformer_search",
         model={"method": "gfn2"},
@@ -48,6 +49,7 @@ def test_toml_dict():
 
     # Respects explicitly set threads and handles no "calculation" key
     inp_obj = ProgramInput(
+        program="crest",
         structure=weird_water,
         calctype="conformer_search",
         model={"method": "gfn2"},
