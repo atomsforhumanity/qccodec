@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
 
-from qccodec.parsers.orca import (
+from qccodec.programs.orca import (
     parse_energy,
     parse_gradient,
     parse_gradient_hessian,

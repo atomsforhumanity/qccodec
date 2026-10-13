@@ -2,8 +2,8 @@ import pytest
 from qcdata import ProgramInput
 from qcdata.utils import water
 
-from qccodec.encoders.crest import _to_toml_dict, validate_input
 from qccodec.exceptions import EncoderError
+from qccodec.programs.crest import _to_toml_dict, validate_input
 
 
 def test_validate_input(prog_input_factory):

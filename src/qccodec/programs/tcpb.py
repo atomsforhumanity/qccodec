@@ -1,24 +1,20 @@
-"""Optional TeraChem frontend/protobuf Python bindings."""
+"""TeraChem frontend (``terachem-fe``) and protobuf (``terachem-pbs``) clients via tcpb."""
 
 from __future__ import annotations
 
 from importlib.metadata import version
 
-from qcdata import (
-    CalcType,
-    ProgramInput,
-    ProgramOutput,
-    Provenance,
-    SinglePointData,
-)
+from qcdata import CalcType, ProgramInput, ProgramOutput, Provenance, SinglePointData
 
-from ..definition import CodecDefinition
+from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import NativeOutput, PythonInput, PythonOutput
 
+CALCTYPES = frozenset({CalcType.energy, CalcType.gradient})
+
 
 def encode(inp: ProgramInput) -> PythonInput:
-    """Prepare native arguments and files without executing the scientific program."""
+    """Prepare the client call without importing tcpb."""
     if inp.model is None:
         raise EncoderError("TeraChem requires a scientific model.")
     return PythonInput(
@@ -29,7 +25,7 @@ def encode(inp: ProgramInput) -> PythonInput:
 
 
 def invoke(*, input_data: ProgramInput) -> ProgramOutput[ProgramInput, SinglePointData]:
-    """Call the selected client while retaining failed outputs supplied by tcpb."""
+    """Call the selected client, retaining failed outputs supplied by tcpb."""
     import tcpb
 
     if version("tcpb") == "0.16.0":
@@ -45,18 +41,15 @@ def invoke(*, input_data: ProgramInput) -> ProgramOutput[ProgramInput, SinglePoi
         with client_class() as client:
             output = client.compute(input_data)
     except tcpb.exceptions.TCPBError as exc:
-        if exc.program_output is not None:
-            output = exc.program_output
-        else:
+        if exc.program_output is None:
             raise
+        output = exc.program_output
     print(output.logs or "", end="")
     return output
 
 
-def decode(
-    _definition: CodecDefinition, inp: ProgramInput, out: NativeOutput
-) -> SinglePointData:
-    """Interpret native observations and preserve recoverable scientific data."""
+def decode(inp: ProgramInput, out: NativeOutput) -> SinglePointData:
+    """Unwrap the client's ProgramOutput; raise with its data if it failed."""
     assert isinstance(out, PythonOutput)
     if out.value is None:
         return SinglePointData(provenance=Provenance(program="terachem"))
@@ -68,12 +61,7 @@ def decode(
     return output.results
 
 
-def make_codec(program: str) -> CodecDefinition:
-    """Select a frontend or protobuf client while preserving TeraChem producer identity."""
-    return CodecDefinition(
-        program,
-        frozenset({CalcType.energy, CalcType.gradient}),
-        encode,
-        decode,
-        producer_program="terachem",
-    )
+codecs: dict[str, Codec] = {
+    name: Codec(name, calctypes=CALCTYPES, encode=encode, decode=decode)
+    for name in ("terachem-fe", "terachem-pbs")
+}

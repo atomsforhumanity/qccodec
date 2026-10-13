@@ -1,4 +1,4 @@
-"""Local invocation descriptions. These objects contain no execution machinery."""
+"""Native invocation and output descriptions. These objects contain no execution machinery."""
 
 from __future__ import annotations
 
@@ -7,12 +7,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from qcdata import Data, ProgramInput, ProgramOutput, StructuredData
+from qcdata import Data, ProgramInput, ProgramOutput
 
 
 @dataclass(frozen=True)
 class SubprocessInput:
-    """An argument vector and files to execute within a calculation workspace."""
+    """A command and the files it needs, to run inside a calculation directory.
+
+    Attributes:
+        command: The argument vector; the executable is the first element.
+        files: Files written to the calculation directory before running.
+        wavefunction_files: Relative glob patterns of restart files worth keeping.
+        environment: Environment defaults required by the program.
+    """
 
     command: tuple[str, ...]
     files: Mapping[str, str | bytes] = field(default_factory=dict)
@@ -22,13 +29,25 @@ class SubprocessInput:
 
 @dataclass(frozen=True)
 class PythonInput:
-    """A native callable, its arguments, and optional execution requirements."""
+    """A Python callable with its arguments, to run inside a calculation directory.
+
+    Attributes:
+        function: The callable to invoke.
+        args: Positional arguments.
+        kwargs: Keyword arguments.
+        files: Files written to the calculation directory before running.
+        child_callback: Keyword name into which the runner injects a function that
+            computes child calculations synchronously; only for integrations such
+            as optimizers that drive other programs.
+        loggers: Python logger names whose output should be captured.
+        wavefunction_files: Relative glob patterns of restart files worth keeping.
+        environment: Environment defaults required by the library.
+    """
 
     function: Callable[..., Any]
     args: tuple[Any, ...] = ()
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     files: Mapping[str, str | bytes] = field(default_factory=dict)
-    # Only callback-driven integrations request this injected keyword argument.
     child_callback: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
@@ -37,7 +56,7 @@ class PythonInput:
 
 @dataclass
 class SubprocessOutput:
-    """Subprocess state and artifacts; stdout holds merged process output."""
+    """What a subprocess produced; ``stdout`` holds merged stdout and stderr."""
 
     stdout: str = ""
     directory: Path | None = None
@@ -47,13 +66,13 @@ class SubprocessOutput:
 
     @property
     def failed(self) -> bool:
-        """Report an invocation failure independently of scientific completion."""
+        """Whether launching or running the process failed."""
         return self.error is not None or self.returncode not in (None, 0)
 
 
 @dataclass
 class PythonOutput:
-    """A callable's return value, merged output in stdout, or invocation failure."""
+    """What a Python callable produced: its return value, merged logs, or an error."""
 
     value: Any = None
     stdout: str = ""
@@ -63,26 +82,12 @@ class PythonOutput:
 
     @property
     def failed(self) -> bool:
-        """Report whether invoking the Python function raised an exception."""
+        """Whether invoking the callable raised an exception."""
         return self.error is not None
 
 
 NativeInput = SubprocessInput | PythonInput
 NativeOutput = SubprocessOutput | PythonOutput
-
-
-class Codec(Protocol):
-    """Two methods are sufficient for a local, externally supplied integration."""
-
-    def encode(self, input_data: ProgramInput) -> NativeInput:
-        """Translate a scientific request without executing the calculation."""
-        ...
-
-    def decode(
-        self, input_data: ProgramInput, native_output: NativeOutput
-    ) -> StructuredData:
-        """Interpret native output, returning data or raising with partial data."""
-        ...
 
 
 class ComputeChild(Protocol):
@@ -94,7 +99,6 @@ class ComputeChild(Protocol):
         /,
         *,
         previous: ProgramOutput[ProgramInput, Data] | None = None,
-        codec: Codec | None = None,
     ) -> ProgramOutput[ProgramInput, Data]:
-        """Execute one child synchronously and retain its output on failure."""
+        """Execute one child synchronously and return its output, failed or not."""
         ...

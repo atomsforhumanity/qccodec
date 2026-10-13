@@ -1,4 +1,4 @@
-"""xTB translation and native Python binding; imports xTB only when invoked."""
+"""xTB through its Python API; the library is imported only when invoked."""
 
 from __future__ import annotations
 
@@ -8,21 +8,15 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from qcdata import (
-    CalcType,
-    ProgramInput,
-    Provenance,
-    SinglePointData,
-    Wavefunction,
-)
+from qcdata import CalcType, ProgramInput, Provenance, SinglePointData, Wavefunction
 
-from ..definition import CodecDefinition
+from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import NativeOutput, PythonInput, PythonOutput
 
 
 def encode(inp: ProgramInput) -> PythonInput:
-    """Prepare native arguments and files without executing the scientific program."""
+    """Prepare the native calculator call without importing or running xTB."""
     if inp.model is None:
         raise EncoderError("xtb requires a scientific model.")
     if inp.files or inp.cmdline_args:
@@ -31,6 +25,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         function=invoke_xtb,
+        # Single-threaded by default; unbuffered Fortran output so logs are captured.
         environment={"OMP_NUM_THREADS": "1", "GFORTRAN_UNBUFFERED_ALL": "1"},
         kwargs={
             "method": inp.model.method,
@@ -55,7 +50,6 @@ def invoke_xtb(
     """Run the native calculator and snapshot results before releasing its output unit."""
     from importlib.metadata import version
 
-    import numpy as np
     from xtb.interface import Calculator, Param
     from xtb.libxtb import VERBOSITY_FULL
 
@@ -90,10 +84,8 @@ def invoke_xtb(
             print(output_file.read_text(errors="replace"), end="")
 
 
-def decode(
-    _definition: CodecDefinition, inp: ProgramInput, out: NativeOutput
-) -> SinglePointData:
-    """Interpret native observations and preserve recoverable scientific data."""
+def decode(inp: ProgramInput, out: NativeOutput) -> SinglePointData:
+    """Map the native snapshot into qcdata fields; empty data when invocation failed."""
     assert isinstance(out, PythonOutput)
     if out.failed:
         return SinglePointData(provenance=Provenance(program="xtb"))
@@ -107,6 +99,6 @@ def decode(
     )
 
 
-codec = CodecDefinition(
-    "xtb", frozenset({CalcType.energy, CalcType.gradient}), encode, decode
+codec = Codec(
+    "xtb", calctypes={CalcType.energy, CalcType.gradient}, encode=encode, decode=decode
 )

@@ -1,154 +1,147 @@
-# Parsing Framework Overview
+# Adding a program to qccodec
 
-Hey there 👋! Look at you wanting to contribute! This package is designed to make it as easy as possible for you to contribute new parsers for quantum chemistry programs and to make it as easy as possible to maintain the code. This document will walk you through the design decisions and how to add new parsers.
+Hey there 👋! Look at you wanting to contribute! Every program is one file,
+`src/qccodec/programs/<name>.py`, that builds a single `Codec`. This page walks through
+the whole thing; the built-in `terachem.py`, `orca.py`, and `crest.py` are complete
+examples of file-based programs, and `xtb.py` of a Python API.
 
-This framework standardizes how output files from quantum chemistry programs are parsed and converted into structured result objects. It separates parsers into two main categories:
-
-1. Standard File Parsers:
-   These functions operate on a single file’s contents (e.g., stdout/log text). They accept a single input (which may be a str or bytes) and return one parsed value (which may be a single `float` or a list of objects).
-
-2. Directory Parsers:
-   These functions handle more complex parsing tasks that involve an entire directory of output files and may need to operate on more than one file to create their final parsed value(s). They have a different signature and receive the directory path with optional additional context such as the stdout string and an input object. They may return a single value like standard parsers or a dictionary mapping keys to parsed values. When no target is specified at registration, the returned dictionary is merged into the final results data with each value at its specified key.
-
-This approach keeps the interface consistent and clear:
-
-- Simple Parsers: Return a single value and specify a target.
-- Directory Parsers: Return a single value and specify a target, or return a dictionary and have their keys merged into the overall results.
-
-## Registration of Parsers
-
-All parsers are registered via the `@register` decorator. The decorator’s parameters are as follows:
-
-- `filetype`: A value (typically from a program-specific enum such as `CrestFileType`) indicating the type of file the parser handles. For example, `CrestFileType.stdout` for log output or `CrestFileType.directory` for full-directory processing.
-
-- `calctypes` (optional): A list of calculation types (from the `qcdata.CalcType` enum) on which this parser should run. If omitted, the parser applies to all calculation types.
-
-- `required`: A boolean indicating whether this parser is mandatory. If `True` and the parser fails to parse the expected data, a `MatchNotFoundError` is raised when the parser is executed from within the `decode` function. The parser should always raise a `MatchNotFoundError` if the value is not found and it is called on its own.
-
-- `target` (optional for directory parsers): For standard file parsers, this key (or nested key as a tuple) indicates where in the final results object the parser’s output should be stored. For directory parsers—those registered with `FileType.directory`—if no target is provided the parser is expected to return a dictionary, which will be merged into the final results object.
-
-The registry itself enforces that no two parsers for the same program register the same target.
-
-## Example: Standard File Parser
+## 1. The codec
 
 ```python
-from qccodec import register
-from qcdata import CalcType
-from qccodec.utils import re_search
-
-
-@register(filetype=TeraChemFileType.STDOUT, calctypes=[CalcType.energy, CalcType.gradient], target="energy")
-def parse_energy(contents: str) -> float:
-    """
-    Parse the final energy from TeraChem stdout.
-
-    Args:
-        contents: The contents of the TeraChem stdout file.
-
-    Returns:
-        The energy as a float.
-    """
-    regex = r"FINAL ENERGY: (-?\d+(?:\.\d+)?)"
-    return float(re_search(regex, contents).group(1))
-
-```
-
-## Example: Directory Parser (Dictionary Output)
-
-In this case, because the parser processes the whole directory output and returns multiple pieces of data, we omit the target. The returned dictionary is merged by the top-level parser.
-
-```python
-from qccodec import register
 from qcdata import CalcType, ProgramInput
+from qccodec import Codec, Context, SubprocessInput, re_search
+from qccodec.exceptions import EncoderError
+from ._common import invocation
 
-@register(filetype=CrestFileType.DIRECTORY, calctypes=[CalcType.conformer_search])
-def parse_conformers(directory: Path, stdout: Optional[str], input_data: ProgramInput, *, failed: bool = False) -> dict[str, Any]:
-    """Parse the conformers from the output directory of a CREST conformer search calculation.
-
-    Args:
-        directory: Path to the directory containing the CREST output files.
-        stdout: The contents of the CREST stdout file (not used).
-        input_data: The input object used for the calculation
-
-    Returns:
-        The parsed conformers and their energies as a dictionary.
-    """
-    directory = Path(directory)
-    conformers = Structure.open_multi(
-        directory / "crest_conformers.xyz",
-        charge=input_data.structure.charge,
-        multiplicity=input_data.structure.multiplicity,
-    )
-
-    # CREST places the energy as the only value in the comment line
-    conf_energies = [
-        float(conf.extras[Structure._xyz_comment_key][0]) for conf in conformers
-    ]
-
-    return {
-        "conformers": conformers,
-        "conformer_energies": conf_energies,
-    }
-
+codec = Codec("myprog", calctypes={CalcType.energy, CalcType.gradient})
 ```
 
-## Example: Directory Parser (Single Output)
+`program` is matched against `ProgramInput.program`; `calctypes` are the calculation
+types the encoder can produce. Pass `producer="other"` if results are really produced by
+another program (the tcpb clients report `terachem`).
 
-Directory parsers may also return a single target value instead of a dictionary.
+## 2. The encoder
 
 ```python
-@register(
-  filetype=TeraChemFileType.DIRECTORY,
-    calctypes=[CalcType.optimization],
-    target="trajectory", # Note target!
-)
-def parse_trajectory(directory: Path, stdout: str, input_data: ProgramInput, *, failed: bool = False) -> list[ProgramOutput]:
-    """Parse the output directory of a TeraChem optimization calculation into a trajectory.
-
-    Args:
-        directory: Path to the directory containing the TeraChem output files.
-        stdout: The contents of the TeraChem stdout file.
-        input_data: The input object used for the calculation.
-
-    Returns:
-        A list of ProgramOutput objects.
-    """
-    # Create the trajectory
-    trajectory: list[ProgramOutput] = []
-    # Parsing logic here...
-    return trajectory
+@codec.encoder
+def encode(inp: ProgramInput) -> SubprocessInput:
+    if inp.model is None:
+        raise EncoderError("myprog requires a model.")
+    text = f"method {inp.model.method}\ncharge {inp.structure.charge}\n"
+    return invocation(inp, {"run.inp": text, "geom.xyz": inp.structure.to_xyz()}, "run.inp")
 ```
 
-See `parsers/terachem.py` for examples of both types of parsers.
+`invocation()` builds `myprog run.inp <cmdline_args>` and merges user-supplied
+`inp.files`, rejecting name clashes. You can also return a `SubprocessInput` directly,
+or a `PythonInput(function=..., kwargs=...)` for programs with a Python API.
+Raise `EncoderError` for anything the program cannot run. Never execute here.
 
-## Top-Level Decode Function
+## 3. Parsers
 
-The decode function orchestrates the parsing process:
+Each parser is a small function from contents to one value:
 
-1.  It collects input files using a unified generator (`prog.iter_files()`) that will discover all parsable files.
+```python
+@codec.parser(target="energy", calctypes=[CalcType.energy, CalcType.gradient])
+def parse_energy(stdout: str) -> float:
+    return float(re_search(r"Total energy:\s+(-?\d+\.\d+)", stdout).group(1))
 
-2.  It retrieves the appropriate parsers from the registry based on the program, filetype, and calctype.
+@codec.parser(file="run.grad", target="gradient", calctypes=[CalcType.gradient])
+def parse_gradient(contents: str) -> list[list[float]]:
+    values = [float(v) for v in contents.split()]
+    return [values[i : i + 3] for i in range(0, len(values), 3)]
 
-3.  It then dispatches parsers against these file:
+@codec.parser(target=("provenance", "program_version"), required=False)
+def parse_version(stdout: str) -> str:
+    return re_search(r"myprog version (\S+)", stdout).group(1)
+```
 
-    - For Standard File Parsers: Calls the parser with the file’s contents and assigns the returned value to the specified target.
+Rules the decorator enforces and the pipeline relies on:
 
-    - For Composite (Directory) Parsers: Calls the parser with additional context (directory, stdout, input object). If the parser returns a dictionary, its key–value pairs are merged into the data collector, otherwise it assigns the returned value at the specified target.
+- `target` names the field on the qcdata result (`SinglePointData`, `OptimizationData`,
+  ...). A tuple fills a nested field. Two parsers may not fill the same target for
+  overlapping calculation types.
+- `calctypes` omitted means "every calculation type".
+- `file` is `"stdout"` (default), a file name or glob relative to the calculation
+  directory (`"*.hess"`, `"scr*/optim.xyz"`), a function of the `Context` returning a
+  name (`lambda ctx: f"{basename(ctx.stdout)}.hess"`), or `"directory"`.
+- `required=True` (default) means a missing file or a `MatchNotFoundError` fails the
+  decode. Use `required=False` for values that are not always present. Use
+  `re_search`/`re_finditer` so "not found" is reported as `MatchNotFoundError`; raise
+  `ParserError` for malformed data.
 
-4.  Finally, the assembled data (a dictionary) is passed into the correct result model from `qcdata` and returned.
+Parsers that need more than one file take a `Context`:
 
-## Duplicate Target Registration
+```python
+@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+    structures = Structure.open_multi(ctx.path("traj.xyz"), charge=ctx.input_data.structure.charge)
+    step = ctx.decode(CalcType.gradient, stdout=ctx.stdout)   # reuse this codec's parsers
+    ...
+```
 
-The registry enforces unique targets per program per `CalcType`. This ensures that each parsed value is uniquely associated with a key in the final results. For example, if two parsers attempt to register with the same target for a given program for a given `CalcType`, the registry will raise an error, preventing ambiguity in the final result.
+`ctx` carries `stdout`, `directory`, `input_data`, `failed`, `path()`, `read()`, and
+`decode()`. A directory parser may omit `target` and return a mapping that is merged
+into the result.
 
-## Parsing failed calculations
+## 4. Failure detection (optional)
 
-`decode(..., failed=True)` returns the appropriate scientific data type with all
-recoverable values and program provenance. Missing matches and missing files are
-tolerated; malformed recovered values still fail validation. The default remains
-strict about required parser matches and artifacts.
+```python
+@codec.failure
+def failure(ctx: Context) -> str | None:
+    return "myprog reported an error." if "ERROR" in (ctx.stdout or "") else None
+```
 
-Directory parsers accept a keyword-only `failed=False` argument and forward it to
-nested `decode()` calls. Use `MatchNotFoundError` or `FileNotFoundError` for absent
-content. Other parser errors remain errors. Reconstructed energy-only trajectory
-snapshots use energy inputs; a missing gradient file does not imply a failed step.
+Many programs exit with status 0 after failing. When this hook returns a message,
+decoding recovers every value it can and raises `CalculationError` with that data.
+
+## 5. Python APIs instead of files
+
+Skip parsers and give the codec a `decode` function:
+
+```python
+def invoke(**kwargs): ...                       # imports the library, returns a plain snapshot
+def encode(inp) -> PythonInput: return PythonInput(function=invoke, kwargs={...})
+def decode(inp, out) -> SinglePointData: ...    # maps out.value into qcdata fields
+
+codec = Codec("mylib", calctypes={CalcType.energy}, encode=encode, decode=decode)
+```
+
+Import the library inside `invoke` so encoding and decoding work (and are testable)
+without it installed. Set `PythonInput.environment` for settings the library reads at
+import time, and `loggers` for Python loggers whose output should be captured.
+
+## 6. Options, wavefunction propagation, registration
+
+- Declare decode options with defaults on the codec, `Codec(..., options={"collect_rotamers": False})`,
+  and read them in parsers as `ctx.options["collect_rotamers"]`. Callers override them
+  with `qccompute.compute(inp, options={...})` or `qccodec.decode(..., options={...})`;
+  unknown names are rejected.
+- Set `codec.propagate_wfn = fn` if the program can reuse a previous wavefunction.
+  `fn(output, input_data)` returns a new `ProgramInput` with the wavefunction files from
+  `output.results.files` attached and the guess keyword set. The encoder's
+  `wavefunction_files` glob patterns tell qccompute which files to keep.
+- Add the program to `_BUILTIN` in `src/qccodec/registry.py` so `get_codec("myprog")`
+  finds it. Users can also do this at runtime with `qccodec.register(codec)`.
+
+## 7. Tests
+
+Put sample outputs under `tests/data/<name>/` and use the `ParserTestCase` harness
+in `tests/conftest.py` (see `tests/test_crest_parsers.py`). Each case calls the parser
+directly and runs it through `codec.parse()` so both paths are covered. Add
+encoder tests asserting on the generated input text.
+
+## How decoding works
+
+`Codec.parse(calctype, stdout=..., directory=..., input_data=..., failed=..., options=...)`:
+
+1. Runs the failure hook; a message switches to recovery mode.
+2. Runs every parser registered for the calculation type, handing each its stdout,
+   file contents, or the `Context`, and stores values at their targets.
+3. If a required file or value was missing and not in recovery mode, raises
+   `ParserError`/`MatchNotFoundError` with the partial data attached.
+4. If the failure hook fired, raises `CalculationError` with the data attached.
+5. Otherwise validates and returns the qcdata model for the calculation type.
+
+`Codec.decode(input_data, native_output)` is what qccompute calls; it uses the custom
+`decode` function if there is one, otherwise the pipeline above with
+`failed=native_output.failed`.

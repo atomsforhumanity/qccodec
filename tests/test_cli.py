@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-from qccodec.codec import decode
+from qccodec import decode
 
 
 def test_cli(test_data_dir):

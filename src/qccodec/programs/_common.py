@@ -1,4 +1,4 @@
-"""Shared file-codec helpers; no execution takes place here."""
+"""Helpers shared by file-based program codecs."""
 
 from __future__ import annotations
 
@@ -16,7 +16,11 @@ def invocation(
     wavefunction_files: tuple[str, ...] = (),
     environment: dict[str, str] | None = None,
 ) -> SubprocessInput:
-    """Combine translated files with supplemental inputs, rejecting filename conflicts."""
+    """Build ``<program> <filename> <cmdline_args>`` with generated and supplied files.
+
+    Raises:
+        EncoderError: A supplied file would overwrite a generated input file.
+    """
     conflicts = generated.keys() & inp.files.keys()
     if conflicts:
         raise EncoderError(

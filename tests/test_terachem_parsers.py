@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import pytest
-from qcdata import CalcType, ProgramOutput
+from qcdata import CalcType
 
 from qccodec.exceptions import MatchNotFoundError
-from qccodec.parsers.terachem import (
+from qccodec.programs.terachem import (
     calculation_succeeded,
     parse_calctype,
     parse_energy,
@@ -211,6 +211,7 @@ test_cases = [
         answer=trajectories.trajectory,
         clear_registry=False,
         extra_files=["optim.xyz"],
+        extra_files_names=["scr.geom/optim.xyz"],
         program_input=trajectories.trajectory_spec,
     ),
     ParserTestCase(
@@ -222,7 +223,7 @@ test_cases = [
         answer=trajectories.ch3_trajectory,
         clear_registry=False,
         extra_files=["ch3optim.xyz"],
-        extra_files_names=["optim.xyz"],
+        extra_files_names=["scr.geom/optim.xyz"],
         program_input=trajectories.ch3_trajectory_spec,
     ),
     ParserTestCase(
@@ -233,6 +234,7 @@ test_cases = [
         success=False,
         clear_registry=False,
         extra_files=["optim.xyz"],
+        extra_files_names=["scr.geom/optim.xyz"],
         program_input=trajectories.trajectory_spec,
     ),
     ParserTestCase(
@@ -244,7 +246,7 @@ test_cases = [
         answer=trajectories.es_trajectory,
         clear_registry=False,
         extra_files=["es_optim.xyz"],
-        extra_files_names=["optim.xyz"],
+        extra_files_names=["scr.geom/optim.xyz"],
     ),
 ]
 
@@ -255,14 +257,6 @@ def test_terachem_parsers(test_data_dir, prog_input_factory, tmp_path, test_case
     Tests the terachem parsers to ensure that they correctly parse the output files and
     behave correctly within the decode function.
     """
-    # Water and excited state successful trajectories
-    if test_case.success and "Parse trajectory" in test_case.name:
-        # Update scratch_dir to the tmp_path for the trajectory test case
-        for i in range(len(test_case.answer)):
-            po_dict = test_case.answer[i].model_dump()
-            po_dict["execution"]["scratch_dir"] = tmp_path
-            test_case.answer[i] = ProgramOutput(**po_dict)
-
     run_test_harness(test_data_dir, prog_input_factory, tmp_path, test_case)
 
 

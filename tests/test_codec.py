@@ -1,8 +1,8 @@
 import pytest
 
-from qccodec.codec import decode, encode
-from qccodec.encoders import terachem
+from qccodec import decode, encode
 from qccodec.exceptions import EncoderError, ParserError
+from qccodec.programs import terachem
 
 from .data.orca.answers import hessians
 

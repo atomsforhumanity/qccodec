@@ -1,4 +1,4 @@
-"""Optional QCEngine compatibility codec."""
+"""QCEngine compatibility: any program QCEngine supports, through its Python API."""
 
 from __future__ import annotations
 
@@ -10,13 +10,15 @@ from typing import Any
 from qcdata import CalcType, ProgramInput, Provenance, SinglePointData
 from qcdata.qcel import from_qcel_output_results, to_qcel_input
 
-from ..definition import CodecDefinition
+from ..codec import Codec
 from ..exceptions import CodecNotFoundError, DependencyNotFoundError, EncoderError
 from ..native import NativeOutput, PythonInput, PythonOutput
 
+CALCTYPES = frozenset({CalcType.energy, CalcType.gradient, CalcType.hessian})
+
 
 def encode(inp: ProgramInput, **options: Any) -> PythonInput:
-    """Prepare native arguments and files without executing the scientific program."""
+    """Prepare the QCEngine call without importing or running it."""
     if inp.model is None:
         raise EncoderError("QCEngine requires a scientific model.")
     return PythonInput(
@@ -33,7 +35,7 @@ def encode(inp: ProgramInput, **options: Any) -> PythonInput:
 def invoke(
     *, input_data: dict[str, Any], program: str, options: dict[str, Any]
 ) -> dict[str, Any]:
-    """Delegate native execution to QCEngine and forward its returned logs."""
+    """Delegate execution to QCEngine and forward its logs to stdout/stderr."""
     from qcengine import compute, get_program
     from qcengine.exceptions import InputError, ResourceError
 
@@ -59,31 +61,26 @@ def invoke(
     return output
 
 
-def decode(
-    _definition: CodecDefinition, inp: ProgramInput, out: NativeOutput
-) -> SinglePointData:
-    """Interpret native observations and preserve recoverable scientific data."""
+def decode(inp: ProgramInput, out: NativeOutput) -> SinglePointData:
+    """Convert QCEngine's result dictionary; empty data when invocation failed."""
     assert isinstance(out, PythonOutput)
     if out.failed:
         return SinglePointData(provenance=Provenance(program=inp.program))
     return from_qcel_output_results(out.value)
 
 
-def make_codec(
+def codec_for(
     program: str,
     *,
     task_config: dict[str, Any] | None = None,
     local_options: dict[str, Any] | None = None,
-) -> CodecDefinition:
-    """Create a compatibility codec for a program delegated to QCEngine."""
+) -> Codec:
+    """Create a codec delegating ``program`` to QCEngine with optional settings."""
     options: dict[str, Any] = {}
     if task_config is not None:
         options["task_config"] = task_config
     if local_options is not None:
         options["local_options"] = local_options
-    return CodecDefinition(
-        program,
-        frozenset({CalcType.energy, CalcType.gradient, CalcType.hessian}),
-        partial(encode, **options),
-        decode,
+    return Codec(
+        program, calctypes=CALCTYPES, encode=partial(encode, **options), decode=decode
     )

@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 from qcdata import CalcType, ProgramInput
 
-from qccodec.parsers.crest import (
+from qccodec import Context, get_codec
+from qccodec.programs.crest import (
     parse_conformers,
     parse_energy,
     parse_energy_numhess,
@@ -162,6 +163,7 @@ test_cases = [
         success=True,
         answer=conformers.rotamers,
         extra_files=["crest_rotamers.xyz"],
+        options={"collect_rotamers": True},
     ),
     ParserTestCase(
         name="Parse optimization",
@@ -198,8 +200,13 @@ def test_parse_conformers_charge_multiplicity_updates(
     prog_input_dict["structure"]["charge"] = -2
     prog_input_dict["structure"]["multiplicity"] = 3
     # Using fake prog_input for water; need .structure.charge and .multiplicity
-    directory = test_data_dir / "crest"
-    data = parse_conformers(directory, None, ProgramInput(**prog_input_dict))
+    ctx = Context(
+        get_codec("crest"),
+        CalcType.conformer_search,
+        directory=test_data_dir / "crest",
+        input_data=ProgramInput(**prog_input_dict),
+    )
+    data = parse_conformers(ctx)
     # Check conformer energies
     for struct in data["conformers"]:
         assert struct.charge == -2
@@ -213,8 +220,14 @@ def test_parse_rotamers_charge_multiplicity_updates(test_data_dir, prog_input_fa
     prog_input_dict["structure"]["charge"] = 3
     prog_input_dict["structure"]["multiplicity"] = 5
     # Using fake prog_input for water; need .structure.charge and .multiplicity
-    directory = test_data_dir / "crest"
-    data = parse_rotamers(directory, None, ProgramInput(**prog_input_dict))
+    ctx = Context(
+        get_codec("crest"),
+        CalcType.conformer_search,
+        directory=test_data_dir / "crest",
+        input_data=ProgramInput(**prog_input_dict),
+        options={"collect_rotamers": True},
+    )
+    data = parse_rotamers(ctx)
     # Check conformer energies
     for struct in data["rotamers"]:
         assert struct.charge == 3

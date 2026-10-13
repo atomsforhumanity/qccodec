@@ -1,11 +1,9 @@
-"""geomeTRIC's native engine bridge, with an injected child calculation function."""
+"""geomeTRIC's native engine bridge; child gradients run through an injected callback."""
 
 from __future__ import annotations
 
 import traceback
 from copy import deepcopy
-from dataclasses import replace
-from functools import partial
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, TypedDict, cast
@@ -24,9 +22,9 @@ from qcdata import (
     Structure,
 )
 
-from ..definition import CodecDefinition
+from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
-from ..native import Codec, ComputeChild, NativeOutput, PythonInput, PythonOutput
+from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
 
 if TYPE_CHECKING:
     from geometric.engine import Engine as NativeEngine
@@ -34,15 +32,15 @@ if TYPE_CHECKING:
 
 
 class GeometricOutcome(TypedDict):
-    """Native optimizer completion state plus independently recorded child outputs."""
+    """Optimizer completion state plus the independently recorded child outputs."""
 
     trajectory: list[ProgramOutput[ProgramInput, SinglePointData]]
     version: str | None
     error: str | None
 
 
-def encode(inp: ProgramInput, *, gradient_codec: Codec | None = None) -> PythonInput:
-    """Prepare native arguments and files without executing the scientific program."""
+def encode(inp: ProgramInput) -> PythonInput:
+    """Prepare optimizer arguments; the gradient child comes from ``subprograms``."""
     try:
         gradient_spec = inp.get_subprogram(CalcType.gradient)
     except ValueError as exc:
@@ -74,7 +72,6 @@ def encode(inp: ProgramInput, *, gradient_codec: Codec | None = None) -> PythonI
             "constraints": constraints,
             "keywords": keywords,
             "geometry_file": filename,
-            "gradient_codec": gradient_codec,
         },
         files={**inp.files, filename: inp.structure.to_xyz()},
         child_callback="compute_child",
@@ -90,7 +87,6 @@ def make_engine(
     gradient_spec: ProgramSpec,
     compute_child: ComputeChild,
     trajectory: list[ProgramOutput[ProgramInput, SinglePointData]],
-    gradient_codec: Codec | None = None,
 ) -> NativeEngine:
     """Bind geomeTRIC's native engine interface to independent child calculations."""
 
@@ -107,13 +103,11 @@ def make_engine(
             child = ProgramInput.from_spec(
                 gradient_spec, updated, structures=structures
             )
-            options = {"codec": gradient_codec} if gradient_codec is not None else {}
             output = compute_child(
                 child,
                 previous=cast(ProgramOutput[ProgramInput, Data], trajectory[-1])
                 if trajectory
                 else None,
-                **options,
             )
             trajectory.append(
                 cast(ProgramOutput[ProgramInput, SinglePointData], output)
@@ -144,9 +138,8 @@ def invoke_geometric(
     keywords: dict[str, Any],
     geometry_file: str,
     compute_child: ComputeChild,
-    gradient_codec: Codec | None = None,
 ) -> GeometricOutcome:
-    """Run the optimizer and retain its trajectory even when a child or optimizer fails."""
+    """Run the optimizer, retaining its trajectory even when a child or optimizer fails."""
     import geometric
 
     trajectory: list[ProgramOutput[ProgramInput, SinglePointData]] = []
@@ -186,7 +179,6 @@ def invoke_geometric(
             gradient_spec,
             compute_child,
             trajectory,
-            gradient_codec,
         )
         optimizer = geometric.optimize.Optimizer(
             structure.geometry.flatten(),
@@ -204,10 +196,8 @@ def invoke_geometric(
     return outcome
 
 
-def decode(
-    _definition: CodecDefinition, inp: ProgramInput, out: NativeOutput
-) -> OptimizationData:
-    """Interpret native observations and preserve recoverable scientific data."""
+def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData:
+    """Wrap the recorded trajectory; raise with it attached if the optimizer failed."""
     assert isinstance(out, PythonOutput)
     native = out.value or {"trajectory": [], "version": None, "error": None}
     data = OptimizationData(
@@ -219,14 +209,9 @@ def decode(
     return data
 
 
-codec = CodecDefinition(
+codec = Codec(
     "geometric",
-    frozenset({CalcType.optimization, CalcType.transition_state}),
-    encode,
-    decode,
+    calctypes={CalcType.optimization, CalcType.transition_state},
+    encode=encode,
+    decode=decode,
 )
-
-
-def make_codec(*, gradient_codec: Codec | None = None) -> CodecDefinition:
-    """Bind an optional local gradient integration only to input translation."""
-    return replace(codec, encoder=partial(encode, gradient_codec=gradient_codec))

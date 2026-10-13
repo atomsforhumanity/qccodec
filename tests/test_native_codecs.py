@@ -11,7 +11,7 @@ from typing import Any, cast
 import numpy as np
 import pytest
 from qcdata import (
-    CalcType,
+    ConformerSearchData,
     Data,
     OptimizationData,
     ProgramInput,
@@ -21,14 +21,14 @@ from qcdata import (
 
 from qccodec import (
     Codec,
-    CodecDefinition,
     PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
     get_codec,
+    supported_programs,
 )
-from qccodec.exceptions import CalculationError, EncoderError, MatchNotFoundError
+from qccodec.exceptions import CalculationError, EncoderError
 
 
 @pytest.mark.parametrize(
@@ -54,49 +54,32 @@ def test_complete_subprocess_invocation(
         get_codec(program).encode(conflict)
 
 
-def test_decorated_parsers_are_local_and_optional(
-    prog_input_factory: Callable[..., ProgramInput],
+@pytest.mark.parametrize("program", ["orca", "terachem", "crest"])
+def test_builtin_parser_ownership(
+    program: str, prog_input_factory: Callable[..., ProgramInput], tmp_path: Path
 ) -> None:
-    """Decorated parsers are local and optional."""
-    codecs = [
-        CodecDefinition(
-            "local", iter_files=lambda stdout, directory: [("stdout", stdout)]
-        )
-        for _ in range(2)
-    ]
-
-    @codecs[0].parser(filetype="stdout", calctypes=[CalcType.energy], target="energy")
-    def energy(contents: str) -> float:
-        """Parse a scalar directly from the supplied native contents."""
-        return float(contents)
-
-    @codecs[0].parser(filetype="stdout", target="gradient", required=False)
-    def gradient(contents: str) -> list[list[float]]:
-        """Simulate an optional scientific value missing from native output."""
-        raise MatchNotFoundError("gradient", contents)
-
-    assert energy("-1") == -1 and codecs[1].parsers == []
-    data = codecs[0].decode_artifacts("energy", stdout="-1")
-    assert isinstance(data, SinglePointData)
-    assert data.energy == -1 and data.gradient is None
-
-
-def test_dictionary_target_is_respected() -> None:
-    """Dictionary target is respected."""
-    codec = CodecDefinition(
-        "local", iter_files=lambda stdout, directory: [("stdout", stdout)]
+    """File codecs decode through their own parser lists, including on copies."""
+    original = get_codec(program)
+    assert original.parsers and any(spec.file == "stdout" for spec in original.parsers)
+    if program == "terachem":
+        (tmp_path / "scr.geometry").mkdir()
+    copied = Codec(original.program, original.calctypes, options=original.options)
+    data = copied.decode(
+        prog_input_factory("energy", program),
+        SubprocessOutput(
+            stdout="No scientific fields", directory=tmp_path, returncode=0
+        ),
     )
+    assert isinstance(data, SinglePointData) and data.energy is None
+    assert original.parsers
 
-    @codec.parser(filetype="stdout", target="wavefunction")
-    def orbitals(contents: str) -> dict[str, list[float]]:
-        """Return native orbital data to exercise explicit dictionary targets."""
-        return {"scf_eigenvalues_a": [-1]}
 
-    data = codec.decode_artifacts("energy", stdout="dummy")
-    assert isinstance(data, SinglePointData)
-    assert data.wavefunction is not None
-    assert data.wavefunction.scf_eigenvalues_a is not None
-    assert data.wavefunction.scf_eigenvalues_a.tolist() == [-1]
+def test_builtin_discovery_is_independent_of_parsers() -> None:
+    """Python integrations remain discoverable even without file parsers."""
+    assert {"orca", "terachem", "crest", "xtb", "geometric"} <= set(
+        supported_programs()
+    )
+    assert get_codec("xtb").parsers == []
 
 
 def test_crest_zero_exit_failure_preserves_energy(
@@ -113,6 +96,43 @@ def test_crest_zero_exit_failure_preserves_energy(
         )
     assert isinstance(raised.value.data, SinglePointData)
     assert raised.value.data.energy == -1 and raised.value.data.gradient is None
+
+
+def test_terachem_missing_scratch_directory_is_failure(
+    prog_input_factory: Callable[..., ProgramInput], tmp_path: Path
+) -> None:
+    """TeraChem never creating scr* is a program failure with recoverable data."""
+    with pytest.raises(CalculationError, match="scratch output directory") as raised:
+        get_codec("terachem").decode(
+            prog_input_factory("energy", "terachem"),
+            SubprocessOutput(
+                stdout="TeraChem v1.9 Git Version: abc\n",
+                directory=tmp_path,
+                returncode=0,
+            ),
+        )
+    assert raised.value.data is not None
+    assert raised.value.data.provenance.program_version == "v1.9 [abc]"
+
+
+def test_crest_rotamers_are_opt_in(
+    prog_input_factory: Callable[..., ProgramInput], test_data_dir: Path
+) -> None:
+    """Rotamers are parsed only when requested, for execution and standalone decode."""
+    inp = prog_input_factory("conformer_search", "crest")
+    native = SubprocessOutput(directory=test_data_dir / "crest", returncode=0)
+    codec = get_codec("crest")
+    assert codec.options == {"collect_rotamers": False}
+    for enabled in [False, True]:
+        options = {"collect_rotamers": enabled}
+        result = codec.decode(inp, native, options)
+        assert isinstance(result, ConformerSearchData)
+        assert bool(result.rotamers) is enabled and result.conformers
+        standalone = codec.parse(
+            inp.calctype, directory=native.directory, input_data=inp, options=options
+        )
+        assert isinstance(standalone, ConformerSearchData)
+        assert bool(standalone.rotamers) is enabled
 
 
 def test_xtb_encode_and_decode_do_not_import_xtb(
@@ -141,7 +161,7 @@ def test_xtb_native_sequence_and_cleanup(
     monkeypatch: pytest.MonkeyPatch, fail: bool
 ) -> None:
     """Xtb native sequence and cleanup."""
-    from qccodec.codecs.xtb import invoke_xtb
+    from qccodec.programs.xtb import invoke_xtb
 
     calls: list[tuple[object, ...]] = []
 
@@ -209,7 +229,7 @@ def test_geometric_binding_and_failure_trajectory(
     prog_input_factory: Callable[..., ProgramInput],
 ) -> None:
     """Geometric binding and failure trajectory."""
-    from qccodec.codecs.geometric import make_engine
+    from qccodec.programs.geometric import make_engine
 
     inp = prog_input_factory("gradient", "child")
 
@@ -225,7 +245,6 @@ def test_geometric_binding_and_failure_trajectory(
         input_data: ProgramInput,
         *,
         previous: ProgramOutput[ProgramInput, Data] | None = None,
-        codec: Codec | None = None,
     ) -> ProgramOutput[ProgramInput, Data]:
         """Return a failed child output for optimizer trajectory recovery."""
         seen.append(input_data)
@@ -268,17 +287,48 @@ def test_geometric_binding_and_failure_trajectory(
     assert raised.value.data.trajectory == trajectory
 
 
-def test_restart_translation_does_not_mutate_request(
+def test_propagate_wfn_moves_orbitals_onto_next_input(
     prog_input_factory: Callable[..., ProgramInput],
 ) -> None:
-    """Restart translation does not mutate request."""
+    """Orbital files from a previous output become the next input's guess."""
     inp = prog_input_factory("energy")
     original = inp.model_copy(deep=True)
-    previous = SinglePointData.model_validate(
-        {"provenance": {"program": "terachem"}, "files": {"scrgeometry/c0": b"restart"}}
+    previous = ProgramOutput(
+        input_data=inp,
+        success=True,
+        results=SinglePointData.model_validate(
+            {
+                "provenance": {"program": "terachem"},
+                "energy": -1,
+                "files": {"scrgeometry/c0": b"wfn"},
+            }
+        ),
     )
-    restart = get_codec("terachem").restart
-    assert restart is not None
-    updated = restart(inp, previous)
-    assert updated.files["c0"] == b"restart" and updated.keywords["guess"] == "c0"
+    propagate = get_codec("terachem").propagate_wfn
+    assert propagate is not None
+    updated = propagate(previous, inp)
+    assert updated.files["c0"] == b"wfn" and updated.keywords["guess"] == "c0"
     assert inp == original
+    empty = ProgramOutput(
+        input_data=inp,
+        success=True,
+        results=SinglePointData.model_validate(
+            {"provenance": {"program": "terachem"}, "energy": -1}
+        ),
+    )
+    with pytest.raises(EncoderError, match="wavefunction files"):
+        propagate(empty, inp)
+
+
+def test_qcengine_fallback_codec(
+    prog_input_factory: Callable[..., ProgramInput],
+) -> None:
+    """Unknown programs resolve to QCEngine when installed; settings use the factory."""
+    pytest.importorskip("qcengine")
+    from qccodec.programs.qcengine import codec_for
+
+    assert get_codec("psi4").program == "psi4"
+    codec = codec_for("psi4", task_config={"ncores": 2})
+    native = codec.encode(prog_input_factory("energy", "psi4"))
+    assert isinstance(native, PythonInput)
+    assert native.kwargs["options"] == {"task_config": {"ncores": 2}}

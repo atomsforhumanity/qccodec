@@ -9,8 +9,7 @@ import pytest
 from qcdata import CalcType, ProgramInput, ProgramOutput
 from qcdata.utils import water
 
-from qccodec import get_codec
-from qccodec.codec import decode
+from qccodec import Codec, Context, ParserSpec
 from qccodec.exceptions import MatchNotFoundError
 
 
@@ -70,15 +69,18 @@ class ParserTestCase:
             errors during decode. Default is True. required=False parsers should not
             raise an error.
         answer: The expected output from the parser.
-        clear_registry: Boolean indicating if the registry should be cleared of all other
-            parsers before running the test. Default is True.
+        clear_registry: Boolean indicating if the codec should be restricted to only
+            the parser under test before running the decode integration test.
         extra_files: Optional list of additional files to be copied to the test directory.
         extra_files_names: Optional list of names for the extra files, these names will
-            be used as the filenames in the test directory. If not provided, the
-            filenames will be the same as in the extra_files list.
+            be used as the filenames in the test directory (subdirectories are created
+            as needed). If not provided, the filenames will be the same as in the
+            extra_files list.
         program_input: Optional ProgramInput to be used instead of the default one created
             from the calctype.
-
+        codec: Optional codec owning the parser; defaults to the ``codec`` of the
+            parser's module.
+        options: Decode options passed to the codec for this case.
     """
 
     name: str
@@ -92,36 +94,15 @@ class ParserTestCase:
     extra_files: list[str] | None = None
     extra_files_names: list[str] | None = None
     program_input: ProgramInput | None = None
+    codec: Codec | None = None
+    options: dict[str, Any] | None = None
 
 
 def _load_stdout(directory, stdout):
     """Load the stdout for a TestCase."""
     if isinstance(stdout, Path):
-        # Contents is a Path, so we read the file directly.
         return (directory / stdout).read_text()
-    else:
-        # Contents is a string, so we assume it's the content itself.
-        return stdout
-
-
-def _load_contents(
-    tc: ParserTestCase, stdout: str | None, directory: Path
-) -> str | bytes | Path:
-    """Load the contents to be parsed for a TestCase."""
-    mod = inspect.getmodule(tc.parser)
-    if mod is None:
-        raise RuntimeError(f"Failed to import module {mod}")
-
-    parser_spec = next(spec for spec in mod.codec.parsers if spec.parser is tc.parser)
-
-    for filetype, contents in mod.iter_files(stdout, directory):
-        if filetype == parser_spec.filetype:
-            return contents
-
-    # No matching file found
-    raise RuntimeError(
-        f"Failed to find file type {parser_spec.filetype} in directory {directory}"
-    )
+    return stdout
 
 
 def get_target_value(results, target):
@@ -137,111 +118,67 @@ def get_target_value(results, target):
     return d.get(keys[-1], None)
 
 
-def _test_parser_direct(tc, stdout, directory, proginp, parser_spec):
-    """Test the parser function directly with the provided contents.
-
-    Args:
-        tc: The TestCase object containing the test parameters.
-        stdout: The stdout file contents as a string.
-        directory: The directory containing the test data files.
-        proginp: The ProgramInput to provide to directory parsers.
-        parser_spec: The specification of the parser being tested.
-    """
-    contents = _load_contents(tc, stdout, directory)
-
+def _test_parser_direct(tc: ParserTestCase, ctx: Context, spec: ParserSpec):
+    """Call the parser directly with the contents the codec would hand it."""
     if tc.success:
-        # Successful execution of directory parser
-        if parser_spec.filetype == "directory":
-            parsed = tc.parser(directory, stdout, proginp)
-        else:
-            # Successful execution of file parser
-            parsed = tc.parser(contents)
+        parsed = tc.parser(ctx.contents(spec))
         assert parsed == tc.answer, (
             f"{tc.name}: Direct parsing returned {parsed} instead of expected {tc.answer}"
         )
-
     else:
         with pytest.raises(MatchNotFoundError):
-            if parser_spec.filetype == "directory":
-                # Expect an exception for directory parser
-                tc.parser(directory, stdout, proginp)
-            else:
-                # Expect an exception for file parser
-                tc.parser(contents)
+            tc.parser(ctx.contents(spec))
 
 
 def _test_decode_integration(
-    tc, stdout, directory, proginp, program, parser_spec, decode=decode
+    tc: ParserTestCase, ctx: Context, codec: Codec, spec: ParserSpec
 ):
-    """
-    Test the decode() integration, using only the parser under test (unless tc.clear_registry is False).
-
-    Args:
-        tc: The TestCase object containing the test parameters.
-        contents: The contents to be parsed (needed if tc.contents_stdout is True).
-        directory: The directory containing the test data files.
-        proginp: The ProgramInput to provide to decode().
-        program: The name of the program being tested.
-        parser_spec: The specification of the parser being tested.
-
-    Notes:
-        - This test doesn't work for cases when the parser is a directory parser
-            (i.e., filetype == "directory") and then we pass fake contents like
-            "No energy here" but the parser is operating on, e.g., the crest.engrad file
-            in the test data directory. It will not raise an exception as the parser will
-            see the crest.engrad file. We may want to update this function to use a
-            temporary directory and then write the contents variable to a file in that
-            directory using parser_spec.filetype.value.
-
-    """
+    """Run the codec's decode pipeline and check the parser's contribution."""
+    stdout, directory, input_data = ctx.stdout, ctx.directory, ctx.input_data
     if tc.success:
-        # Successful execution of decode
-        result = decode(
-            program,
+        result = codec.parse(
             tc.calctype,
             stdout=stdout,
             directory=directory,
-            input_data=proginp,
+            input_data=input_data,
+            options=tc.options,
             as_dict=True,
         )
-        if parser_spec.target is not None:
-            final_value = get_target_value(result, parser_spec.target)
+        if spec.target is not None:
+            final_value = get_target_value(result, spec.target)
         else:
-            # If the target is None, we assume the entire result is the value.
+            assert tc.answer is not None
             final_value = {key: result[key] for key in tc.answer}
-            assert result["provenance"]["program"] == program
+            assert result["provenance"]["program"] == codec.program
         assert final_value == tc.answer, (
-            f"{tc.name}: decode() returned {final_value} for target '{parser_spec.target}' "
+            f"{tc.name}: decode() returned {final_value} for target '{spec.target}' "
             f"instead of expected {tc.answer}"
         )
-    else:
-        if tc.decode_exc and parser_spec.required:
-            # Failed execution and required is True
-            with pytest.raises(MatchNotFoundError):
-                decode(
-                    program,
-                    tc.calctype,
-                    stdout=stdout,
-                    directory=directory,
-                    input_data=proginp,
-                )
-        else:
-            # Failed execution and required is False
-            result = decode(
-                program,
+    elif tc.decode_exc and spec.required:
+        with pytest.raises(MatchNotFoundError):
+            codec.parse(
                 tc.calctype,
                 stdout=stdout,
                 directory=directory,
-                input_data=proginp,
-                as_dict=True,
+                input_data=input_data,
+                options=tc.options,
             )
-            final_value = get_target_value(result, parser_spec.target)
-            assert final_value in (None, {}), (
-                f"{tc.name}: decode() returned non-empty value {final_value} when an empty result was expected."
-            )
+    else:
+        result = codec.parse(
+            tc.calctype,
+            stdout=stdout,
+            directory=directory,
+            input_data=input_data,
+            options=tc.options,
+            as_dict=True,
+        )
+        final_value = get_target_value(result, spec.target)
+        assert final_value in (None, {}), (
+            f"{tc.name}: decode() returned non-empty value {final_value} when an empty result was expected."
+        )
 
 
-def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
+def run_test_harness(test_data_dir, input_factory, tmp_path, tc: ParserTestCase):
     """
     Args:
         test_data_dir: The base directory containing test data files.
@@ -253,30 +190,28 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
         Runs the full test harness:
             1. Load the contents.
             2. Run the parser directly.
-            3. Temporarily restrict the registry to only the parser under test,
+            3. Optionally restrict the codec to only the parser under test,
                 and run the decode() integration test.
     """
-    program = inspect.getmodule(tc.parser).__name__.split(".")[-1]
-    stdout = _load_stdout(test_data_dir / program, tc.stdout)
-    # Get the spec for the parser under test.
-    parser_spec = next(
-        spec
-        for spec in inspect.getmodule(tc.parser).codec.parsers
-        if spec.parser is tc.parser
-    )
+    module = inspect.getmodule(tc.parser)
+    assert module is not None
+    program = module.__name__.split(".")[-1]
+    codec: Codec = tc.codec or module.codec
+    spec = next(spec for spec in codec.parsers if spec.parser is tc.parser)
 
+    stdout = _load_stdout(test_data_dir / program, tc.stdout)
     proginput = tc.program_input or input_factory(tc.calctype, program=program)
 
-    # Copy over extra files if provided.
+    # Copy over extra files if provided; stdout-only cases need no directory.
     if tc.extra_files:
-        # Use the extra_files_names if provided, otherwise use extra_files.
-        extra_files_names = tc.extra_files_names or tc.extra_files
-        for extra_file, extra_file_name in zip(tc.extra_files, extra_files_names):
-            # Copy the extra file to the temporary directory.
-            shutil.copy(
-                test_data_dir / program / extra_file,
-                tmp_path / extra_file_name,
-            )
+        names = tc.extra_files_names or tc.extra_files
+        for extra_file, name in zip(tc.extra_files, names):
+            destination = tmp_path / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(test_data_dir / program / extra_file, destination)
+        directory = tmp_path
+    else:
+        directory = None
 
     if (
         isinstance(tc.answer, list)
@@ -291,7 +226,7 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
                         **entry.model_dump(),
                         "execution": {
                             **entry.execution.model_dump(),
-                            "scratch_dir": tmp_path,
+                            "scratch_dir": directory,
                         },
                     }
                 )
@@ -299,20 +234,19 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
             ],
         )
 
-    # Test the parser directly.
-    _test_parser_direct(tc, stdout, tmp_path, proginput, parser_spec)
-
-    selected = get_codec(program)
-    if tc.clear_registry:
-        selected = replace(selected, parsers=[parser_spec])
-    _test_decode_integration(
-        tc,
-        stdout,
-        tmp_path,
-        proginput,
-        program,
-        parser_spec,
-        decode=lambda program, calctype, **kwargs: selected.decode_artifacts(
-            calctype, **kwargs
-        ),
+    ctx = Context(
+        codec=codec,
+        calctype=tc.calctype,
+        stdout=stdout,
+        directory=directory,
+        input_data=proginput,
+        options={**codec.options, **(tc.options or {})},
     )
+    _test_parser_direct(tc, ctx, spec)
+
+    selected = (
+        Codec(codec.program, codec.calctypes, options=codec.options, parsers=[spec])
+        if tc.clear_registry
+        else codec
+    )
+    _test_decode_integration(tc, ctx, selected, spec)
