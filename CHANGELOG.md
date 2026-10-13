@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+- Add complete subprocess/Python invocation types, lazy codec discovery, and a two-method external codec protocol.
+- Keep small content-to-value parsers and decorators, scoped to individual `CodecDefinition` objects; retain standalone artifact decoding.
+- Move command construction, completion checks, restart translation, xTB, geomeTRIC, QCEngine, and tcpb integration logic from qccompute into codecs.
+- `encode()` now returns complete native invocations. File-only encoder helpers use internal `EncodedFiles`.
+- Keep partial result recovery and make explicit dictionary targets behave consistently.
+
+
 ## [0.12.0] - 2026-09-16
 
 ### Changed

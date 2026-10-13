@@ -17,7 +17,10 @@ from qcdata import (
 
 from qccodec.exceptions import MatchNotFoundError, ParserError
 
-from ..registry import register
+from ..definition import CodecDefinition
+
+codec = CodecDefinition("orca")
+register = codec.parser
 from .utils import re_search
 
 
@@ -305,3 +308,6 @@ def parse_natoms(contents: str) -> int:
     regex = r"Number of atoms\s*...\s*(\d+)"
     match = re_search(regex, contents)
     return int(match.group(1))
+
+
+codec.iter_files = iter_files

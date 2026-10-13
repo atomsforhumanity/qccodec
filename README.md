@@ -138,3 +138,126 @@ The decoder owns partial-data construction and provenance. Missing values and
 artifacts are tolerated in this mode; recovered values remain validated. The CLI
 supports the same behavior with `--failed`. This does not relax qcdata's strict
 contract for successful `ProgramOutput` records.
+
+
+## Complete invocations and local codecs
+
+`encode(input_data)` now returns `SubprocessInput` or `PythonInput`. The former
+contains `command` and `files`; the latter contains `function`,
+`args`, `kwargs`, and `files`. Encoding does not execute the calculation.
+`get_codec(input_data.program)` resolves built-ins lazily. Optional Python packages
+are imported when their invocation runs, not when their codec is discovered.
+Install optional dependencies with `qccodec[geometric]`, `qccodec[xtb]`,
+`qccodec[qcengine]`, or `qccodec[tcpb]` as needed.
+
+A scientist can supply any object or module implementing these two methods directly
+as `qccompute.compute(input_data, codec=my_codec)`:
+
+```python
+def encode(input_data) -> PythonInput | SubprocessInput:
+    ...
+
+def decode(input_data, native_output):
+    ...  # Return a qcdata.StructuredData result.
+```
+
+For Python libraries requiring several method calls, return a module-level wrapper
+function. It constructs native objects, applies native settings, invokes the library,
+extracts a native snapshot, and releases native resources. The decoder maps that
+snapshot into qcdata fields and units. This keeps scientific decoding testable using
+saved snapshots without the library installed. The xTB codec is an example.
+Both runners merge stdout and stderr into the native output's `stdout` field. Python capture includes native file-descriptor writes. Native outputs also contain
+a workspace directory and execution
+status. Python outputs additionally contain `value`; subprocess outputs contain
+`returncode`. A failed invocation still reaches the decoder. Raise `CalculationError`
+or `ParserError` with `data=partial_results` for scientific failure or parsing failure.
+Do not manufacture successful results from incomplete native output.
+
+## Small decorated parsers remain the standard composition pattern
+
+`CodecDefinition` is an optional convenience implementation. Each definition owns
+its parsers. The decorator returns the original function, so direct parser tests
+remain simple. For example, this entirely local demonstration needs no QC program:
+
+```python
+import sys
+from qcdata import CalcType
+from qccodec import CodecDefinition, SubprocessInput
+
+codec = CodecDefinition(
+    "example",
+    supported_calctypes=frozenset({CalcType.energy}),
+    encoder=lambda inp: SubprocessInput((sys.executable, "-c", "print(-1.0)")),
+    iter_files=lambda stdout, directory: [("stdout", stdout)],
+)
+
+@codec.parser(filetype="stdout", calctypes=[CalcType.energy], target="energy")
+def parse_energy(contents: str) -> float:
+    return float(contents)
+
+assert parse_energy("-1.0") == -1.0
+# For a ProgramInput with program="example":
+# output = qccompute.compute(input_data, codec=codec)
+```
+
+File types may be strings or program-local enums. `calctypes` filters applicability;
+`target` can be a field name or tuple for nested fields. `required=False` tolerates
+`MatchNotFoundError`, not arbitrary parser exceptions. Directory parsers retain their
+existing `(directory, stdout, input_data, *, failed=False)` signature for multi-file
+results and may return a mapping with `target=None`. A dictionary returned with an
+explicit target is assigned at that target, not merged at the root.
+
+Standalone `decode(program, calctype, stdout=..., directory=..., failed=...)` remains
+available, as does `codec.decode_artifacts(...)`. The existing required-artifact rule
+is retained: required parsers with explicit calculation types require their artifacts;
+parsers applying to all calculation types operate when their artifact is present.
+The global `registry` and program-keyed `ParserRegistry` have been removed.
+Specifications live in `codec.parsers`; `ParserSpec` no longer repeats the program
+name. To isolate composition tests, copy a definition with `dataclasses.replace`
+and a selected `parsers` list. Copied definitions use their own parser selections.
+
+Most file codecs use the composed decoder directly. When a definition needs custom
+scientific completion checks, its optional decoder callable receives
+`(definition, input_data, native_output)` so it can call
+`definition.decode_artifacts(...)` without referencing global state. This internal
+callback differs from the two-method public `Codec` interface shown above.
+
+Built-in configuration uses small program-specific factories: for example,
+`get_codec("crest", collect_rotamers=True)` binds rotamer collection to its decoder and
+`get_codec("geometric", gradient_codec=...)` binds only its encoder. There is no
+generic option bag or `configured()` method. Configure external integrations before
+passing them as `codec=`. File encoders return `SubprocessInput` directly; the
+intermediate `EncodedFiles` model has been removed.
+
+`PythonInput.child_callback` optionally names the keyword into which qccompute injects
+`compute_child(input_data, *, previous=None, codec=None)`. geomeTRIC uses this to bind each trial
+geometry to its gradient child specification. The callback returns `ProgramOutput`,
+including failed child outputs. Native optimizer construction and the geomeTRIC engine
+bridge remain in this package; no dependency on qccompute is introduced.
+
+`PythonInput.loggers` identifies Python loggers to capture. `wavefunction_files` on
+either invocation specifies relative glob patterns for optional restart-file retention.
+A codec may provide `restart(input_data, previous_results)` to prepare a new input;
+this is optional and not part of the minimum two-method interface.
+
+
+Invocations may also specify `environment` defaults required by a native binding.
+qccompute merges the inherited environment, then invocation defaults, then explicit
+`compute(environment=...)` overrides. xTB defaults to one OpenMP thread (preserving
+its previous integration behavior) and enables unbuffered Fortran output before
+import. CREST also starts with `OMP_NUM_THREADS=1` in its child environment,
+independently of its native `threads` keyword. The xTB wrapper binds a native output file, releases it, and forwards the text
+to stdout for generic capture. Import-time settings cannot reset a library already
+initialized by the caller.
+
+
+A local external gradient integration can also drive geomeTRIC without registration:
+
+```python
+optimizer_codec = get_codec("geometric", gradient_codec=my_gradient_codec)
+result = qccompute.compute(optimization_input, codec=optimizer_codec)
+```
+
+The gradient child's `ProgramSpec` still records its program, model, and keywords;
+`gradient_codec` supplies its local implementation. Each child receives the same
+normal qccompute lifecycle and produces its own ProgramOutput.

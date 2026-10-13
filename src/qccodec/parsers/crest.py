@@ -18,7 +18,10 @@ from qcdata import (
 
 from qccodec.exceptions import MatchNotFoundError, ParserError
 
-from ..registry import register
+from ..definition import CodecDefinition
+
+codec = CodecDefinition("crest")
+register = codec.parser
 from .utils import re_finditer, re_search
 
 
@@ -394,3 +397,6 @@ def parse_trajectory(
     trajectory[-1] = ProgramOutput.model_validate(final)
 
     return trajectory
+
+
+codec.iter_files = iter_files

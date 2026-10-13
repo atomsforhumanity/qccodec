@@ -1,32 +1,23 @@
-"""Top level functions for the tcparse library"""
+"""Encoding and standalone artifact decoding."""
+
+from __future__ import annotations
 
 import logging
-from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
-from qcdata import (
-    CalcType,
-    ProgramInput,
-    StructuredData,
-    get_data_type,
-)
+from qcdata import CalcType, ProgramInput, StructuredData, get_data_type
 
-from .exceptions import DecoderError, EncoderError, MatchNotFoundError, ParserError
-from .models import (
-    DataCollector,
-    NativeInput,
-)
-from .parsers import *  # noqa: F403 Ensure all parsers get registered
-from .registry import registry
-
-__all__ = ["decode", "encode", "registry"]
+from .definition import CodecDefinition
+from .exceptions import DecoderError, MatchNotFoundError, ParserError
+from .models import DataCollector
+from .native import NativeInput
 
 logger = logging.getLogger(__name__)
 
 
-def decode(
-    program: str,
+def decode_artifacts(
+    codec: CodecDefinition,
     calctype: CalcType | str,
     *,
     stdout: str | None = None,
@@ -38,7 +29,7 @@ def decode(
     """Decode the output of a quantum chemistry program into a standardized output.
 
     Args:
-        program: The QC program that generated the output file.
+        codec: The program definition containing artifact discovery and parsers.
         calctype: The type of calculation that was run.
         stdout: The stdout file contents as a string.
         directory: The directory containing the output files.
@@ -58,16 +49,14 @@ def decode(
             or calctype is not supported.
         MatchNotFoundError: If a required parser fails to find a match.
     """
+    program = codec.program
+    if codec.iter_files is None:
+        raise DecoderError(
+            f"{program} has no file-artifact decoder; pass its native output to codec.decode()."
+        )
     logger.info("Starting decode for program: %s with calctype: %s", program, calctype)
     if not stdout and not directory and not failed:
         raise ValueError("Either stdout, directory, or both must be provided.")
-
-    # Import the program-specific module.
-    try:
-        mod = import_module(f"qccodec.parsers.{program}")
-    except ImportError as e:
-        logger.exception("Failed to import module qccodec.parsers.%s", program)
-        raise DecoderError(f"No parsers found for program '{program}'.") from e
 
     calctype = CalcType(calctype)
     data_type = get_data_type(calctype)
@@ -75,7 +64,13 @@ def decode(
     # Create a list from stdout (if provided) and all parsable files in directory.
     # File discovery stays program-local and dumb; decode enforces the parser registry
     # contract after it knows which filetypes are present.
-    files = list(mod.iter_files(stdout, directory))
+    try:
+        files = list(codec.iter_files(stdout, directory))
+    except ParserError as exc:
+        if not failed:
+            exc.data = data_type.model_validate({"provenance": {"program": program}})
+            raise
+        files = [("stdout", stdout)] if stdout is not None else []
     seen_filetypes = {filetype for filetype, _ in files}
 
     # Now iterate over the combined generator of all parsable files
@@ -83,7 +78,11 @@ def decode(
     for filetype, contents in files:
         # Look up the parsers for the given program, filetype, and calctype
         logger.debug("Processing file with filetype: %s", filetype)
-        parser_specs = registry.get_parsers(program, filetype, calctype)
+        parser_specs = [
+            s
+            for s in codec.parsers
+            if s.filetype == filetype and calctype in s.calctypes
+        ]
         logger.info(
             "Found %d parser(s) for program '%s', filetype '%s', calctype '%s'",
             len(parser_specs),
@@ -136,7 +135,7 @@ def decode(
             # Place the parsed value into the data collector
             else:
                 # If the parser returns a dictionary, assign each key-value pair to the data collector
-                if isinstance(parsed_value, dict):
+                if spec.target is None and isinstance(parsed_value, dict):
                     for key, value in parsed_value.items():
                         data_collector.add_data(key, value)
                         logger.debug(
@@ -159,13 +158,18 @@ def decode(
     )  # noqa: E501
     required_specs = [
         spec
-        for spec in registry.get_parsers(program, calctype=calctype)
+        for spec in [s for s in codec.parsers if calctype in s.calctypes]
         if spec.required
         and spec.explicit_calctypes
         and spec.filetype not in seen_filetypes
     ]
     if required_specs and not failed:
-        missing = sorted({spec.filetype.value for spec in required_specs})
+        missing = sorted(
+            {
+                str(getattr(spec.filetype, "value", str(spec.filetype)))
+                for spec in required_specs
+            }
+        )
         data = data_type(**data_collector)
         raise ParserError(
             "Missing required output artifact(s): " + ", ".join(missing),
@@ -178,27 +182,45 @@ def decode(
     return data_type(**data_collector)
 
 
-def encode(inp_data: ProgramInput) -> NativeInput:
-    """Encode a ProgramInput object to a NativeInput object.
+@overload
+def decode(
+    program: str, calctype: CalcType | str, *, as_dict: Literal[True], **kwargs: Any
+) -> dict[str, Any]:
+    """Select dictionary or validated result output from the requested mode."""
+    ...
 
-    Args:
-        inp_data: The ProgramInput object to encode.
 
-    Returns:
-        A NativeInput object with the encoded input.
+@overload
+def decode(
+    program: str,
+    calctype: CalcType | str,
+    *,
+    as_dict: Literal[False] = False,
+    **kwargs: Any,
+) -> StructuredData:
+    """Select dictionary or validated result output from the requested mode."""
+    ...
 
-    Raises:
-        EncoderError: If the calctype is not supported by the program's encoder or the
-            input is invalid.
-    """
-    # The requested executor is part of the input, so it cannot disagree with dispatch.
-    try:
-        encoder = import_module(f"qccodec.encoders.{inp_data.program}")
-    except ModuleNotFoundError as exc:
-        raise EncoderError(
-            f"No encoder found for program '{inp_data.program}'."
-        ) from exc
-    if inp_data.calctype not in encoder.SUPPORTED_CALCTYPES:
-        raise EncoderError(f"Calctype '{inp_data.calctype}' not supported by encoder.")
 
-    return encoder.encode(inp_data)
+@overload
+def decode(
+    program: str, calctype: CalcType | str, *, as_dict: bool, **kwargs: Any
+) -> StructuredData | dict[str, Any]:
+    """Select dictionary or validated result output from the requested mode."""
+    ...
+
+
+def decode(
+    program: str, calctype: CalcType | str, **kwargs: Any
+) -> StructuredData | dict[str, Any]:
+    """Decode stored artifacts without running a scientific program."""
+    from .codecs import get_codec
+
+    return get_codec(program).decode_artifacts(calctype, **kwargs)
+
+
+def encode(input_data: ProgramInput) -> NativeInput:
+    """Prepare a complete native invocation without executing it."""
+    from .codecs import get_codec
+
+    return get_codec(input_data.program).encode(input_data)

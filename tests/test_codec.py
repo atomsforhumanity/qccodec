@@ -72,7 +72,7 @@ def test_main_terachem_encoder(prog_input_factory):
         f"{'some-bool':<{terachem.PADDING}} "
         f"{str(prog_input_factory.keywords['some-bool']).lower()}\n"
     )
-    assert native_input.input_file == correct_tcin
+    assert native_input.files["tc.in"] == correct_tcin
 
 
 def test_parsed_provenance_survives_standalone_save(terachem_file, tmp_path):

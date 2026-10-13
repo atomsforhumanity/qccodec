@@ -1,202 +1,80 @@
+"""Local parser registration and conflict validation."""
+
+from dataclasses import replace
 from enum import Enum
 
 import pytest
 from qcdata import CalcType
 
+from qccodec import CodecDefinition
 from qccodec.exceptions import RegistryError
-from qccodec.registry import ParserSpec
 
 
-class MockFileType(Enum):
+class FileType(str, Enum):
+    """Example program-local artifact identifiers."""
+
     stdout = "stdout"
-    input = "input"
     directory = "directory"
 
 
-def mock_parser_function():
-    pass
+def energy(contents: str) -> float:
+    """Parse a directly callable scalar value."""
+    return float(contents)
 
 
-def another_mock_parser_function():
-    pass
+def test_registration_is_local_and_preserves_function() -> None:
+    """Decorators only affect their owning definition and preserve direct calls."""
+    first, second = CodecDefinition("first"), CodecDefinition("second")
+    decorated = first.parser(
+        filetype=FileType.stdout, target="energy", calctypes=[CalcType.energy]
+    )(energy)
+    assert decorated is energy and decorated("-1") == -1
+    assert len(first.parsers) == 1 and second.parsers == []
+    spec = first.parsers[0]
+    assert spec.filetype == "stdout" and spec.calctypes == [CalcType.energy]
 
 
-def test_get_parsers_by_program(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
+def test_conflicting_targets_are_rejected() -> None:
+    """Two parsers cannot produce the same target for overlapping calculations."""
+    codec = CodecDefinition("local")
+    codec.parser(filetype="stdout", target="energy", calctypes=[CalcType.energy])(
+        energy
     )
-    parser_registry.register(parser_spec)
-    parsers = parser_registry.get_parsers(program="mock_program")
-    assert len(parsers) == 1
-    assert parsers[0] == parser_spec
-
-
-def test_get_parsers_by_program_and_filetype(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    parsers = parser_registry.get_parsers(
-        program="mock_program", filetype=MockFileType.stdout
-    )
-    assert len(parsers) == 1
-    assert parsers[0] == parser_spec
-
-
-def test_get_parsers_by_program_and_calctype(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    parsers = parser_registry.get_parsers(
-        program="mock_program", calctype=CalcType.energy
-    )
-    assert len(parsers) == 1
-    assert parsers[0] == parser_spec
-
-
-def test_get_parsers_no_match(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    parsers = parser_registry.get_parsers(
-        program="mock_program", filetype=MockFileType.directory
-    )
-    assert len(parsers) == 0
-
-
-def test_supported_programs(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    programs = parser_registry.supported_programs()
-    assert len(programs) == 1
-    assert programs[0] == "mock_program"
-
-
-def test_supported_filetypes(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    filetypes = parser_registry.supported_filetypes("mock_program")
-    assert len(filetypes) == 1
-    assert filetypes[0] == "stdout"
-
-
-def test_get_spec_for_registered_parser(parser_registry):
-    parser_spec = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec)
-    spec = parser_registry.get_spec(mock_parser_function)
-    assert spec == parser_spec
-
-
-def test_get_spec_for_unregistered_parser_raises_error(parser_registry):
-    with pytest.raises(RegistryError, match="No parser registered for"):
-        parser_registry.get_spec(mock_parser_function)
-
-
-def test_parser_spec_without_target_raises_error(parser_registry):
-    with pytest.raises(RegistryError):
-        parser_spec = ParserSpec(
-            parser=mock_parser_function,
-            filetype=MockFileType.stdout,
-            required=True,
-            calctypes=[CalcType.energy],
-            program="mock_program",
-            target=None,
-        )
-
-
-def test_directory_parser_spec_without_target_ok(parser_registry):
-    ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.directory,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target=None,
-    )
-
-
-def test_register_duplicate_target_raises_error(parser_registry):
-    parser_spec1 = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_spec2 = ParserSpec(
-        parser=another_mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
-    )
-    parser_registry.register(parser_spec1)
     with pytest.raises(RegistryError, match="Duplicate parser target"):
-        parser_registry.register(parser_spec2)
+        codec.parser(
+            filetype="another-file",
+            target="energy",
+            calctypes=[CalcType.energy, CalcType.gradient],
+        )(energy)
+    codec.parser(filetype="stdout", target="energy", calctypes=[CalcType.gradient])(
+        energy
+    )
+    assert len(codec.parsers) == 2
 
 
-def test_register_different_targets_same_program(parser_registry):
-    parser_spec1 = ParserSpec(
-        parser=mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.energy],
-        program="mock_program",
-        target="energy",
+def test_target_validation_and_optional_metadata() -> None:
+    """Validate parser targets and retain optional-parser semantics."""
+    codec = CodecDefinition("local")
+    with pytest.raises(RegistryError, match="must have a target"):
+        codec.parser(filetype="stdout")(energy)
+    codec.parser(filetype=FileType.directory)(energy)
+    codec.parser(
+        filetype="stdout", target=("provenance", "program_version"), required=False
+    )(energy)
+    assert codec.parsers[0].target is None
+    assert codec.parsers[1].required is False
+    assert codec.parsers[1].explicit_calctypes is False
+    assert set(codec.parsers[1].calctypes) == set(CalcType)
+
+
+def test_replaced_definition_uses_selected_parsers() -> None:
+    """Changing a copied definition's parsers changes its composed decoder."""
+    codec = CodecDefinition(
+        "local", iter_files=lambda stdout, directory: [("stdout", stdout)]
     )
-    parser_spec2 = ParserSpec(
-        parser=another_mock_parser_function,
-        filetype=MockFileType.stdout,
-        required=True,
-        calctypes=[CalcType.gradient],
-        program="mock_program",
-        target="gradient",
-    )
-    parser_registry.register(parser_spec1)
-    parser_registry.register(parser_spec2)
-    assert len(parser_registry.registry["mock_program"]) == 2
+    codec.parser(filetype="stdout", target="energy")(energy)
+    copied = replace(codec, parsers=[])
+    assert copied.decode_artifacts("energy", stdout="not an energy", as_dict=True) == {
+        "provenance": {"program": "local"}
+    }
+    assert codec.decode_artifacts("energy", stdout="-1", as_dict=True)["energy"] == -1

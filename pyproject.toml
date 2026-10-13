@@ -1,6 +1,6 @@
 [project]
 name = "qccodec"
-version = "0.12.0"
+version = "0.13.0"
 description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
@@ -41,6 +41,12 @@ Documentation = 'https://github.com/atomsforhumanity/qccodec#readme'
 Source = 'https://github.com/atomsforhumanity/qccodec'
 Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md'
 "Bug Tracker" = 'https://github.com/atomsforhumanity/qccodec/issues'
+
+[project.optional-dependencies]
+geometric = ["geometric>=1.0.1,<2"]
+xtb = ["xtb"]
+qcengine = ["qcelemental>=0.50.4", "qcengine>=0.51.0"]
+tcpb = ["tcpb>=0.16.0"]
 
 [dependency-groups]
 dev = [

@@ -1,7 +1,8 @@
 from qcdata import CalcType, ProgramInput
 
+from qccodec.codecs._files import invocation
 from qccodec.exceptions import EncoderError
-from qccodec.models import NativeInput
+from qccodec.native import SubprocessInput
 
 SUPPORTED_CALCTYPES = {
     CalcType.energy,
@@ -14,14 +15,14 @@ XYZ_FILENAME = "geometry.xyz"
 PADDING = 20  # padding between keyword and value in tc.in
 
 
-def encode(program_input: ProgramInput) -> NativeInput:
+def encode(program_input: ProgramInput) -> SubprocessInput:
     """Translate a ProgramInput into TeraChem input files.
 
     Args:
         program_input: The qcdata ProgramInput object for a computation.
 
     Returns:
-        NativeInput with .input being a tc.in file and .geometry an xyz file.
+        A complete command and native input files.
     """
 
     if program_input.model is None:
@@ -70,8 +71,12 @@ def encode(program_input: ProgramInput) -> NativeInput:
             )
         # Lowercase booleans
         inp_lines.append(f"{key:<{PADDING}} {str(value).lower()}")
-    return NativeInput(
-        input_file="\n".join(inp_lines) + "\n",  # End file with newline
-        geometry_file=program_input.structure.to_xyz(),
-        geometry_filename=XYZ_FILENAME,
+    return invocation(
+        program_input,
+        {
+            "tc.in": "\n".join(inp_lines) + "\n",
+            XYZ_FILENAME: program_input.structure.to_xyz(),
+        },
+        "tc.in",
+        wavefunction_files=("scr*/c0", "scr*/ca0", "scr*/cb0"),
     )

@@ -17,7 +17,10 @@ from qcdata import (
 
 from qccodec.exceptions import MatchNotFoundError, ParserError
 
-from ..registry import register
+from ..definition import CodecDefinition
+
+codec = CodecDefinition("terachem")
+register = codec.parser
 from .utils import re_finditer, re_search
 
 
@@ -368,3 +371,6 @@ def parse_excited_states(contents: str) -> list[dict]:
         excited_states.append(excited_state)
 
     return excited_states
+
+
+codec.iter_files = iter_files

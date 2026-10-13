@@ -1,7 +1,6 @@
 import inspect
 import shutil
 from collections.abc import Callable
-from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -10,20 +9,15 @@ import pytest
 from qcdata import CalcType, ProgramInput, ProgramOutput
 from qcdata.utils import water
 
+from qccodec import get_codec
 from qccodec.codec import decode
 from qccodec.exceptions import MatchNotFoundError
-from qccodec.registry import ParserRegistry, registry
 
 
 @pytest.fixture(scope="session")
 def test_data_dir():
     """Test data directory Path"""
     return Path(__file__).parent / "data"
-
-
-@pytest.fixture
-def parser_registry():
-    return ParserRegistry()
 
 
 @pytest.fixture
@@ -118,7 +112,7 @@ def _load_contents(
     if mod is None:
         raise RuntimeError(f"Failed to import module {mod}")
 
-    parser_spec = registry.get_spec(tc.parser)
+    parser_spec = next(spec for spec in mod.codec.parsers if spec.parser is tc.parser)
 
     for filetype, contents in mod.iter_files(stdout, directory):
         if filetype == parser_spec.filetype:
@@ -176,7 +170,9 @@ def _test_parser_direct(tc, stdout, directory, proginp, parser_spec):
                 tc.parser(contents)
 
 
-def _test_decode_integration(tc, stdout, directory, proginp, program, parser_spec):
+def _test_decode_integration(
+    tc, stdout, directory, proginp, program, parser_spec, decode=decode
+):
     """
     Test the decode() integration, using only the parser under test (unless tc.clear_registry is False).
 
@@ -245,16 +241,6 @@ def _test_decode_integration(tc, stdout, directory, proginp, program, parser_spe
             )
 
 
-@contextmanager
-def restore_registry(program: str):
-    """Context manager that restores the original registry for a program."""
-    original = registry.get_parsers(program)
-    try:
-        yield
-    finally:
-        registry.registry[program] = original
-
-
 def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
     """
     Args:
@@ -273,7 +259,11 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
     program = inspect.getmodule(tc.parser).__name__.split(".")[-1]
     stdout = _load_stdout(test_data_dir / program, tc.stdout)
     # Get the spec for the parser under test.
-    parser_spec = registry.get_spec(tc.parser)
+    parser_spec = next(
+        spec
+        for spec in inspect.getmodule(tc.parser).codec.parsers
+        if spec.parser is tc.parser
+    )
 
     proginput = tc.program_input or input_factory(tc.calctype, program=program)
 
@@ -312,10 +302,17 @@ def run_test_harness(test_data_dir, input_factory, tmp_path, tc):
     # Test the parser directly.
     _test_parser_direct(tc, stdout, tmp_path, proginput, parser_spec)
 
-    # Now test integration via decode() with a restricted registry.
-    with restore_registry(program):
-        if tc.clear_registry:
-            # Clear the registry of all other parsers for this program.
-            registry.registry.pop(program)
-            registry.registry[program] = [parser_spec]
-        _test_decode_integration(tc, stdout, tmp_path, proginput, program, parser_spec)
+    selected = get_codec(program)
+    if tc.clear_registry:
+        selected = replace(selected, parsers=[parser_spec])
+    _test_decode_integration(
+        tc,
+        stdout,
+        tmp_path,
+        proginput,
+        program,
+        parser_spec,
+        decode=lambda program, calctype, **kwargs: selected.decode_artifacts(
+            calctype, **kwargs
+        ),
+    )

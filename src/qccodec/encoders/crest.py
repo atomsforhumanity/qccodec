@@ -5,8 +5,9 @@ from typing import Any
 import tomli_w
 from qcdata import CalcType, ProgramInput
 
+from qccodec.codecs._files import invocation
 from qccodec.exceptions import EncoderError
-from qccodec.models import NativeInput
+from qccodec.native import SubprocessInput
 
 SUPPORTED_CALCTYPES = {
     CalcType.conformer_search,
@@ -17,27 +18,30 @@ SUPPORTED_CALCTYPES = {
 }
 
 
-def encode(program_input: ProgramInput) -> NativeInput:
+def encode(program_input: ProgramInput) -> SubprocessInput:
     """Translate a ProgramInput into CREST input files.
 
     Args:
         program_input: The qcdata ProgramInput object for a computation.
 
     Returns:
-        NativeInput with .input_files being a crest.toml file and .geometry_file the
-            Structure's xyz file.
+        A complete command and native input files.
     """
     validate_input(program_input)
     struct_filename = "structure.xyz"
 
-    return NativeInput(
-        input_file=tomli_w.dumps(_to_toml_dict(program_input, struct_filename)),
-        geometry_file=program_input.structure.to_xyz(),
-        geometry_filename=struct_filename,
+    return invocation(
+        program_input,
+        {
+            "input.toml": tomli_w.dumps(_to_toml_dict(program_input, struct_filename)),
+            struct_filename: program_input.structure.to_xyz(),
+        },
+        "input.toml",
+        environment={"OMP_NUM_THREADS": "1"},
     )
 
 
-def validate_input(program_input: ProgramInput):
+def validate_input(program_input: ProgramInput) -> None:
     """Validate the input for CREST.
 
     Args:
@@ -65,7 +69,7 @@ def validate_input(program_input: ProgramInput):
         )
 
 
-def _validate_runtype_calctype(runtype: str, calctype: CalcType):
+def _validate_runtype_calctype(runtype: str, calctype: CalcType) -> None:
     """Validate that the runtype is supported for the calctype."""
     invalid_runtype = False
     valid_runtypes = set()
