@@ -1,0 +1,38 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "crest",
+    "program_version": null
+  },
+  "energy": null,
+  "gradient": null,
+  "hessian": null,
+  "nuclear_repulsion_energy": null,
+  "wavefunction": null,
+  "freqs_wavenumber": [
+    3533.1374
+  ],
+  "normal_modes_cartesian": [
+    [
+      [
+        -0.4157397476997121,
+        0.0,
+        0.0
+      ],
+      [
+        1.8330343421305486,
+        0.0,
+        0.0
+      ]
+    ]
+  ],
+  "gibbs_free_energy": null,
+  "scf_dipole_moment": null
+}

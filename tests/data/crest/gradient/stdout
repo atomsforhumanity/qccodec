@@ -1,0 +1,23 @@
+ 
+       ╔════════════════════════════════════════════╗
+       ║            ___ ___ ___ ___ _____           ║
+       ║           / __| _ \ __/ __|_   _|          ║
+       ║          | (__|   / _|\__ \ | |            ║
+       ║           \___|_|_\___|___/ |_|            ║
+       ║                                            ║
+       ║  Conformer-Rotamer Ensemble Sampling Tool  ║
+       ║          based on the xTB methods          ║
+       ║                                            ║
+       ╚════════════════════════════════════════════╝
+       Version 3.0.1, Mon May  6 18:43:33 UTC 2024
+       commit (1782d7d) compiled by 'runner@fv-az772-53'
+ 
+   Cite work conducted with this code as
+
+   • P.Pracht, F.Bohle, S.Grimme, PCCP, 2020, 22, 7169-7192.
+   • S.Grimme, JCTC, 2019, 15, 2847-2862.
+   • P.Pracht, S.Grimme, C.Bannwarth, F.Bohle, S.Ehlert,
+     G.Feldmann, J.Gorges, M.Müller, T.Neudecker, C.Plett,
+     S.Spicher, P.Steinbach, P.Wesołowski, F.Zeller,
+     J. Chem. Phys., 2024, 160, 114110.
+     

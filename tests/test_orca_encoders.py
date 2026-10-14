@@ -2,8 +2,8 @@ import pytest
 from qcdata import CalcType, Model, ProgramInput
 from qcdata.utils import water
 
-from qccodec.encoders.orca import _validate_keywords, encode
 from qccodec.exceptions import EncoderError
+from qccodec.programs.orca import _validate_keywords, encode
 
 
 @pytest.mark.parametrize(
@@ -69,7 +69,8 @@ def test_write_input_files(
         keywords=keywords,
     )
     native_input = encode(program_input)
-    input_file = native_input.input_file
+    input_file = native_input.files["orca.inp"]
+    assert isinstance(input_file, str)
 
     # Check that all defined main / block keywords ended up in the file
     for keyword, value in keywords.items():
@@ -91,7 +92,8 @@ def test_no_none_fields():
         structure=water,
     )
     native_input = encode(program_input)
-    input_file = native_input.input_file
+    input_file = native_input.files["orca.inp"]
+    assert isinstance(input_file, str)
 
     assert "None" not in input_file, f"'None' found in\n{input_file}"
 

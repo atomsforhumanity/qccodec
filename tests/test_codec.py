@@ -1,15 +1,13 @@
 import pytest
 
-from qccodec.codec import decode, encode
-from qccodec.encoders import terachem
+from qccodec import decode, encode
 from qccodec.exceptions import EncoderError, ParserError
-
-from .data.orca.answers import hessians
+from qccodec.programs import terachem
 
 
 def test_main_terachem_energy(terachem_file):
     """Test the main terachem energy encoder."""
-    contents = terachem_file("water.energy.out")
+    contents = terachem_file("water_energy")
     computed_props = decode("terachem", "energy", stdout=contents)
     assert computed_props.energy == -76.3861099088
 
@@ -40,13 +38,16 @@ def test_decode_does_not_require_missing_global_artifacts(tmp_path):
 def test_decode_orca_hessian_succeeds_without_cartesian_gradient(test_data_dir):
     """Analytic Hessian jobs don't print a CARTESIAN GRADIENT block in Orca stdout,
     decode() must not treat the missing gradient as a fatal error for Hessian calctype."""
-    orca_dir = test_data_dir / "orca"
-    stdout = (orca_dir / "water.hess.out").read_text()
+    from qcdata import SinglePointData
 
-    computed_props = decode("orca", "hessian", stdout=stdout, directory=orca_dir)
+    case = test_data_dir / "orca" / "water_hessian"
+    stdout = (case / "stdout").read_text()
+    expected = SinglePointData.model_validate_json((case / "expected.json").read_text())
+
+    computed_props = decode("orca", "hessian", stdout=stdout, directory=case)
 
     assert computed_props.gradient is None
-    assert computed_props.hessian.tolist() == hessians.water_b3lyp
+    assert computed_props.hessian.tolist() == expected.hessian.tolist()
 
 
 def test_encode_raises_error_with_invalid_calctype(prog_input_factory):
@@ -72,13 +73,13 @@ def test_main_terachem_encoder(prog_input_factory):
         f"{'some-bool':<{terachem.PADDING}} "
         f"{str(prog_input_factory.keywords['some-bool']).lower()}\n"
     )
-    assert native_input.input_file == correct_tcin
+    assert native_input.files["tc.in"] == correct_tcin
 
 
 def test_parsed_provenance_survives_standalone_save(terachem_file, tmp_path):
     from qcdata import SinglePointData
 
-    data = decode("terachem", "energy", stdout=terachem_file("water.energy.out"))
+    data = decode("terachem", "energy", stdout=terachem_file("water_energy"))
     assert data.provenance.program == "terachem"
     assert data.provenance.program_version
     path = tmp_path / "parsed.json"

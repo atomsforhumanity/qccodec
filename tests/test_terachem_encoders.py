@@ -1,7 +1,7 @@
 import pytest
 
-from qccodec.encoders.terachem import PADDING, XYZ_FILENAME, encode
 from qccodec.exceptions import EncoderError
+from qccodec.programs.terachem import PADDING, XYZ_FILENAME, encode
 
 
 def test_write_input_files(prog_input_factory):
@@ -27,7 +27,7 @@ def test_write_input_files(prog_input_factory):
         f"{'some-bool':<{PADDING}} "
         f"{str(prog_input_factory.keywords['some-bool']).lower()}\n"
     )
-    assert native_input.input_file == correct_tcin
+    assert native_input.files["tc.in"] == correct_tcin
 
 
 def test_write_input_files_renames_hessian_to_frequencies(prog_input_factory):
@@ -37,7 +37,7 @@ def test_write_input_files_renames_hessian_to_frequencies(prog_input_factory):
     prog_input_factory.keywords.update({"purify": "no", "some-bool": False})
     native_input = encode(prog_input_factory)
 
-    assert native_input.input_file == (
+    assert native_input.files["tc.in"] == (
         f"{'run':<{PADDING}} frequencies\n"
         f"{'coordinates':<{PADDING}} {XYZ_FILENAME}\n"
         f"{'charge':<{PADDING}} {prog_input_factory.structure.charge}\n"

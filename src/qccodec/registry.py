@@ -1,204 +1,145 @@
-import inspect
-from collections import defaultdict
-from collections.abc import Callable
-from dataclasses import dataclass, field
-from enum import Enum
+"""Find codecs by program name: registered, built-in, or installed by other packages."""
 
-from qcdata import CalcType
+from __future__ import annotations
 
-from qccodec.exceptions import RegistryError
+from collections.abc import Mapping
+from importlib import import_module
+from importlib.metadata import entry_points
+from typing import Any
+
+from qcdata import CalcType, FileInput, Inputs, ProgramInput, StructuredData
+
+from .codec import Codec
+from .exceptions import CodecNotFoundError
+from .native import NativeInput
+
+# Program name -> module under qccodec.programs. A module exposes ``codec`` or, when
+# it serves several names, a ``codecs`` dictionary keyed by program name.
+_BUILTIN: dict[str, str] = {
+    "terachem": "terachem",
+    "orca": "orca",
+    "crest": "crest",
+    "xtb": "xtb",
+    "geometric": "geometric",
+    "terachem-fe": "tcpb",
+    "terachem-pbs": "tcpb",
+}
+_REGISTERED: dict[str, Codec] = {}
+
+# Third-party packages publish codecs as entry points in this group. The entry point
+# name is the program name and its value is a Codec object::
+#
+#     [project.entry-points."qccodec.codecs"]
+#     myprog = "mypackage.codec:codec"
+ENTRY_POINT_GROUP = "qccodec.codecs"
 
 
-@dataclass
-class ParserSpec:
-    """Specification for a parser function.
+def register(codec: Codec) -> Codec:
+    """Make a codec resolvable by its program name for this process.
 
-    This class holds information about the parser function, the filetype it operates on,
-    whether it is required, the calculation types it works on, and where to place the
-    parsed output on the data collector.
-
-    Attributes:
-        parser: The parser function.
-        filetype: The filetype that the parser is for.
-        required: Whether a MatchNotFoundError should be raised in the decode function
-            if the parser fails. Typically True, but should be set to False on parsers
-            for values that are not always present such as excited state energies.
-        calctypes: The calculation types that the parser works on.
-        target: The location on the data collector where the parser's output should be placed.
-        program: The name of the program that the parser is for. Set automatically by the
-            `register` decorator.
+    A registered codec takes precedence over a built-in with the same name, so
+    scripts can both add new programs and override shipped integrations. The
+    codec is returned so this can be used as a decorator-style one-liner.
     """
+    _REGISTERED[codec.program] = codec
+    return codec
 
-    parser: Callable
-    filetype: Enum
-    required: bool
-    calctypes: list[CalcType]
-    program: str
-    target: str | tuple[str, ...] | None = None
-    explicit_calctypes: bool = True
 
-    def __post_init__(self):
-        """Ensure that the parser function is Callable and that target exists unless filetype is directory."""
-        if not callable(self.parser):
-            raise RegistryError(f"Parser '{self.parser}' is not Callable.")
-        # Ensure all non-directory parsers have a target
-        if self.target is None and self.filetype.value != "directory":
-            raise RegistryError(
-                f"Parser '{self.parser.__name__}' for program "
-                f"'{self.program}' must have a target if it is not a directory parser."
+def unregister(program: str) -> None:
+    """Remove a codec registered with ``register``; built-ins are unaffected."""
+    _REGISTERED.pop(program, None)
+
+
+def supported_programs() -> tuple[str, ...]:
+    """Built-in and installed plugin program names plus any registered in this process."""
+    plugins = [ep.name for ep in entry_points(group=ENTRY_POINT_GROUP)]
+    return tuple(dict.fromkeys([*_BUILTIN, *plugins, *_REGISTERED]))
+
+
+def _plugin(name: str) -> Codec | None:
+    """Load an installed codec published under the entry point group, if any."""
+    for ep in entry_points(group=ENTRY_POINT_GROUP):
+        if ep.name != name:
+            continue
+        loaded = ep.load()
+        if not isinstance(loaded, Codec):
+            raise CodecNotFoundError(
+                f"Entry point {ep.value!r} for program '{name}' is not a qccodec.Codec."
             )
-        # Ensure that the target is a string or tuple of strings
-        if self.target and not isinstance(self.target, (str, tuple)):
-            raise RegistryError(
-                f"Target '{self.target}' must be a string or tuple of strings."
-            )
+        return loaded
+    return None
 
 
-@dataclass
-class ParserRegistry:
-    """Registry for parser functions."""
+def get_codec(program: str | Inputs) -> Codec:
+    """Resolve the codec for a program name or input object.
 
-    registry: dict[str, list[ParserSpec]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
-
-    def register(self, parser_spec: ParserSpec) -> None:
-        """Register a new parser function. Enforce that no two parsers for the same program use the same target.
-
-        Args:
-            parser_spec: ParserSpec objects containing the parser function and
-                information about the parser.
-        """
-
-        # Ensure that the target is unique for the program and filetype
-        for registered_spec in self.registry.get(parser_spec.program, []):
-            if (
-                parser_spec.target is not None  # not directory parser
-                and registered_spec.target == parser_spec.target  # Same target
-                and set(parser_spec.calctypes)
-                & set(registered_spec.calctypes)  # Shared
-            ):
-                raise RegistryError(
-                    f"Duplicate parser target '{parser_spec.target}' and calctype "
-                    f"'{set(parser_spec.calctypes) & set(registered_spec.calctypes)}' "
-                    f"registered for program '{parser_spec.program}'."
-                )
-        self.registry[parser_spec.program].append(parser_spec)
-
-    def get_parsers(
-        self,
-        program: str,
-        filetype: Enum | None = None,
-        calctype: CalcType | None = None,
-    ) -> list[ParserSpec]:
-        """Get all parser functions for a given program.
-
-        Args:
-            program: The program to get parsers for.
-            filetype: Filter parsers for this filetype.
-            calctype: Filter parsers for this calctype.
-
-        Returns:
-            List of ParserSpec objects.
-        """
-
-        parser_specs: list[ParserSpec] = self.registry[program]
-        if not parser_specs:
-            raise RegistryError(f"No parsers registered for program '{program}'.")
-
-        # Filter parsers by filetype and calctype
-        if filetype:
-            parser_specs = [ps for ps in parser_specs if ps.filetype == filetype]
-
-        if calctype:
-            parser_specs = [ps for ps in parser_specs if calctype in ps.calctypes]
-        return parser_specs
-
-    def supported_programs(self) -> list[str]:
-        """Get all programs with registered parsers.
-
-        Returns:
-            List of program names.
-        """
-        return list(self.registry.keys())
-
-    def supported_filetypes(self, program: str) -> list[str]:
-        """Get all filetypes for a given program.
-
-        Args:
-            program: The program to get filetypes for.
-
-        Returns:
-            List of filetypes.
-        """
-        return list(
-            {parser_info.filetype.value for parser_info in self.get_parsers(program)}
-        )
-
-    def get_spec(self, parser: Callable) -> ParserSpec:
-        """Get the ParserSpec for a given parser function.
-
-        Args:
-            parser: The parser function.
-
-        Returns:
-            The ParserSpec object.
-        """
-        for program, specs in self.registry.items():
-            for spec in specs:
-                if spec.parser == parser:
-                    return spec
-        raise RegistryError(f"No parser registered for '{parser.__name__}'.")
-
-
-registry = ParserRegistry()
-
-
-def register(
-    *,
-    filetype: Enum,
-    calctypes: list[CalcType] | None = None,
-    required: bool = True,
-    target: str | tuple[str, ...] | None = None,
-):
-    """Decorator to register a function in the parser registry.
+    Resolution order: codecs passed to ``register``, built-ins, then codecs installed
+    by other packages under the ``qccodec.codecs`` entry point group. A ``FileInput``
+    resolves to the pass-through file codec.
 
     Args:
-        filetype: The filetype the parser operates on.
-        calctypes: A list of calculation types on which this parser should operate. If None, it applies to all CalcTypes.
-        required: If True and the parser fails a MatchNotFoundError will be raised.
-            If False and the parser fails the value will be ignored.
-        target: Where on the data collector to assign the parsed result.
+        program: A program name, or an input whose program should be resolved.
 
-    Example:
-        ```python
-        @register(filetype=FileType.stdout, calctypes=[CalcType.energy, CalcType.gradient], target="energy")
-        def parse_energy(contents: str) -> float:
-            # Parsing logic here
-            return energy_value
-        ```
+    Raises:
+        CodecNotFoundError: No codec is available for the program.
     """
+    if isinstance(program, ProgramInput):
+        name = program.program
+    elif isinstance(program, FileInput):
+        from .programs.file import codec as file_codec
 
-    def decorator(func):
-        # Get the function's module name. Should match program name.
-        module = inspect.getmodule(func).__name__
-        program_name = module.split(".")[-1]
+        return file_codec
+    else:
+        name = program
 
-        # Create ParserSpec
-        spec = ParserSpec(
-            program=program_name,
-            parser=func,
-            filetype=filetype,
-            required=required,
-            # If calctypes is None, register for all CalcType values
-            calctypes=calctypes if calctypes is not None else list(CalcType),
-            target=target,
-            explicit_calctypes=calctypes is not None,
-        )
+    codec = _REGISTERED.get(name)
+    if codec is None and name in _BUILTIN:
+        module = import_module(f"qccodec.programs.{_BUILTIN[name]}")
+        codec = module.codecs[name] if hasattr(module, "codecs") else module.codec
+    if codec is None:
+        codec = _plugin(name)
+    if codec is None:
+        raise CodecNotFoundError(f"No codec found for program '{name}'.")
+    return codec
 
-        # Register the function in the global registry
-        registry.register(spec)
 
-        return func
+def encode(input_data: Inputs) -> NativeInput:
+    """Prepare a complete native invocation for an input without executing it."""
+    return get_codec(input_data).encode(input_data)
 
-    return decorator
+
+def decode(
+    program: str,
+    calctype: CalcType | str,
+    *,
+    stdout: str | None = None,
+    directory: Any = None,
+    input_data: ProgramInput | None = None,
+    failed: bool = False,
+    options: Mapping[str, Any] | None = None,
+    version: str | None = None,
+) -> StructuredData:
+    """Decode saved program output into structured data without running anything.
+
+    Args:
+        program: Name of the program that produced the output.
+        calctype: The type of calculation that was run.
+        stdout: The program's captured output.
+        directory: The calculation directory holding output files.
+        input_data: The input used for the calculation, for parsers that need it.
+        failed: Recover available data from a failed calculation.
+        options: Overrides for the codec's declared decode options.
+        version: The program version, when the output does not print it.
+
+    Returns:
+        The qcdata model matching ``calctype``.
+    """
+    return get_codec(program).parse(
+        calctype,
+        stdout=stdout,
+        directory=directory,
+        input_data=input_data,
+        failed=failed,
+        options=options,
+        version=version,
+    )

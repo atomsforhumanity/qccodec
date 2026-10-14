@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from .codec import decode
+from .registry import decode
 
 
 def main():

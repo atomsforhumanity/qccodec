@@ -1,0 +1,39 @@
+{
+  "calcinfo_natoms": 3,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "orca",
+    "program_version": "6.1.0"
+  },
+  "energy": -76.211122199697,
+  "gradient": [
+    [
+      -0.001873815,
+      -0.0010972,
+      0.000284363
+    ],
+    [
+      -0.005158996,
+      0.014741678,
+      0.005533107
+    ],
+    [
+      0.007032811,
+      -0.013644479,
+      -0.00581747
+    ]
+  ],
+  "hessian": null,
+  "nuclear_repulsion_energy": null,
+  "wavefunction": null,
+  "freqs_wavenumber": [],
+  "normal_modes_cartesian": null,
+  "gibbs_free_energy": null,
+  "scf_dipole_moment": null
+}

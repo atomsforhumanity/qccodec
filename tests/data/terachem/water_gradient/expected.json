@@ -1,0 +1,39 @@
+{
+  "calcinfo_natoms": 3,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": 13,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "terachem",
+    "program_version": "v1.9-2022.03-dev [4daa16dd21e78d64be5415f7663c3d7c2785203c]"
+  },
+  "energy": -76.3861099088,
+  "gradient": [
+    [
+      -2.69528e-05,
+      -3.88595e-05,
+      3.06421e-05
+    ],
+    [
+      1.15012e-05,
+      2.39264e-05,
+      4.2012e-06
+    ],
+    [
+      1.5448e-05,
+      1.49307e-05,
+      -3.48414e-05
+    ]
+  ],
+  "hessian": null,
+  "nuclear_repulsion_energy": null,
+  "wavefunction": null,
+  "freqs_wavenumber": [],
+  "normal_modes_cartesian": null,
+  "gibbs_free_energy": null,
+  "scf_dipole_moment": null
+}

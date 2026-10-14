@@ -1,0 +1,84 @@
+{
+  "extras": {},
+  "files": {},
+  "program": "terachem",
+  "cmdline_args": [],
+  "calctype": "optimization",
+  "model": {
+    "extras": {},
+    "method": "HF",
+    "basis": "6-31g",
+    "qcdata_version": "0.19.0"
+  },
+  "keywords": {
+    "purify": "no",
+    "new_minimizer": "yes"
+  },
+  "subprograms": [],
+  "structure": {
+    "extras": {
+      "xyz_comments": [
+        "-3.9216155345335451e+01",
+        "frame",
+        "0",
+        "xyz",
+        "file",
+        "generated",
+        "by",
+        "TeraChem"
+      ]
+    },
+    "symbols": [
+      "C",
+      "H",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        -1.7914603673605777e-7,
+        -4.221648165277986e-7,
+        6.481760611863694e-8
+      ],
+      [
+        2.014272885644935,
+        -0.3568784067739012,
+        -0.01799921634986591
+      ],
+      [
+        -1.3162417612125896,
+        -1.566031737549844,
+        0.005806590757831794
+      ],
+      [
+        -0.6980309454752807,
+        1.9229105664885617,
+        0.012192560585455385
+      ]
+    ],
+    "charge": 1,
+    "multiplicity": 1,
+    "identifiers": {
+      "extras": {},
+      "name": null,
+      "name_IUPAC": null,
+      "smiles": null,
+      "canonical_smiles": null,
+      "canonical_smiles_program": null,
+      "canonical_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+      "inchi": null,
+      "inchikey": null,
+      "pubchem_cid": null,
+      "pubchem_sid": null,
+      "pubchem_conformerid": null,
+      "qcdata_version": "0.19.0"
+    },
+    "connectivity": [],
+    "qcdata_version": "0.19.0"
+  },
+  "structures": {},
+  "qcdata_version": "0.19.0"
+}
