@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,6 +51,8 @@ RESERVED = {"input.json", "expected.json", "case.json", "stdout", "encoded"}
 # Runtime metadata that legitimately differs between the run that produced a fixture
 # and the test that replays it.
 IGNORED_KEYS = {"execution", "qcdata_version"}
+# qcdata stamps its version into generated files (e.g. xyz comment lines).
+_QCDATA_VERSION = re.compile(r"qcdata_version=\S+")
 
 
 @dataclass(frozen=True)
@@ -240,10 +243,16 @@ def check_encoding(codec: Codec, case: Case, *, rtol: float = 1e-9) -> None:
         if isinstance(produced, bytes):
             assert produced == expected_bytes, f"{case}: {name} differs"
         else:
-            assert produced == expected_bytes.decode(), (
-                f"{case}: {name} differs:\n--- expected\n{expected_bytes.decode()}"
+            expected_text = expected_bytes.decode()
+            assert _unversioned(produced) == _unversioned(expected_text), (
+                f"{case}: {name} differs:\n--- expected\n{expected_text}"
                 f"--- produced\n{produced}"
             )
+
+
+def _unversioned(text: str) -> str:
+    """Drop the qcdata version stamp so fixtures survive qcdata releases."""
+    return _QCDATA_VERSION.sub("qcdata_version=*", text)
 
 
 def check_parsers(

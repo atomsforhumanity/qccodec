@@ -1018,7 +1018,7 @@ requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
     { name = "qcconst", specifier = ">=0.2.1" },
-    { name = "qcdata", specifier = ">=0.19.0" },
+    { name = "qcdata", specifier = ">=0.20.0" },
     { name = "tcpb", marker = "extra == 'tcpb'", specifier = ">=0.16.0" },
     { name = "tomli-w", specifier = ">=1.0.0" },
     { name = "xtb", marker = "extra == 'xtb'" },
@@ -1045,7 +1045,7 @@ wheels = [
 
 [[package]]
 name = "qcdata"
-version = "0.19.0"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport" },
@@ -1057,9 +1057,9 @@ dependencies = [
     { name = "toml" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/17/b9631651fface037d555cba69eef84a70325f8395a98e26735cb270f49c6/qcdata-0.19.0.tar.gz", hash = "sha256:637ba495595050e5fa68cb794fa5b6c079fe53a392a648563cac847286a45cbd", size = 1523462 }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/37/98c499bc17935661583f9483586277b31890323c8d359bb5f090c357d8f9/qcdata-0.20.0.tar.gz", hash = "sha256:a0e72ef3e0d0bc7f0983fad5d73321511b7b22e28a0a8eaec9724069ec738d88", size = 1523481 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/da/673529d76d43810c312d1e26ae8df7061eab8e22b10b91d653af2f40e0dd/qcdata-0.19.0-py3-none-any.whl", hash = "sha256:bcea7db435554dc251b6eeab5fd07940c2290c47b64a9555ad56382e94b48975", size = 38380 },
+    { url = "https://files.pythonhosted.org/packages/bd/17/61bdbfaac79632f7f02422ea954c7217ce5c047243361520175fa1276177/qcdata-0.20.0-py3-none-any.whl", hash = "sha256:7e49d8c2bd2dd07728077f4f72510c0f4cb0a11c87d035d10007ad3353c5c68d", size = 38379 },
 ]
 
 [[package]]

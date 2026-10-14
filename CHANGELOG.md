@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+- Require `qcdata>=0.20.0`.
+
 ### Changed
 
 - One `Codec` object per program, defined in a single module under `qccodec/programs/`. A codec holds the program name, supported calculation types, declared decode `options`, an encoder, either decorated parsers or a `decode` function, and an optional `propagate_wfn` function. Hooks attach with `@codec.encoder`, `@codec.parser(...)`, `@codec.failure`, and `@codec.decoder`.

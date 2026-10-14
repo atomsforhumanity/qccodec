@@ -233,3 +233,24 @@ def test_case_str_is_its_name(tmp_path: Path) -> None:
     case = write_case(tmp_path, "named", expected=expected_data(energy=-1.5))
     loaded = load_case(case)
     assert isinstance(loaded, Case) and str(loaded) == "toy/named"
+
+
+def test_encoded_files_ignore_the_qcdata_version_stamp(tmp_path: Path) -> None:
+    """Generated files may differ only in qcdata's version stamp across releases."""
+    codec = toy_codec()
+    codec.encoder(
+        lambda inp: SubprocessInput(
+            ("toy", "run.inp"), files={"run.inp": "qcdata_version=0.99.0 hf\n"}
+        )
+    )
+    case = write_case(
+        tmp_path,
+        "stamped",
+        files={"run.grad": "0 0 0\n"},
+        expected=expected_data(energy=-1.5, gradient=[[0, 0, 0]], calcinfo_natoms=3),
+        encoded={
+            "command.txt": "toy\nrun.inp\n",
+            "run.inp": "qcdata_version=0.19.0 hf\n",
+        },
+    )
+    run_case(codec, load_case(case))

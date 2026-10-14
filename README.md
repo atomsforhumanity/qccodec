@@ -18,7 +18,7 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
 - [qcdata](https://github.com/atomsforhumanity/qcdata) - Elegant and intuitive data structures for quantum chemistry, featuring seamless Jupyter Notebook visualizations. [Documentation](https://qcdata.docs.atomsforhumanity.org)
 - [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities using standardized [qcdata](https://qcdata.docs.atomsforhumanity.org/) data structures.
 - [qccodec](https://github.com/atomsforhumanity/qccodec) - A package for translating between standardized [qcdata](https://github.com/atomsforhumanity/qcdata) data structures and native QC program inputs and outputs.
-- [qccompute](https://github.com/atomsforhumanity/qccompute) - A package for operating quantum chemistry programs using standardized [qcdata](https://qcdata.docs.atomsforhumanity.org/) data structures. Compatible with `TeraChem`, `psi4`, `QChem`, `NWChem`, `ORCA`, `Molpro`, `geomeTRIC` and many more.
+- [qccompute](https://github.com/atomsforhumanity/qccompute) - A package for operating quantum chemistry programs using standardized [qcdata](https://qcdata.docs.atomsforhumanity.org/) data structures. Built-in support for `TeraChem`, `ORCA`, `CREST`, `xTB`, and `geomeTRIC`, and any program you define a `qccodec.Codec` for.
 - [BigChem](https://github.com/mtzgroup/bigchem) - A distributed application for running quantum chemistry calculations at scale across clusters of computers or the cloud. Bring multi-node scaling to your favorite quantum chemistry program.
 - `ChemCloud` - A [web application](https://github.com/mtzgroup/chemcloud-server) and associated [Python client](https://github.com/mtzgroup/chemcloud-client) for exposing a BigChem cluster securely over the internet.
 
@@ -313,7 +313,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full walkthrough of adding a pr
 
 ## Development
 
-qccodec requires `qcdata>=0.19.0`. Run `uv sync --all-groups --locked` to install the
+qccodec requires `qcdata>=0.20.0`. Run `uv sync --all-groups --locked` to install the
 project and development dependencies. Optional integrations install with
 `qccodec[geometric]`, `qccodec[xtb]`, or `qccodec[tcpb]`; their
 libraries are imported only when a calculation is invoked.
