@@ -195,6 +195,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]: ...   # needs several
 - `file` is `"stdout"` (default), `"directory"`, a file name or glob relative to the
   calculation directory, or a function of the `Context` returning such a name.
 - `required=False` tolerates a missing file or `MatchNotFoundError`.
+- `versions=">=6.0"` limits a parser to some program versions (a PEP 440 specifier);
+  omit it to run on every version. See "Program versions" below.
 
 Directory parsers receive a `Context` with `stdout`, `directory`, `input_data`,
 `failed`, `options`, `path(pattern)`, `read(pattern)`, and `decode(calctype, stdout=...)`
@@ -208,8 +210,9 @@ def failure(ctx: Context) -> str | None:
     return "CREST reported FAILED." if "FAILED" in (ctx.stdout or "") else None
 ```
 
-Many programs exit 0 after failing. When the hook returns a message, decoding
-recovers what it can and raises `CalculationError` with that data attached.
+Many programs exit 0 after failing (TeraChem prints `Job finished:` only on
+success). When the hook returns a message, decoding recovers what it can and raises
+`CalculationError` with that data attached.
 Programs driven through a Python API skip parsers entirely:
 
 ```python
@@ -242,11 +245,75 @@ codec may set `codec.propagate_wfn = fn` where `fn(output, input_data)` returns 
 input carrying the previous output's wavefunction as the initial guess; TeraChem copies
 `c0`/`ca0`/`cb0` and sets `guess`. qccompute calls it when `propagate_wfn=True`.
 
+### Program versions
+
+When a program changes its output format, register a parser per version range on the
+same target; the parser functions themselves stay version-free:
+
+```python
+@codec.parser(target="gradient", calctypes=[CalcType.gradient], versions="<6.0")
+def parse_gradient_v5(stdout: str) -> list[list[float]]: ...
+
+@codec.parser(target="gradient", calctypes=[CalcType.gradient], versions=">=6.0")
+def parse_gradient(stdout: str) -> list[list[float]]: ...
+```
+
+The parser targeting `("provenance", "program_version")` runs first and its value
+selects which parsers apply. Programs whose version strings are not PEP 440 give the
+codec a `version_key` (TeraChem compares builds by release date, so `v1.9-2023.08-dev`
+matches `versions=">=2023.8"`). When no version can be read, alternatives for a target
+are tried in registration order and the first match wins. Pass `version=` to
+`decode`/`parse` for logs that never print one.
+
+### Codecs from other packages
+
+A package can ship a codec by publishing it as an entry point; `get_codec` and
+`qccompute.compute` then find it by program name with no registration call:
+
+```toml
+[project.entry-points."qccodec.codecs"]
+myprog = "mypackage.codec:codec"
+```
+
+### Testing a codec
+
+`qccodec.testing` gives every codec the same test harness. A recorded program run is a
+directory holding the inputs, the outputs, and the data the codec must produce:
+
+```
+tests/data/myprog/water_energy/
+    input.json      ProgramInput used for the run
+    expected.json   the qcdata *Data object the codec must produce
+    stdout          captured program output
+    <files>         output files at their real relative paths, e.g. scr.geom/optim.xyz
+    case.json       optional: {"options": {...}, "failed": true, "raises": "ParserError"}
+    encoded/        optional: command.txt plus the native input files encode() must write
+```
+
+```python
+import pytest
+from qccodec import get_codec
+from qccodec.testing import cases, check_codec, run_case
+
+@pytest.mark.parametrize("case", cases("tests/data"), ids=str)
+def test_case(case):
+    run_case(get_codec(case.input_data.program), case)
+
+def test_contract():
+    check_codec(codec, inputs=[some_program_input])
+```
+
+`run_case` checks the encoded files, the full decode (or the expected exception and its
+partial data), and every registered parser applied directly to its own file against the
+matching slice of `expected.json`. `check_codec` verifies the structural contract: parser
+targets name real result fields, decoding nothing yields typed empty data in recovery
+mode and typed partial data on error, and encoded files stay inside the directory.
+
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full walkthrough of adding a program.
 
 ## Development
 
 qccodec requires `qcdata>=0.19.0`. Run `uv sync --all-groups --locked` to install the
 project and development dependencies. Optional integrations install with
-`qccodec[geometric]`, `qccodec[xtb]`, `qccodec[qcengine]`, or `qccodec[tcpb]`; their
+`qccodec[geometric]`, `qccodec[xtb]`, or `qccodec[tcpb]`; their
 libraries are imported only when a calculation is invoked.

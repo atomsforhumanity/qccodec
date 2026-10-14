@@ -30,6 +30,25 @@ codec = Codec(
     },
 )
 
+
+def version_key(version: str) -> str:
+    """Compare TeraChem builds by release date.
+
+    ``v1.9-2022.03-dev [hash]`` becomes ``2022.3``, so parsers declare ranges such
+    as ``versions=">=2023.8"``. Builds without a date fall back to their number
+    (``v1.5K`` becomes ``1.5``), which sorts before every dated build.
+    """
+    dated = re.search(r"(\d{4})\.(\d{2})", version)
+    if dated:
+        return f"{dated.group(1)}.{int(dated.group(2))}"
+    numbered = re.search(r"(\d+(?:\.\d+)*)", version)
+    if numbered is None:
+        raise ValueError(f"No version number in {version!r}")
+    return numbered.group(1)
+
+
+codec.version_key = version_key
+
 XYZ_FILENAME = "geometry.xyz"
 PADDING = 20  # padding between keyword and value in tc.in
 
@@ -126,9 +145,9 @@ codec.propagate_wfn = propagate_wfn
 
 @codec.failure
 def failure(ctx: Context) -> str | None:
-    """TeraChem always creates a ``scr*`` directory; its absence means it never ran."""
-    if ctx.directory is not None and not any(ctx.directory.glob("scr*")):
-        return "TeraChem did not create a scratch output directory."
+    """TeraChem prints ``Job finished:`` only when a calculation completed."""
+    if ctx.stdout is not None and not calculation_succeeded(ctx.stdout):
+        return "TeraChem did not finish: no 'Job finished:' line in its output."
     return None
 
 

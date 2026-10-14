@@ -83,6 +83,25 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
 `decode()`. A directory parser may omit `target` and return a mapping that is merged
 into the result.
 
+### Program versions
+
+When a new release changes an output format, add a parser for the new range and narrow
+the old one with `versions=`; both may target the same field because both declare
+versions:
+
+```python
+@codec.parser(target="energy", versions="<4.0")
+def parse_energy_v3(stdout: str) -> float: ...
+
+@codec.parser(target="energy", versions=">=4.0")
+def parse_energy(stdout: str) -> float: ...
+```
+
+Parsers without `versions` run on every version. The version parser (target
+`("provenance", "program_version")`) always runs first and cannot itself be gated. If
+the program's version string is not PEP 440, pass `Codec(..., version_key=fn)` that maps
+it to one. Record a fixture case from each supported release so every range is tested.
+
 ## 4. Failure detection (optional)
 
 ```python
@@ -125,10 +144,33 @@ import time, and `loggers` for Python loggers whose output should be captured.
 
 ## 7. Tests
 
-Put sample outputs under `tests/data/<name>/` and use the `ParserTestCase` harness
-in `tests/conftest.py` (see `tests/test_crest_parsers.py`). Each case calls the parser
-directly and runs it through `codec.parse()` so both paths are covered. Add
-encoder tests asserting on the generated input text.
+Record a real run as a fixture case and let the shared harness do the rest:
+
+```
+tests/data/<program>/<case>/
+    input.json      ProgramInput used for the run (program, calctype, structure, ...)
+    expected.json   the qcdata *Data object the codec must produce
+    stdout          captured program output, if any
+    <files>         output files at their real relative paths (scr.geom/optim.xyz, crest.engrad)
+    case.json       optional settings, see below
+    encoded/        optional: command.txt (one argument per line) and the native input
+                    files encode(input) must generate
+```
+
+`case.json` keys: `options` (decode options for the codec), `failed` (decode in recovery
+mode), `raises` (exception class name the decode must raise; `expected.json` then holds
+the partial data attached to it), `directory` (force passing the case directory to
+parsers; by default it is passed only when the case holds output files).
+
+`tests/test_cases.py` runs every case under `tests/data` through
+`qccodec.testing.run_case`, which checks the encoded files, the full decode, and each
+registered parser applied directly to its own file against the matching slice of
+`expected.json`. It also runs `qccodec.testing.check_codec` on every built-in codec.
+To add coverage, add a case directory; to create `expected.json` for a new case, run
+the codec once (`qccodec.decode(...)`), review the result, and save it with
+`data.model_dump_json(indent=2)`. Keep encoder-specific error paths (rejected keywords,
+unsupported calculation types) as ordinary unit tests next to the program module's
+helpers, as `tests/test_terachem_encoders.py` does.
 
 ## How decoding works
 

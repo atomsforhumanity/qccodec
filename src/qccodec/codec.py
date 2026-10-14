@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, TypeVar, overload
 
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
 from qcdata import (
     CalcType,
     Data,
@@ -32,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 STDOUT = "stdout"
 DIRECTORY = "directory"
+VERSION_TARGET = ("provenance", "program_version")
 
 Target = str | tuple[str, ...]
 FileRef = str | Callable[["Context"], str]
@@ -41,6 +44,7 @@ Encoder = Callable[[Any], NativeInput]
 Decoder = Callable[[Any, NativeOutput], Data]
 Failure = Callable[["Context"], "str | None"]
 PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
+VersionKey = Callable[[str], str]
 
 
 @dataclass(frozen=True)
@@ -58,6 +62,8 @@ class ParserSpec:
         target: Where the parsed value is stored on the result. A tuple creates
             nested fields. ``None`` is permitted only for directory parsers, which
             then return a mapping merged into the result.
+        versions: Program versions this parser applies to, as a PEP 440
+            specifier set; ``None`` means every version.
     """
 
     parser: Callable[..., Any]
@@ -65,6 +71,7 @@ class ParserSpec:
     calctypes: frozenset[CalcType]
     required: bool
     target: Target | None
+    versions: SpecifierSet | None = None
 
 
 @dataclass
@@ -79,6 +86,7 @@ class Context:
         input_data: The input used for the calculation, if available.
         failed: Whether partial data is being recovered from a failed run.
         options: The codec's options merged with those passed for this decode.
+        version: The program version string, once known.
     """
 
     codec: Codec
@@ -88,6 +96,7 @@ class Context:
     input_data: ProgramInput | None = None
     failed: bool = False
     options: dict[str, Any] = field(default_factory=dict)
+    version: str | None = None
 
     def path(self, pattern: str) -> Path:
         """Resolve a file name or glob pattern to exactly one path in the directory.
@@ -133,7 +142,12 @@ class Context:
         stdout: str | None = None,
         directory: str | Path | None = None,
     ) -> StructuredData:
-        """Parse another set of artifacts with this codec, e.g. one trajectory step."""
+        """Parse another set of artifacts with this codec, e.g. one trajectory step.
+
+        The failure hook is not run again: the whole run was already checked before
+        this parser was called, and partial logs such as one optimization step
+        would not pass a whole-run check.
+        """
         return self.codec.parse(
             calctype,
             stdout=stdout,
@@ -141,6 +155,8 @@ class Context:
             input_data=self.input_data,
             failed=self.failed,
             options=self.options,
+            version=self.version,
+            check_failure=False,
         )
 
 
@@ -163,6 +179,9 @@ class Codec:
         failure: Detect a failure the program reported. See ``failure``.
         propagate_wfn: ``(output, input_data) -> ProgramInput`` placing the
             wavefunction from a previous output onto the next input as a guess.
+        version_key: Turns the program's version string into a PEP 440 version
+            for matching parser ``versions``. Not needed when the program already
+            prints versions like ``6.1.0``.
         parsers: Pre-built parser specifications.
     """
 
@@ -176,6 +195,7 @@ class Codec:
         decode: Decoder | None = None,
         failure: Failure | None = None,
         propagate_wfn: PropagateWfn | None = None,
+        version_key: VersionKey | None = None,
         parsers: Iterable[ParserSpec] = (),
     ) -> None:
         """Create a codec; hooks may also be attached later with decorators."""
@@ -183,6 +203,7 @@ class Codec:
         self.calctypes: frozenset[CalcType] = frozenset(CalcType(c) for c in calctypes)
         self.options: dict[str, Any] = dict(options or {})
         self.propagate_wfn: PropagateWfn | None = propagate_wfn
+        self.version_key: VersionKey | None = version_key
         self.parsers: list[ParserSpec] = list(parsers)
         self._encode: Encoder | None = encode
         self._decode: Decoder | None = None
@@ -239,6 +260,7 @@ class Codec:
         calctypes: Collection[CalcType | str] | None = None,
         file: FileRef = STDOUT,
         required: bool = True,
+        versions: str | None = None,
     ) -> Callable[[F], F]:
         """Register a parser function.
 
@@ -251,6 +273,10 @@ class Codec:
                 function of the ``Context`` returning such a name.
             required: If True, a missing file or ``MatchNotFoundError`` fails
                 decoding unless partial data is being recovered.
+            versions: Program versions this parser applies to, as a PEP 440
+                specifier such as ``">=6.0"`` or ``">=5.0,<6.0"``; every version
+                when omitted. Parsers for the same target may coexist when each
+                declares ``versions``.
 
         Returns:
             The original function, unchanged, so it can be called and tested directly.
@@ -260,6 +286,10 @@ class Codec:
             if calctypes is None
             else frozenset(CalcType(c) for c in calctypes)
         )
+        try:
+            specifier = SpecifierSet(versions) if versions is not None else None
+        except InvalidSpecifier as exc:
+            raise RegistryError(f"Invalid versions specifier {versions!r}.") from exc
 
         def decorate(func: F) -> F:
             """Validate and record the parser specification."""
@@ -281,17 +311,26 @@ class Codec:
                 raise RegistryError(
                     f"Target {target!r} must be a string or tuple of strings."
                 )
+            if specifier is not None and target == VERSION_TARGET:
+                raise RegistryError(
+                    "The program version parser runs on every version; "
+                    "it cannot declare versions."
+                )
             for existing in self.parsers:
                 if (
                     target is not None
                     and existing.target == target
                     and types & existing.calctypes
+                    and (specifier is None or existing.versions is None)
                 ):
                     raise RegistryError(
                         f"Duplicate parser target {target!r} for overlapping "
-                        "calculation types."
+                        "calculation types. Declare versions on both parsers if "
+                        "they handle different program versions."
                     )
-            self.parsers.append(ParserSpec(func, file, types, required, target))
+            self.parsers.append(
+                ParserSpec(func, file, types, required, target, specifier)
+            )
             return func
 
         return decorate
@@ -362,7 +401,9 @@ class Codec:
         input_data: ProgramInput | None = None,
         failed: bool = False,
         options: Mapping[str, Any] | None = None,
+        version: str | None = None,
         as_dict: Literal[True],
+        check_failure: bool = True,
     ) -> dict[str, Any]: ...
 
     @overload
@@ -375,7 +416,9 @@ class Codec:
         input_data: ProgramInput | None = None,
         failed: bool = False,
         options: Mapping[str, Any] | None = None,
+        version: str | None = None,
         as_dict: Literal[False] = False,
+        check_failure: bool = True,
     ) -> StructuredData: ...
 
     def parse(
@@ -387,7 +430,9 @@ class Codec:
         input_data: ProgramInput | None = None,
         failed: bool = False,
         options: Mapping[str, Any] | None = None,
+        version: str | None = None,
         as_dict: bool = False,
+        check_failure: bool = True,
     ) -> StructuredData | dict[str, Any]:
         """Run this codec's parsers over saved artifacts without running the program.
 
@@ -399,7 +444,11 @@ class Codec:
             failed: Recover what is available from a failed calculation. Missing
                 files and values are tolerated; malformed values still fail.
             options: Overrides for this codec's declared ``options``.
+            version: The program version, when the output does not print it or
+                should be overridden. Otherwise the version parser supplies it.
             as_dict: Return the collected values instead of a validated model.
+            check_failure: Run the codec's failure hook first. Nested decodes of
+                partial logs turn this off.
 
         Returns:
             The qcdata model for ``calctype``, or a dictionary when ``as_dict``.
@@ -420,40 +469,77 @@ class Codec:
             options=self._merge_options(options),
         )
         data_type = get_data_type(ctx.calctype)
-        message = self._failure(ctx) if self._failure is not None else None
+        message = (
+            self._failure(ctx) if self._failure is not None and check_failure else None
+        )
         if message:
             ctx.failed = True
         collected: dict[str, Any] = {"provenance": {"program": self.program}}
         not_found: MatchNotFoundError | None = None
         missing: list[str] = []
+        # With an unknown version, version-gated alternatives for one target are
+        # tried in order; a miss only counts if no alternative fills the target.
+        deferred: dict[object, MatchNotFoundError | str] = {}
+        filled: set[object] = set()
 
         def partial() -> StructuredData:
             """Validate whatever has been collected so far."""
             return data_type(**collected)
 
-        for spec in (s for s in self.parsers if ctx.calctype in s.calctypes):
+        specs = [s for s in self.parsers if ctx.calctype in s.calctypes]
+        if version is not None:
+            ctx.version = version
+            _assign(collected, VERSION_TARGET, version)
+            specs = [s for s in specs if s.target != VERSION_TARGET]
+        else:
+            # The version parser runs first so later parsers can be filtered by it.
+            specs.sort(key=lambda s: s.target != VERSION_TARGET)
+        for spec in specs:
             name = spec.parser.__name__
+            key: object = spec.target if spec.target is not None else name
+            gated = spec.versions is not None
+            matched = self._version_matches(spec, ctx.version)
+            if matched is False:
+                continue
+            if matched is None and key in filled:
+                continue  # an earlier alternative already handled this target
             try:
                 value: Any = spec.parser(ctx.contents(spec))
             except FileNotFoundError as exc:
                 logger.info("Parser %r: missing %s", name, exc.filename or exc)
                 if spec.required and not ctx.failed:
-                    missing.append(str(exc.filename or exc))
+                    if matched is None and gated:
+                        deferred.setdefault(key, str(exc.filename or exc))
+                    else:
+                        missing.append(str(exc.filename or exc))
                 continue
             except MatchNotFoundError as exc:
                 logger.info("Parser %r found no match", name)
-                if spec.required and not ctx.failed and not_found is None:
-                    not_found = exc
+                if spec.required and not ctx.failed:
+                    if matched is None and gated:
+                        deferred.setdefault(key, exc)
+                    elif not_found is None:
+                        not_found = exc
                 continue
             except ParserError as exc:
                 exc.data = partial()
                 raise
             if spec.target is None:
-                for key, item in value.items():
-                    _assign(collected, key, item)
+                for item_key, item in value.items():
+                    _assign(collected, item_key, item)
             else:
                 _assign(collected, spec.target, value)
+            if spec.target == VERSION_TARGET:
+                ctx.version = value
+            filled.add(key)
+            deferred.pop(key, None)
             logger.debug("Parser %r filled %r", name, spec.target)
+
+        for problem in deferred.values():
+            if isinstance(problem, MatchNotFoundError):
+                not_found = not_found or problem
+            else:
+                missing.append(problem)
 
         if not_found is not None:
             not_found.data = partial()
@@ -467,6 +553,28 @@ class Codec:
         if message and not failed:
             raise CalculationError(message, data=partial())
         return collected if as_dict else partial()
+
+    def _version_matches(self, spec: ParserSpec, version: str | None) -> bool | None:
+        """Whether a parser applies to ``version``; None when that cannot be known.
+
+        Parsers without ``versions`` always apply. A gated parser is undecided
+        when the version is unknown or cannot be read as a PEP 440 version.
+        """
+        if spec.versions is None:
+            return True
+        if version is None:
+            return None
+        try:
+            key = self.version_key(version) if self.version_key else version
+            parsed = Version(key)
+        except (InvalidVersion, ValueError, TypeError):
+            logger.warning(
+                "%s version %r is not comparable; trying every alternative.",
+                self.program,
+                version,
+            )
+            return None
+        return spec.versions.contains(parsed, prereleases=True)
 
     def _merge_options(self, options: Mapping[str, Any] | None) -> dict[str, Any]:
         """Overlay caller options on the declared defaults, rejecting unknown keys."""

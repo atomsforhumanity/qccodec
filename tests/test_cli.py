@@ -6,7 +6,7 @@ from qccodec import decode
 
 def test_cli(test_data_dir):
     # Call CLI script as a subprocess
-    filepath = test_data_dir / "terachem" / "water.energy.out"
+    filepath = test_data_dir / "terachem" / "water_energy" / "stdout"
     sp_proc = subprocess.run(
         [sys.executable, "-m", "qccodec.cli", "terachem", "energy", filepath],
         capture_output=True,

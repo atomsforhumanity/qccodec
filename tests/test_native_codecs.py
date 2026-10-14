@@ -98,21 +98,24 @@ def test_crest_zero_exit_failure_preserves_energy(
     assert raised.value.data.energy == -1 and raised.value.data.gradient is None
 
 
-def test_terachem_missing_scratch_directory_is_failure(
+def test_terachem_unfinished_job_is_failure(
     prog_input_factory: Callable[..., ProgramInput], tmp_path: Path
 ) -> None:
-    """TeraChem never creating scr* is a program failure with recoverable data."""
-    with pytest.raises(CalculationError, match="scratch output directory") as raised:
+    """A TeraChem log without 'Job finished:' is a program failure with recoverable data."""
+    (tmp_path / "scr.geometry").mkdir()
+    with pytest.raises(CalculationError, match="Job finished") as raised:
         get_codec("terachem").decode(
             prog_input_factory("energy", "terachem"),
             SubprocessOutput(
-                stdout="TeraChem v1.9 Git Version: abc\n",
+                stdout="TeraChem v1.9 Git Version: abc\nFINAL ENERGY: -1.0 a.u.\n",
                 directory=tmp_path,
                 returncode=0,
             ),
         )
-    assert raised.value.data is not None
-    assert raised.value.data.provenance.program_version == "v1.9 [abc]"
+    partial = raised.value.data
+    assert isinstance(partial, SinglePointData)
+    assert partial.provenance.program_version == "v1.9 [abc]"
+    assert partial.energy == -1.0
 
 
 def test_crest_rotamers_are_opt_in(
@@ -120,7 +123,9 @@ def test_crest_rotamers_are_opt_in(
 ) -> None:
     """Rotamers are parsed only when requested, for execution and standalone decode."""
     inp = prog_input_factory("conformer_search", "crest")
-    native = SubprocessOutput(directory=test_data_dir / "crest", returncode=0)
+    native = SubprocessOutput(
+        directory=test_data_dir / "crest" / "conformers_with_rotamers", returncode=0
+    )
     codec = get_codec("crest")
     assert codec.options == {"collect_rotamers": False}
     for enabled in [False, True]:
@@ -318,17 +323,3 @@ def test_propagate_wfn_moves_orbitals_onto_next_input(
     )
     with pytest.raises(EncoderError, match="wavefunction files"):
         propagate(empty, inp)
-
-
-def test_qcengine_fallback_codec(
-    prog_input_factory: Callable[..., ProgramInput],
-) -> None:
-    """Unknown programs resolve to QCEngine when installed; settings use the factory."""
-    pytest.importorskip("qcengine")
-    from qccodec.programs.qcengine import codec_for
-
-    assert get_codec("psi4").program == "psi4"
-    codec = codec_for("psi4", task_config={"ncores": 2})
-    native = codec.encode(prog_input_factory("energy", "psi4"))
-    assert isinstance(native, PythonInput)
-    assert native.kwargs["options"] == {"task_config": {"ncores": 2}}

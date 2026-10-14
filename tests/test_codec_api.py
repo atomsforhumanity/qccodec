@@ -313,3 +313,119 @@ def test_file_input_resolves_to_file_codec() -> None:
     assert native.command == ("/bin/echo", "hi") and native.files == {"a": "b"}
     data = codec.decode(inp, SubprocessOutput(returncode=0))
     assert data.provenance.program == "/bin/echo"
+
+
+def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Codecs published under the qccodec.codecs entry point group resolve by name."""
+    from types import SimpleNamespace
+
+    plugin = Codec("plugprog", {CalcType.energy})
+
+    def fake_entry_points(*, group: str) -> list[SimpleNamespace]:
+        """Stand in for installed distributions."""
+        assert group == "qccodec.codecs"
+        return [
+            SimpleNamespace(name="plugprog", value="plug:codec", load=lambda: plugin),
+            SimpleNamespace(name="broken", value="plug:nope", load=lambda: object()),
+        ]
+
+    monkeypatch.setattr("qccodec.registry.entry_points", fake_entry_points)
+    assert get_codec("plugprog") is plugin
+    assert "plugprog" in qccodec.supported_programs()
+    with pytest.raises(CodecNotFoundError, match="not a qccodec.Codec"):
+        get_codec("broken")
+    override = qccodec.register(Codec("plugprog", {CalcType.gradient}))
+    try:
+        assert get_codec("plugprog") is override  # registered beats installed
+    finally:
+        qccodec.unregister("plugprog")
+
+
+def versioned_codec() -> Codec:
+    """A codec whose energy line changed format at version 2.0."""
+    codec = Codec("vprog", {CalcType.energy})
+    codec.parser(target=("provenance", "program_version"), required=False)(
+        lambda stdout: qccodec.re_search(r"version (\S+)", stdout).group(1)
+    )
+
+    @codec.parser(target="energy", versions="<2.0")
+    def energy_v1(stdout: str) -> float:
+        """Old format: 'E = <value>'."""
+        return float(qccodec.re_search(r"E = (\S+)", stdout).group(1))
+
+    @codec.parser(target="energy", versions=">=2.0")
+    def energy_v2(stdout: str) -> float:
+        """New format: 'Total energy: <value>'."""
+        return float(qccodec.re_search(r"Total energy: (\S+)", stdout).group(1))
+
+    codec.parser(target="calcinfo_natoms")(lambda stdout: 3)
+    return codec
+
+
+def test_versioned_parsers_select_by_parsed_version() -> None:
+    """The version parser runs first and gates which alternative applies."""
+    codec = versioned_codec()
+    old = single_point(codec.parse("energy", stdout="E = -1.0\nversion 1.5\n"))
+    assert old.energy == -1.0 and old.provenance.program_version == "1.5"
+    new = single_point(
+        codec.parse("energy", stdout="Total energy: -2.0\nversion 2.1\n")
+    )
+    assert new.energy == -2.0
+    # The new-format line under an old version is not read: the old parser misses.
+    with pytest.raises(MatchNotFoundError):
+        codec.parse("energy", stdout="Total energy: -2.0\nversion 1.5\n")
+
+
+def test_versioned_parsers_with_unknown_or_given_version() -> None:
+    """Unknown versions try alternatives in order; an explicit version wins."""
+    codec = versioned_codec()
+    assert (
+        single_point(codec.parse("energy", stdout="Total energy: -2.0\n")).energy
+        == -2.0
+    )
+    assert single_point(codec.parse("energy", stdout="E = -1.0\n")).energy == -1.0
+    with pytest.raises(MatchNotFoundError):
+        codec.parse("energy", stdout="nothing\n")
+    given = single_point(codec.parse("energy", stdout="E = -1.0\n", version="1.0"))
+    assert given.energy == -1.0 and given.provenance.program_version == "1.0"
+    with pytest.raises(MatchNotFoundError):
+        codec.parse("energy", stdout="E = -1.0\n", version="3.0")
+    # Nested decodes inherit the version from their parent context.
+    ctx = Context(codec, CalcType.energy, version="1.0")
+    assert ctx.decode("energy", stdout="E = -4.0\n").provenance.program_version == "1.0"
+
+
+def test_versions_registration_rules() -> None:
+    """Specifiers are validated; same-target parsers must both declare versions."""
+    codec = Codec("vprog", {CalcType.energy})
+    with pytest.raises(RegistryError, match="Invalid versions"):
+        codec.parser(target="energy", versions="not a spec")(energy)
+    with pytest.raises(RegistryError, match="cannot declare versions"):
+        codec.parser(target=("provenance", "program_version"), versions=">1")(energy)
+    codec.parser(target="energy")(energy)
+    with pytest.raises(RegistryError, match="Declare versions on both"):
+        codec.parser(target="energy", versions=">=2")(energy)
+    assert codec.parsers[0].versions is None
+
+
+def test_version_key_and_check_codec() -> None:
+    """version_key adapts non-PEP 440 strings; check_codec flags ungated detection."""
+    from qccodec.programs.terachem import version_key
+    from qccodec.testing import check_codec
+
+    assert version_key("v1.9-2022.03-dev [0fe15afa]") == "2022.3"
+    assert version_key("v1.5K [ccdev]") == "1.5"
+    codec = Codec("dated", {CalcType.energy}, version_key=version_key)
+    codec.parser(target=("provenance", "program_version"))(
+        lambda stdout: stdout.split("|")[0]
+    )
+    codec.parser(target="energy", versions=">=2023.8")(lambda s: -2.0)
+    codec.parser(target="energy", versions="<2023.8")(lambda s: -1.0)
+    newer = single_point(codec.parse("energy", stdout="v1.9-2024.09-dev [abc]|"))
+    older = single_point(codec.parse("energy", stdout="v1.5K [ccdev]|"))
+    assert newer.energy == -2.0 and older.energy == -1.0
+
+    blind = Codec("blind", {CalcType.energy})
+    blind.parser(target="energy", versions=">=2")(energy)
+    with pytest.raises(AssertionError, match="no parser fills"):
+        check_codec(blind)

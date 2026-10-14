@@ -9,17 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - One `Codec` object per program, defined in a single module under `qccodec/programs/`. A codec holds the program name, supported calculation types, declared decode `options`, an encoder, either decorated parsers or a `decode` function, and an optional `propagate_wfn` function. Hooks attach with `@codec.encoder`, `@codec.parser(...)`, `@codec.failure`, and `@codec.decoder`.
-- `encode()` returns a complete `SubprocessInput` or `PythonInput`; nothing is executed by qccodec. Program-specific execution details (commands, environment defaults, restart translation, native Python bindings for xTB, geomeTRIC, QCEngine, and tcpb) live here, not in qccompute.
+- `encode()` returns a complete `SubprocessInput` or `PythonInput`; nothing is executed by qccodec. Program-specific execution details (commands, environment defaults, restart translation, native Python bindings for xTB, geomeTRIC, and tcpb) live here, not in qccompute.
 - Parsers read `"stdout"` (default), a named file or glob relative to the calculation directory, a file named by a function of the `Context`, or `"directory"`. Directory parsers receive a single `Context` with `stdout`, `directory`, `input_data`, `failed`, `path()`, `read()`, and `decode()` for nested decoding.
 - The decode pipeline runs every applicable parser before raising, so partial data on errors is as complete as possible. A program failure hook recovers partial data and raises `CalculationError` with it attached, in both execution and standalone `decode()`.
 - Added `qccodec.register(codec)` / `unregister(name)` so scripts can add or override codecs by program name for the current process, including as children of optimizers.
-- `get_codec()` accepts a program name or an input object (`FileInput` resolves to the pass-through file codec) and falls back to a QCEngine codec automatically when `qcengine` is installed. QCEngine settings use `qccodec.programs.qcengine.codec_for(program, task_config=...)`.
+- `get_codec()` accepts a program name or an input object (`FileInput` resolves to the pass-through file codec).
 - Decode options are declared per codec with defaults and passed per call: `decode(..., options={"collect_rotamers": True})`. Parsers read them from `Context.options`; unknown names raise `EncoderError`.
 - `codec.propagate_wfn(output, input_data)` moves a previous output's wavefunction onto the next input (TeraChem: `c0`/`ca0`/`cb0` plus the `guess` keyword), replacing the `restart` hook.
 - `qccodec.utils` provides `re_search` and `re_finditer`.
+- Added `qccodec.testing`: fixture cases under `tests/data/<program>/<case>/` (`input.json`, `expected.json`, stdout, output files, optional `case.json` and `encoded/`), `cases()`/`run_case()` to check encoding, decoding, and each parser against them, `assert_data_equal()`, and `check_codec()` for the structural contract every codec must satisfy. The built-in parser tests now use this convention; the hand-maintained `answers/` modules are gone.
+- Parsers can be limited to program versions with `@codec.parser(..., versions=">=6.0")` (PEP 440 specifiers). The version parser runs first and selects which parsers apply; parsers without `versions` run on every version, and same-target alternatives are allowed when each declares versions. `Codec(version_key=...)` adapts non-PEP 440 version strings (TeraChem compares builds by release date). `parse`/`decode` accept `version=` for logs that never print one. Adds a `packaging` dependency.
+- Third-party packages can publish codecs as entry points in the `qccodec.codecs` group (`myprog = "mypackage.codec:codec"`); `get_codec` and `supported_programs` discover them.
 
 ### Removed
 
+- The QCEngine/QCElemental compatibility codec and the `qccodec[qcengine]` extra. Programs without a codec raise `CodecNotFoundError`; add native codecs instead (Psi4 is the first candidate).
 - `CodecDefinition`, `ParserSpec.explicit_calctypes`, `iter_files`, the per-program `*FileType` enums, `DataCollector`, and the `encoders/`, `parsers/`, and `codecs/` packages. The `Codec` protocol is replaced by the concrete `Codec` class.
 - Per-program `make_codec` factories and `get_codec(name, **options)`; use decode `options` instead.
 - geomeTRIC's `gradient_codec` option; register the gradient codec with `qccodec.register` instead.
@@ -27,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Breaking behavior changes
 
 - `required=True` parsers always require their file or value; previously parsers registered for all calculation types tolerated a missing artifact.
-- TeraChem standalone `decode(..., directory=...)` takes the run directory containing `scr*/`, not the `scr*` directory itself, and reports a missing `scr*` directory as a `CalculationError`.
+- TeraChem standalone `decode(..., directory=...)` takes the run directory containing `scr*/`, not the `scr*` directory itself. A TeraChem log without a `Job finished:` line is reported as a `CalculationError` with the recoverable data attached.
 - CREST rotamers are not parsed unless requested with `options={"collect_rotamers": True}`, for both execution and standalone decoding.
 
 

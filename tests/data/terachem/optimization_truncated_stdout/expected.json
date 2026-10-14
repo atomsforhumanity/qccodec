@@ -1,0 +1,15 @@
+{
+  "calcinfo_natoms": 3,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": 13,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "terachem",
+    "program_version": "v1.9-2022.03-dev [4daa16dd21e78d64be5415f7663c3d7c2785203c]"
+  },
+  "trajectory": []
+}

@@ -1,10 +1,10 @@
-"""Find codecs by program name: user-registered, built-in, or QCEngine fallback."""
+"""Find codecs by program name: registered, built-in, or installed by other packages."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from importlib import import_module
-from importlib.util import find_spec
+from importlib.metadata import entry_points
 from typing import Any
 
 from qcdata import CalcType, FileInput, Inputs, ProgramInput, StructuredData
@@ -26,6 +26,13 @@ _BUILTIN: dict[str, str] = {
 }
 _REGISTERED: dict[str, Codec] = {}
 
+# Third-party packages publish codecs as entry points in this group. The entry point
+# name is the program name and its value is a Codec object::
+#
+#     [project.entry-points."qccodec.codecs"]
+#     myprog = "mypackage.codec:codec"
+ENTRY_POINT_GROUP = "qccodec.codecs"
+
 
 def register(codec: Codec) -> Codec:
     """Make a codec resolvable by its program name for this process.
@@ -44,16 +51,31 @@ def unregister(program: str) -> None:
 
 
 def supported_programs() -> tuple[str, ...]:
-    """Built-in program names plus any registered in this process."""
-    return tuple(dict.fromkeys([*_BUILTIN, *_REGISTERED]))
+    """Built-in and installed plugin program names plus any registered in this process."""
+    plugins = [ep.name for ep in entry_points(group=ENTRY_POINT_GROUP)]
+    return tuple(dict.fromkeys([*_BUILTIN, *plugins, *_REGISTERED]))
+
+
+def _plugin(name: str) -> Codec | None:
+    """Load an installed codec published under the entry point group, if any."""
+    for ep in entry_points(group=ENTRY_POINT_GROUP):
+        if ep.name != name:
+            continue
+        loaded = ep.load()
+        if not isinstance(loaded, Codec):
+            raise CodecNotFoundError(
+                f"Entry point {ep.value!r} for program '{name}' is not a qccodec.Codec."
+            )
+        return loaded
+    return None
 
 
 def get_codec(program: str | Inputs) -> Codec:
     """Resolve the codec for a program name or input object.
 
-    Resolution order: codecs passed to ``register``, built-ins, then a QCEngine
-    compatibility codec when ``qcengine`` is installed. A ``FileInput`` resolves to
-    the pass-through file codec.
+    Resolution order: codecs passed to ``register``, built-ins, then codecs installed
+    by other packages under the ``qccodec.codecs`` entry point group. A ``FileInput``
+    resolves to the pass-through file codec.
 
     Args:
         program: A program name, or an input whose program should be resolved.
@@ -74,10 +96,8 @@ def get_codec(program: str | Inputs) -> Codec:
     if codec is None and name in _BUILTIN:
         module = import_module(f"qccodec.programs.{_BUILTIN[name]}")
         codec = module.codecs[name] if hasattr(module, "codecs") else module.codec
-    if codec is None and find_spec("qcengine") is not None:
-        from .programs.qcengine import codec_for
-
-        codec = codec_for(name)
+    if codec is None:
+        codec = _plugin(name)
     if codec is None:
         raise CodecNotFoundError(f"No codec found for program '{name}'.")
     return codec
@@ -97,6 +117,7 @@ def decode(
     input_data: ProgramInput | None = None,
     failed: bool = False,
     options: Mapping[str, Any] | None = None,
+    version: str | None = None,
 ) -> StructuredData:
     """Decode saved program output into structured data without running anything.
 
@@ -108,6 +129,7 @@ def decode(
         input_data: The input used for the calculation, for parsers that need it.
         failed: Recover available data from a failed calculation.
         options: Overrides for the codec's declared decode options.
+        version: The program version, when the output does not print it.
 
     Returns:
         The qcdata model matching ``calctype``.
@@ -119,4 +141,5 @@ def decode(
         input_data=input_data,
         failed=failed,
         options=options,
+        version=version,
     )
