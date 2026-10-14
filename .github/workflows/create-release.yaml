@@ -1,5 +1,9 @@
 name: Create Release
 
+# Creating a release needs write access; the default GITHUB_TOKEN is read-only.
+permissions:
+  contents: write
+
 on:
   push:
     tags:
