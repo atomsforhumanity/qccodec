@@ -94,6 +94,39 @@ def test_crest_zero_exit_failure_preserves_energy(
     assert raised.value.data.energy == -1 and raised.value.data.gradient is None
 
 
+def test_nonzero_exit_still_reports_the_programs_explanation(
+    prog_input_factory: Callable[..., ProgramInput], tmp_path: Path
+) -> None:
+    """A run that exited with an error raises the failure hook's message and data."""
+    (tmp_path / "crest.engrad").write_text("# Energy ( Eh )\n#\n -1.0\n")
+    with pytest.raises(CalculationError, match="FAILED") as raised:
+        get_codec("crest").decode(
+            prog_input_factory("gradient", "crest"),
+            SubprocessOutput(
+                stdout="Version 3.0.2, FAILED", directory=tmp_path, returncode=1
+            ),
+        )
+    assert isinstance(raised.value.data, SinglePointData)
+    assert raised.value.data.energy == -1
+
+
+def test_recovery_mode_returns_partial_data_quietly(tmp_path: Path) -> None:
+    """parse(failed=True) still recovers without raising, unless asked to report."""
+    (tmp_path / "crest.engrad").write_text("# Energy ( Eh )\n#\n -1.0\n")
+    codec = get_codec("crest")
+    stdout = "Version 3.0.2, FAILED"
+    data = codec.parse("gradient", stdout=stdout, directory=tmp_path, failed=True)
+    assert isinstance(data, SinglePointData) and data.energy == -1
+    with pytest.raises(CalculationError, match="FAILED"):
+        codec.parse(
+            "gradient",
+            stdout=stdout,
+            directory=tmp_path,
+            failed=True,
+            report_failure=True,
+        )
+
+
 def test_terachem_unfinished_job_is_failure(
     prog_input_factory: Callable[..., ProgramInput], tmp_path: Path
 ) -> None:

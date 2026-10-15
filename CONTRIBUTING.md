@@ -239,6 +239,10 @@ def failure(ctx: Context) -> str | None:
 
 Many programs exit with status 0 after failing. When this hook returns a message,
 decoding recovers every value it can and raises `CalculationError` with that data.
+The hook also runs when the program exits with an error: `decode` then raises
+`CalculationError` with the hook's explanation instead of leaving only an exit
+status, so write messages that say what went wrong (quote the program's own error
+when it prints one).
 
 ### 5. Python APIs instead of files
 

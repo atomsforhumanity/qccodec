@@ -372,10 +372,19 @@ class Codec:
     ) -> Data:
         """Interpret native output, returning data or raising with partial data.
 
+        When the run failed (for example a nonzero exit status), whatever can be
+        parsed is recovered, and if the codec's failure hook explains the failure
+        ``CalculationError`` carries that explanation and the recovered data.
+
         Args:
             input_data: The input that produced the output.
             native_output: What the runner observed.
             options: Overrides for this codec's declared ``options``.
+
+        Raises:
+            CalculationError: The program failed and the failure hook says why.
+            ParserError: A required output is missing or malformed in a run that
+                did not fail.
         """
         if self._decode is not None:
             self._merge_options(options)  # rejects unknown keys
@@ -389,6 +398,7 @@ class Codec:
             input_data=input_data,
             failed=native_output.failed,
             options=options,
+            report_failure=True,
         )
 
     @overload
@@ -404,6 +414,7 @@ class Codec:
         version: str | None = None,
         as_dict: Literal[True],
         check_failure: bool = True,
+        report_failure: bool | None = None,
     ) -> dict[str, Any]: ...
 
     @overload
@@ -419,6 +430,7 @@ class Codec:
         version: str | None = None,
         as_dict: Literal[False] = False,
         check_failure: bool = True,
+        report_failure: bool | None = None,
     ) -> StructuredData: ...
 
     def parse(
@@ -433,6 +445,7 @@ class Codec:
         version: str | None = None,
         as_dict: bool = False,
         check_failure: bool = True,
+        report_failure: bool | None = None,
     ) -> StructuredData | dict[str, Any]:
         """Run this codec's parsers over saved artifacts without running the program.
 
@@ -449,6 +462,10 @@ class Codec:
             as_dict: Return the collected values instead of a validated model.
             check_failure: Run the codec's failure hook first. Nested decodes of
                 partial logs turn this off.
+            report_failure: Raise ``CalculationError`` when the failure hook
+                explains a failure. Defaults to ``not failed``, so recovery mode
+                returns partial data quietly; ``decode`` passes True so a program
+                that exited with an error still reports why.
 
         Returns:
             The qcdata model for ``calctype``, or a dictionary when ``as_dict``.
@@ -456,8 +473,9 @@ class Codec:
         Raises:
             ParserError: A required file is missing or a value is malformed.
             MatchNotFoundError: A required parser found no match.
-            CalculationError: The program reported failure and ``failed`` is False.
-                Recovered data is attached to every exception as ``.data``.
+            CalculationError: The failure hook explained a failure and
+                ``report_failure`` is true. Recovered data is attached to every
+                exception as ``.data``.
         """
         ctx = Context(
             codec=self,
@@ -550,7 +568,9 @@ class Codec:
                 + ", ".join(sorted(set(missing))),
                 data=partial(),
             )
-        if message and not failed:
+        if report_failure is None:
+            report_failure = not failed
+        if message and report_failure:
             raise CalculationError(message, data=partial())
         return collected if as_dict else partial()
 

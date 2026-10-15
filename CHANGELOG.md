@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- When a program exits with an error and the codec's failure hook explains why, `Codec.decode` now raises `CalculationError` with that explanation and the recovered data, instead of returning partial data whose only trace of the failure was the exit status. `parse(..., failed=True)` still recovers quietly; its new `report_failure` argument raises the explanation on request.
 - Require `qcdata>=0.20.1` for `SinglePointData.atomic_charges`.
 
 ### Fixed

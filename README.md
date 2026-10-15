@@ -245,7 +245,10 @@ def failure(ctx: Context) -> str | None:
 
 Many programs exit 0 after failing (TeraChem prints `Job finished:` only on
 success). When the hook returns a message, decoding recovers what it can and raises
-`CalculationError` with that data attached.
+`CalculationError` with that data attached. This also happens when the program
+exits with an error, so the hook's explanation reaches the user rather than just an
+exit status. `parse(..., failed=True)` stays quiet and returns the recovered data;
+pass `report_failure=True` to raise the explanation there too.
 Programs driven through a Python API skip parsers entirely:
 
 ```python
