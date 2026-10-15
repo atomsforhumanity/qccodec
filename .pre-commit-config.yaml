@@ -2,6 +2,7 @@
 # CI, and your editor use identical versions. Install once with
 # `uv run pre-commit install`; see CONTRIBUTING.md.
 default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
 repos:
   - repo: local
     hooks:
