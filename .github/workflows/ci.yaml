@@ -46,7 +46,9 @@ jobs:
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
+      # Optional extras are installed and type-checked by the checks job; some
+      # (e.g. xtb-python) have no wheels for the newest Python.
       - name: Install
-        run: uv sync --locked --all-extras --all-groups
+        run: uv sync --locked --all-groups
       - name: Run tests
         run: uv run pytest --cov --cov-report=term-missing
