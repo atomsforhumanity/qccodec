@@ -162,7 +162,7 @@ def _diff(
     if isinstance(expected, list) and isinstance(actual, list):
         if len(actual) != len(expected):
             return f"{where}: length {len(actual)} != {len(expected)}"
-        for i, (a, e) in enumerate(zip(actual, expected)):
+        for i, (a, e) in enumerate(zip(actual, expected, strict=True)):
             problem = _diff(a, e, f"{where}[{i}]", rtol, atol)
             if problem:
                 return problem

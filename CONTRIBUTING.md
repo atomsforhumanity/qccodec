@@ -1,11 +1,90 @@
-# Adding a program to qccodec
+# Contributing to qccodec
+
+Thanks for helping! This guide covers setup, the pre-commit workflow, tests, pull requests, and releases. Code conventions (typing, docstrings, units) are in [AGENTS.md](./AGENTS.md), which applies to people and AI agents alike.
+
+## Development setup
+
+You need [uv](https://docs.astral.sh/uv/). Then:
+
+```sh
+git clone https://github.com/atomsforhumanity/qccodec.git
+cd qccodec
+uv sync --all-extras --all-groups   # creates .venv with the package and all dev tools
+uv run pre-commit install           # run the checks automatically on every commit
+```
+
+## Pre-commit workflow
+
+Every `git commit` runs these checks on the files you staged. All of them use the tool versions locked in `uv.lock`, so they behave the same on your machine and in CI.
+
+| Check | What it does |
+|---|---|
+| `ruff check` | Lints (pyflakes, pycodestyle, import order, bugbear, pyupgrade, Google docstrings) and fixes what it can |
+| `ruff format` | Formats Python code |
+| `mypy` | Type-checks the package; library functions must be fully annotated |
+| `typos` | Spell-checks code and docs |
+| `detect-secrets` | Blocks commits that contain credentials or tokens |
+| `uv lock --check` | Fails if `uv.lock` is out of date with `pyproject.toml` |
+| file checks | Valid YAML and TOML, no merge-conflict markers, no files over 250 KB outside `tests/data/` and `docs/` |
+
+If a hook fixes files (ruff often does), the commit stops so you can review the changes. Stage them and commit again:
+
+```sh
+git add -u && git commit
+```
+
+Run every check on the whole repository, exactly as CI does:
+
+```sh
+uv run pre-commit run --all-files
+```
+
+You can run the tools directly too: `uv run ruff check --fix .`, `uv run ruff format .`, `uv run mypy`. Please don't skip hooks with `--no-verify`; CI runs the same checks and will fail.
+
+## Running tests
+
+```sh
+uv run pytest                               # all tests
+uv run pytest --cov --cov-report=term-missing   # with coverage
+```
+
+Parsers are tested through recorded program runs in `tests/data/<program>/<case>/`; see [Tests](#7-tests) under "Adding a program" below.
+
+## Pull requests
+
+1. Branch from `master`.
+2. Make your change with tests. Bug fixes should include a test that fails without the fix.
+3. Add a line under `## [unreleased]` in [CHANGELOG.md](./CHANGELOG.md) for anything users would notice.
+4. Open a pull request. CI runs the pre-commit checks and the test suite on the oldest and newest supported Python versions.
+
+Never commit `[tool.uv.sources]` entries that point qc* packages at local paths or git branches; CI rejects them. When a change needs an unreleased version of another qc* package, release that package first.
+
+## Releases (maintainers)
+
+1. On a branch, prepare the release and open a pull request:
+
+   ```sh
+   git switch -c release/X.Y.Z
+   uv run python scripts/prepare_release.py X.Y.Z   # sets the version, dates the changelog, refreshes uv.lock
+   git commit -am "Release X.Y.Z" && git push -u origin release/X.Y.Z
+   ```
+
+2. After the pull request is merged, tag the merge commit on `master`:
+
+   ```sh
+   git switch master && git pull && git tag X.Y.Z && git push origin X.Y.Z
+   ```
+
+3. The tag starts the Release workflow. Approve the waiting deployment to the `pypi` environment in the Actions tab; the workflow then publishes to PyPI and creates the GitHub release from the changelog section. The workflow refuses a tag that doesn't match the version in `pyproject.toml`.
+
+## Adding a program
 
 Hey there 👋! Look at you wanting to contribute! Every program is one file,
 `src/qccodec/programs/<name>.py`, that builds a single `Codec`. This page walks through
 the whole thing; the built-in `terachem.py`, `orca.py`, and `crest.py` are complete
 examples of file-based programs, and `xtb.py` of a Python API.
 
-## 1. The codec
+### 1. The codec
 
 ```python
 from qcdata import CalcType, ProgramInput
@@ -20,7 +99,7 @@ codec = Codec("myprog", calctypes={CalcType.energy, CalcType.gradient})
 types the encoder can produce. Pass `producer="other"` if results are really produced by
 another program (the tcpb clients report `terachem`).
 
-## 2. The encoder
+### 2. The encoder
 
 ```python
 @codec.encoder
@@ -36,7 +115,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 or a `PythonInput(function=..., kwargs=...)` for programs with a Python API.
 Raise `EncoderError` for anything the program cannot run. Never execute here.
 
-## 3. Parsers
+### 3. Parsers
 
 Each parser is a small function from contents to one value:
 
@@ -83,7 +162,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
 `decode()`. A directory parser may omit `target` and return a mapping that is merged
 into the result.
 
-### Program versions
+#### Program versions
 
 When a new release changes an output format, add a parser for the new range and narrow
 the old one with `versions=`; both may target the same field because both declare
@@ -102,7 +181,7 @@ Parsers without `versions` run on every version. The version parser (target
 the program's version string is not PEP 440, pass `Codec(..., version_key=fn)` that maps
 it to one. Record a fixture case from each supported release so every range is tested.
 
-## 4. Failure detection (optional)
+### 4. Failure detection (optional)
 
 ```python
 @codec.failure
@@ -113,7 +192,7 @@ def failure(ctx: Context) -> str | None:
 Many programs exit with status 0 after failing. When this hook returns a message,
 decoding recovers every value it can and raises `CalculationError` with that data.
 
-## 5. Python APIs instead of files
+### 5. Python APIs instead of files
 
 Skip parsers and give the codec a `decode` function:
 
@@ -129,7 +208,7 @@ Import the library inside `invoke` so encoding and decoding work (and are testab
 without it installed. Set `PythonInput.environment` for settings the library reads at
 import time, and `loggers` for Python loggers whose output should be captured.
 
-## 6. Options, wavefunction propagation, registration
+### 6. Options, wavefunction propagation, registration
 
 - Declare decode options with defaults on the codec, `Codec(..., options={"collect_rotamers": False})`,
   and read them in parsers as `ctx.options["collect_rotamers"]`. Callers override them
@@ -142,7 +221,7 @@ import time, and `loggers` for Python loggers whose output should be captured.
 - Add the program to `_BUILTIN` in `src/qccodec/registry.py` so `get_codec("myprog")`
   finds it. Users can also do this at runtime with `qccodec.register(codec)`.
 
-## 7. Tests
+### 7. Tests
 
 Record a real run as a fixture case and let the shared harness do the rest:
 
@@ -172,7 +251,7 @@ the codec once (`qccodec.decode(...)`), review the result, and save it with
 unsupported calculation types) as ordinary unit tests next to the program module's
 helpers, as `tests/test_terachem_encoders.py` does.
 
-## How decoding works
+### How decoding works
 
 `Codec.parse(calctype, stdout=..., directory=..., input_data=..., failed=..., options=...)`:
 

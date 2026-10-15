@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-from qcconst import constants
 from qcdata import (
     CalcType,
     ExecutionInfo,
@@ -13,6 +12,7 @@ from qcdata import (
     SinglePointData,
     Structure,
 )
+from qcref import constants
 
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
@@ -294,7 +294,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         raise MatchNotFoundError(regex, stdout)
 
     trajectory: list[ProgramOutput] = []
-    for structure, step_stdout in zip(structures, per_step):
+    for structure, step_stdout in zip(structures, per_step, strict=False):
         step_logs = initialization + step_stdout
         parsed = ctx.decode(CalcType.gradient, stdout=step_logs)
         assert isinstance(parsed, SinglePointData)  # for mypy

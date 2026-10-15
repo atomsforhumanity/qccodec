@@ -1,43 +1,61 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
+# Every hook runs the project's own locked tools through `uv run`, so local hooks,
+# CI, and your editor use identical versions. Install once with
+# `uv run pre-commit install`; see CONTRIBUTING.md.
+default_install_hook_types: [pre-commit]
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+  - repo: local
     hooks:
       - id: check-yaml
+        name: check yaml
+        entry: uv run check-yaml
+        language: system
+        types: [yaml]
+        exclude: ^mkdocs\.yml$
+      - id: check-toml
+        name: check toml
+        entry: uv run check-toml
+        language: system
+        types: [toml]
+      - id: check-merge-conflict
+        name: check for merge conflicts
+        entry: uv run check-merge-conflict
+        language: system
+        types: [text]
       - id: check-added-large-files
-        args: ["--maxkb=250"]
-        exclude: caffeine.frequencies.out
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
-    hooks:
+        name: check for added large files
+        entry: uv run check-added-large-files --maxkb=250
+        language: system
+        exclude: ^(tests/data/|docs/)
       - id: detect-secrets
-        stages: [pre-commit]
-        exclude: uv.lock
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    # Ruff version.
-    rev: "v0.8.3"
-    hooks:
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-  - repo: local
-    hooks:
+        name: detect secrets
+        entry: uv run detect-secrets-hook
+        language: system
+        types: [text]
+        exclude: (\.lock|\.ipynb)$|^tests/data/
+      - id: uv-lock
+        name: uv.lock is up to date
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix --exit-non-zero-on-fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: typos
+        name: typos
+        entry: uv run typos --force-exclude
+        language: system
+        types: [text]
       - id: mypy
         name: mypy
-        entry: uv run mypy .
+        entry: uv run mypy
         language: system
-        types: [python]
-        pass_filenames: false
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.24.5
-    hooks:
-      - id: typos
-  - repo: local
-    hooks:
-      - id: tests
-        name: tests
-        stages: [pre-push]
-        language: system
-        entry: uv run pytest
-        types: [python]
+        types_or: [python, pyi]
         pass_filenames: false
