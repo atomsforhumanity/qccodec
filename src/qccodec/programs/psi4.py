@@ -43,10 +43,11 @@ gradient on external point charges in ``point_charge_gradient``, and all scalar 
 variables in ``extras["psi4_variables"]``.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
-Hessians with ``external_potentials`` fail, and its optimizations reset the molecule
-to the starting geometry at every step, so they never move. The codec rejects those
-combinations; for QM/MM geometry optimizations, run geomeTRIC with Psi4 gradients as
-its child.
+Hessians with ``external_potentials`` either fail or come back wrong (they disagree
+with finite differences of its own gradients by about as much as the charges change
+them), and its optimizations reset the molecule to the starting geometry at every
+step, so they never move. The codec rejects those combinations; for QM/MM geometry
+optimizations, run geomeTRIC with Psi4 gradients as its child.
 """
 
 from __future__ import annotations
@@ -133,9 +134,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     ):
         raise EncoderError(
             "Psi4 1.11 supports external_potentials only for energies and gradients: "
-            "its Hessians fail and its optimizations never leave the starting "
-            "geometry. For QM/MM optimizations, run geomeTRIC with Psi4 gradients as "
-            "its child."
+            "its Hessians fail or are wrong, and its optimizations never leave the "
+            "starting geometry. For QM/MM optimizations, run geomeTRIC with Psi4 "
+            "gradients as its child."
         )
     job = {
         "calctype": inp.calctype.value,
