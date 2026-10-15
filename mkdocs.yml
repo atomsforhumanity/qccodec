@@ -1,0 +1,109 @@
+site_name: qccodec
+site_url: https://qccodec.docs.atomsforhumanity.org/
+site_description: Program-specific encoders and parsers for quantum chemistry programs, with copy-and-paste examples.
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+  features:
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - announce.dismiss
+    - navigation.tabs
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - toc.follow
+
+  icon:
+    repo: fontawesome/brands/github-alt
+
+repo_url: https://github.com/atomsforhumanity/qccodec
+edit_uri: edit/master/docs/
+site_author: Colton Hicks
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            members_order: source
+            separate_signature: false
+            show_bases: false
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            inherited_members: false
+            show_if_no_docstring: false
+            docstring_options:
+              ignore_init_summary: true
+            filters:
+              - "!^_"
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      title: Page contents
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.extra
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - markdown_include.include
+
+watch:
+  - src/qccodec
+  - examples
+
+nav:
+  - Home: index.md
+  - Programs:
+      - Overview: programs/index.md
+      - CREST: programs/crest.md
+      - geomeTRIC: programs/geometric.md
+      - ORCA: programs/orca.md
+      - Psi4: programs/psi4.md
+      - TeraChem: programs/terachem.md
+      - TeraChem servers: programs/terachem-servers.md
+      - xtb: programs/xtb.md
+  - Guides:
+      - Decoding program output: guides/decoding.md
+      - Writing a codec: guides/writing-a-codec.md
+  - API reference: reference.md
+  - Contributing: https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md
+  - Changelog: https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md
+
+# Internal design notes, not part of the site.
+exclude_docs: |
+  dev-decisions.md

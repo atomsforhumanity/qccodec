@@ -1,4 +1,28 @@
-"""TeraChem: input file encoding, stdout/scratch parsing, and wavefunction propagation."""
+"""TeraChem: write ``tc.in``, run ``terachem tc.in``, and parse stdout and scratch files.
+
+Inputs map to TeraChem as follows:
+
+- ``model.method`` and ``model.basis`` become ``method`` and ``basis``; the structure's
+  charge and multiplicity become ``charge`` and ``spinmult``. Setting any of these, or
+  ``run``, in ``keywords`` is an error.
+- Every other keyword becomes a ``tc.in`` line, ``key value``, so TeraChem's own
+  keyword names apply (``scf``, ``convthre``, ``dftd``, ``pcm``, ``epsilon``, ...). Values
+  are written in lowercase, which suits TeraChem's booleans and options but means
+  case-sensitive values such as file names must be lowercase. TeraChem ignores keywords
+  it does not know, printing only "Unrecognized or unnecessary keywords" in its output,
+  so check the logs when a setting seems to have no effect.
+- ``cmdline_args`` are appended to the ``terachem`` command.
+
+Calculation types: ``energy``, ``gradient``, ``hessian`` (``run frequencies``; the
+Hessian and gradient are parsed, frequencies and normal modes are not yet), and
+``optimization``, which requires ``new_minimizer yes`` in ``keywords``. TeraChem refuses
+Hessians away from a stationary point unless ``mincheck false`` is set. TeraChem keeps the input's coordinates and atom
+order. No input field carries atom indices.
+
+The orbital files ``c0`` (or ``ca0``/``cb0``) can seed the next calculation: qccompute's
+``propagate_wfn=True`` does this between geomeTRIC steps. A run is a failure unless
+stdout ends with ``Job finished:``.
+"""
 
 from __future__ import annotations
 

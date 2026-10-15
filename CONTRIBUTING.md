@@ -124,6 +124,21 @@ Never commit `[tool.uv.sources]` entries that point qc* packages at local paths 
    ```
 
 3. The tag starts the Release workflow. Approve the waiting deployment to the `pypi` environment in the Actions tab; the workflow then publishes to PyPI and creates the GitHub release from the changelog section. The workflow refuses a tag that doesn't match the version in `pyproject.toml`.
+4. The same tag starts the Docs workflow, which builds the site and publishes it to
+   [qccodec.docs.atomsforhumanity.org](https://qccodec.docs.atomsforhumanity.org). Run it
+   by hand from the Actions tab ("Run workflow") to republish without a release.
+
+## Documentation
+
+The site is built with MkDocs from `docs/`, the codec module docstrings, and the
+scripts in `examples/`:
+
+```sh
+uv run mkdocs serve        # live preview at http://127.0.0.1:8000
+uv run mkdocs build --strict
+```
+
+Pull requests that touch the docs, examples, or codecs build the site in CI.
 
 ## Adding a program
 
@@ -311,6 +326,32 @@ once (`qccodec.decode(...)`), review the result, and save it with
 `data.model_dump_json(indent=2)`. Keep encoder-specific error paths (rejected keywords,
 unsupported calculation types) as ordinary unit tests next to the program module's
 helpers, as `tests/test_terachem_encoders.py` does.
+
+### 8. Example scripts and the docs page
+
+Write one script per kind of calculation the codec supports in
+`examples/<program>/`: `single_point.py` (energy, gradient, and Hessian; the
+calculation type is set on one line at the top), `optimization.py`,
+`transition_state.py`, and `conformer_search.py` as applicable. Scientists copy these,
+delete what they don't need, and run them, so each script:
+
+- is flat and self-contained, with an inline structure in bohr and cheap defaults so it
+  runs in seconds;
+- starts with a docstring covering installation, how the program is found, and the
+  program's quirks for that calculation;
+- shows the commonly used options (implicit solvent, parallelism, convergence,
+  program-specific extras), with optional ones commented out;
+- prints the results people usually read.
+
+Follow `examples/psi4/` as the model. Then add `docs/programs/<program>.md`, which
+renders the codec module's docstring and includes the scripts (copy an existing page),
+and add it to `nav` in `mkdocs.yml`. The codec module docstring is the program's
+reference documentation: explain how `ProgramInput` maps onto the program, which
+keywords are routed specially, which fields carry atom indices, and how the input frame
+is kept.
+
+`tests/test_examples.py` fails until every calculation type has a script and every
+script is on a docs page; `tests/integration/test_examples.py` runs every script.
 
 ### How decoding works
 

@@ -1,4 +1,29 @@
-"""geomeTRIC's native engine bridge; child gradients run through an injected callback."""
+"""geomeTRIC: optimizations and transition-state searches driving another program.
+
+geomeTRIC runs in Python and asks for gradients through a callback: every step is a
+full ``gradient`` calculation of the program named in ``subprograms``, run by qccompute
+like any other calculation and kept in the trajectory. Any codec with gradients works
+as the child, including ones registered with ``qccodec.register``.
+
+Inputs map to geomeTRIC as follows:
+
+- ``subprograms`` must hold one ``ProgramSpec`` with ``calctype="gradient"``: the child
+  program, its model, and its own keywords (passed to that program unchanged).
+- ``keywords`` are geomeTRIC's optimizer parameters (``geometric.params.OptParams``):
+  ``maxiter``, ``convergence_set``, ``convergence_energy``, ``trust``, ``hessian``,
+  ``enforce``, ... Two are handled by the codec: ``coordsys`` (``tric`` by default, or
+  ``cart``, ``prim``, ``dlc``, ``hdlc``) and ``constraints`` (geomeTRIC's constraint
+  dictionary, e.g. ``{"freeze": [{"type": "xyz", "indices": [0]}]}``, with ``set``
+  distances in bohr; scans are not supported).
+- ``cmdline_args`` are not accepted.
+
+Calculation types: ``optimization`` and ``transition_state`` (``transition=True``;
+geomeTRIC computes a starting Hessian from finite differences of child gradients).
+Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
+
+With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
+step's orbitals when the child codec supports it (TeraChem).
+"""
 
 from __future__ import annotations
 
@@ -39,6 +64,16 @@ class GeometricOutcome(TypedDict):
     error: str | None
 
 
+# coordsys -> (geometric.internal class, connect, addcart), as in geomeTRIC's run_json.
+COORDINATE_SYSTEMS: dict[str, tuple[str, bool, bool]] = {
+    "cart": ("CartesianCoordinates", False, False),
+    "prim": ("PrimitiveInternalCoordinates", True, False),
+    "dlc": ("DelocalizedInternalCoordinates", True, False),
+    "hdlc": ("DelocalizedInternalCoordinates", False, True),
+    "tric": ("DelocalizedInternalCoordinates", False, False),
+}
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Prepare optimizer arguments; the gradient child comes from ``subprograms``."""
     try:
@@ -52,7 +87,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     keywords = deepcopy(inp.keywords)
     keywords["transition"] = inp.calctype == CalcType.transition_state
     coordsys = keywords.pop("coordsys", "tric")
-    if coordsys not in {"cart", "prim", "dlc", "hdlc", "tric"}:
+    if coordsys not in COORDINATE_SYSTEMS:
         raise EncoderError(f"Unsupported coordinate system: {coordsys}")
     constraints = keywords.pop("constraints", None)
     if constraints and "scan" in constraints:
@@ -149,14 +184,8 @@ def invoke_geometric(
     }
     try:
         molecule = geometric.molecule.Molecule(fnm=geometry_file)
-        coord_classes = {
-            "cart": (geometric.internal.CartesianCoordinates, False, False),
-            "prim": (geometric.internal.PrimitiveInternalCoordinates, True, False),
-            "dlc": (geometric.internal.DelocalizedInternalCoordinates, True, False),
-            "hdlc": (geometric.internal.DelocalizedInternalCoordinates, False, False),
-            "tric": (geometric.internal.DelocalizedInternalCoordinates, False, False),
-        }
-        coord_class, connect, addcart = coord_classes[coordsys]
+        class_name, connect, addcart = COORDINATE_SYSTEMS[coordsys]
+        coord_class = getattr(geometric.internal, class_name)
         parsed_constraints, values = None, None
         if constraints:
             parsed_constraints, values = geometric.prepare.parse_constraints(

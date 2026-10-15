@@ -262,3 +262,20 @@ def test_propagate_wfn_moves_orbitals_onto_next_input(
     )
     with pytest.raises(EncoderError, match="wavefunction files"):
         propagate(empty, inp)
+
+
+def test_geometric_coordinate_systems_match_geometric() -> None:
+    """Each coordsys builds the same coordinates geomeTRIC's own JSON interface does."""
+    from qccodec.programs.geometric import COORDINATE_SYSTEMS
+
+    # geometric.run_json.CoordSysDict: (class, connect, addcart)
+    assert COORDINATE_SYSTEMS == {
+        "cart": ("CartesianCoordinates", False, False),
+        "prim": ("PrimitiveInternalCoordinates", True, False),
+        "dlc": ("DelocalizedInternalCoordinates", True, False),
+        "hdlc": ("DelocalizedInternalCoordinates", False, True),
+        "tric": ("DelocalizedInternalCoordinates", False, False),
+    }
+    geometric = pytest.importorskip("geometric")
+    for class_name, _, _ in COORDINATE_SYSTEMS.values():
+        assert hasattr(geometric.internal, class_name)

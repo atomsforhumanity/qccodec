@@ -12,7 +12,7 @@ Inputs map to Psi4 as follows:
   for ``psi4.energy("hf/sto-3g")``. Leave ``basis`` empty for composite methods or to
   set ``basis`` in ``keywords``.
 - ``keywords`` go to ``psi4.set_options`` unchanged, so every Psi4 option and its
-  module-scoped form (``"scf__maxiter"``) works as in Psi4's documentation. Three
+  module-scoped form (``"scf__maxiter"``) works as in Psi4's documentation. Two
   kinds of keyword are not Psi4 options and are routed instead:
 
   - Driver arguments go to ``psi4.energy()``/``gradient()``/``frequency()``/

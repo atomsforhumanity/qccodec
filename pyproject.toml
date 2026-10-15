@@ -59,6 +59,13 @@ dev = [
     "detect-secrets>=1.5",
     "typos>=1.30",
 ]
+docs = [
+    "markdown-include>=0.8.1,<0.9",
+    "mkdocs>=1.6.0,<2",
+    "mkdocs-material>=9.5.31,<10",
+    "mkdocstrings[python]>=0.25.2,<0.26",
+    "pymdown-extensions~=10.9",
+]
 integration = [
     "qccompute>=0.15.0",
 ]

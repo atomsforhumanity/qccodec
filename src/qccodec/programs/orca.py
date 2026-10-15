@@ -1,4 +1,32 @@
-"""ORCA: input file encoding and stdout/.hess/trajectory parsing."""
+"""ORCA: write ``orca.inp``, run ``orca orca.inp``, and parse stdout and output files.
+
+Inputs map to ORCA as follows:
+
+- ``model.method`` and ``model.basis`` start the simple-input line, ``! method basis``.
+  Extra simple-input words, such as ``CPCM(water)``, ``TightSCF``, or ``D3BJ``, can go in
+  ``model.method`` after the method name. Leave ``basis`` empty for composite methods.
+- The calculation type adds ``! energy``/``engrad``/``freq``/``opt``/``optts``.
+  ``{"numgrad": True}`` and ``{"numfreq": True}`` request numerical derivatives.
+- A keyword set to ``True`` adds a simple-input word, so ``{"tightscf": True}`` writes
+  ``! tightscf``; ``False`` or ``None`` leaves it out. Any other non-dictionary value
+  is an error, so nothing is dropped silently.
+- ``{"maxcore": 2000}`` and ``{"pal": 4}`` become ``%maxcore`` and ``%pal nprocs``.
+- A keyword whose value is a dictionary becomes an input block:
+  ``{"scf": {"maxiter": 200}}`` writes ``%scf maxiter 200 end``. Keys are kept as
+  written; ORCA ignores case.
+- The structure is written to ``geometry.xyz`` with its charge and multiplicity.
+  Setting ``coords``, or ``method``/``basis`` inside a block, is an error.
+- ``cmdline_args`` are appended to the ``orca`` command.
+
+Calculation types: ``energy``, ``gradient``, ``hessian`` (also the gradient when ORCA
+writes it), ``optimization``, and ``transition_state`` (``OptTS``; give ORCA a
+starting Hessian, e.g. ``{"geom": {"calc_hess": True}}``). ORCA keeps the input's
+coordinates and atom order. No input field carries atom indices.
+
+Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
+``/usr/bin/orca`` is the GNOME screen reader. qccompute always runs the absolute path;
+put ORCA first on ``PATH`` or set ``QCCOMPUTE_ORCA_EXECUTABLE``.
+"""
 
 from __future__ import annotations
 
@@ -77,14 +105,35 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write ``orca.inp`` and the geometry file for an ORCA calculation.
 
     Notes:
-        - ORCA keywords are case-insensitive; the casing in ``keywords`` is kept.
-        - Pass ``{"numgrad": True}`` (or a block dictionary) for numerical gradients.
+        - ORCA keywords are case-insensitive; names are written in lowercase.
+        - ``True`` adds a simple-input word (``{"tightscf": True}`` writes
+          ``! tightscf``); ``False`` or ``None`` leaves it out.
+        - A dictionary becomes an input block. ``numgrad`` and ``numfreq`` may be
+          either: a dictionary also sets the numerical derivative.
+
+    Raises:
+        EncoderError: The model is missing, a keyword duplicates structured data, or
+            a keyword is neither a flag, a block, ``maxcore``, nor ``pal``.
     """
     if inp.model is None:
         raise EncoderError("orca input requires a scientific model.")
 
     kw = {k.casefold(): v for k, v in inp.keywords.items()}
     _validate_keywords(kw)
+    flags: list[str] = []
+    for key, value in kw.items():
+        if key in {"maxcore", "pal"} or isinstance(value, Mapping):
+            continue
+        if value is True:
+            flags.append(key)
+        elif value is not False and value is not None:
+            raise EncoderError(
+                f"ORCA keyword {key!r} must be True (a simple-input word), a "
+                f"dictionary (an input block), or False/None; got {value!r}."
+            )
+    numgrad = "numgrad" in flags or isinstance(kw.get("numgrad"), Mapping)
+    numfreq = "numfreq" in flags or isinstance(kw.get("numfreq"), Mapping)
+    flags = [f for f in flags if f not in {"numgrad", "numfreq"}]
 
     lines: list[str] = []
     if "maxcore" in kw:
@@ -98,13 +147,14 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     if inp.model.basis:  # composite methods carry no basis
         model_line += f" {inp.model.basis}"
     lines.append(model_line)
-    if "numgrad" in kw:
+    if numgrad:
         lines.append("! numgrad")
+    lines.extend(f"! {flag}" for flag in flags)
 
     runtyp = {
         CalcType.energy: "energy",
         CalcType.gradient: "engrad",
-        CalcType.hessian: "numfreq" if "numfreq" in kw else "freq",
+        CalcType.hessian: "numfreq" if numfreq else "freq",
         CalcType.optimization: "opt",
         CalcType.transition_state: "optts",
     }[inp.calctype]
