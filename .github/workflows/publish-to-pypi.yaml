@@ -1,5 +1,7 @@
 name: Release
 
+# The file name must stay publish-to-pypi.yaml: PyPI's trusted publisher for this
+# project is registered against it.
 # Pushing a version tag (e.g. 0.16.0) on master publishes to PyPI and creates the
 # GitHub release. Publishing waits for approval on the protected `pypi` environment.
 on:
