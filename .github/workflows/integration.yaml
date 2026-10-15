@@ -33,17 +33,22 @@ jobs:
     name: CPU programs (CREST, geomeTRIC)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash -el {0} # login shell activates the micromamba environment
     env:
       QCCODEC_REQUIRE_PROGRAMS: crest
+      # Official static build. conda-forge's crest 3.0.2 crashes in its optimizer
+      # (Fortran format error in ancopt.f90). Update the version and checksum together.
+      CREST_VERSION: v3.0.2
+      CREST_SHA256: 8e5bd18b06f99741ebd7bb71b3a996295f391b2f076aaeab739740f709e9554d # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v5
-      - uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-file: tests/integration/envs/cpu.yaml
-          cache-environment: true
+      - name: Install CREST
+        run: |
+          curl -fsSL -o crest.tar.xz "https://github.com/crest-lab/crest/releases/download/${CREST_VERSION}/crest-gnu-12-ubuntu-latest.tar.xz"
+          echo "${CREST_SHA256}  crest.tar.xz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/programs"
+          tar xf crest.tar.xz -C "$RUNNER_TEMP/programs"
+          rm crest.tar.xz
+          echo "$RUNNER_TEMP/programs/crest" >> "$GITHUB_PATH"
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true

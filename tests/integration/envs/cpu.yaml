@@ -1,8 +1,0 @@
-# Programs for the CPU integration job (.github/workflows/integration.yaml).
-# Pin exact versions so reference values stay reproducible. Dependabot does not
-# update conda files; bump these by hand and re-check the reference values.
-name: qccodec-integration
-channels:
-  - conda-forge
-dependencies:
-  - crest=3.0.2

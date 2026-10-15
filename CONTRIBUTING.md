@@ -78,9 +78,9 @@ for a new program version.
 The [Integration workflow](.github/workflows/integration.yaml) runs nightly, on demand,
 and on pull requests that touch codecs or these tests. It is not a required check.
 
-- **CPU job.** Runs on GitHub-hosted runners with programs installed by micromamba from
-  conda-forge, pinned in `tests/integration/envs/cpu.yaml`. Add a CPU program by
-  adding it there and to `QCCODEC_REQUIRE_PROGRAMS` in the workflow.
+- **CPU job.** Runs on GitHub-hosted runners. It installs the official CREST release
+  binary, pinned by version and checksum in the workflow. Add a CPU program with an
+  install step there and add it to `QCCODEC_REQUIRE_PROGRAMS`.
 - **GPU job.** Runs TeraChem (and ORCA when installed) on a self-hosted runner. It is
   skipped until the repository variable `QC_GPU_RUNNER` names a runner label or
   [Actions Runner Controller](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller)
