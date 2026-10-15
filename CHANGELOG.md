@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Changed
+
+- Development tooling: shared ruff (including Google docstring rules), mypy (fully typed library code), and pytest settings; pre-commit hooks that run the locked tools through `uv run`; one CI workflow; a tag-driven release workflow with `scripts/prepare_release.py` and an approval-gated PyPI deployment. Added CONTRIBUTING.md and AGENTS.md.
+- Depend on `qcref` instead of the deprecated `qcconst`.
+
 ## [0.13.0] - 2026-10-14
 
 - Require `qcdata>=0.20.0`.

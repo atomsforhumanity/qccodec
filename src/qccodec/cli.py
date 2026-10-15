@@ -1,10 +1,13 @@
+"""Command-line entry point: decode a program's output files into qcdata JSON."""
+
 import argparse
 from pathlib import Path
 
 from .registry import decode
 
 
-def main():
+def main() -> None:
+    """Parse arguments, decode the given output, and print it as JSON."""
     parser = argparse.ArgumentParser(
         description="Parse Quantum Chemistry output files into structured JSON or "
         "Python objects."

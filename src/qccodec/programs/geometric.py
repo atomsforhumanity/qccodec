@@ -89,7 +89,6 @@ def make_engine(
     trajectory: list[ProgramOutput[ProgramInput, SinglePointData]],
 ) -> NativeEngine:
     """Bind geomeTRIC's native engine interface to independent child calculations."""
-
     base_engine: Any = geometric.engine.Engine
 
     class Engine(base_engine):

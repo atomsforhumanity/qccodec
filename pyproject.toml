@@ -8,9 +8,9 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
-    "qcconst>=0.2.1",
     "packaging>=23.0",
     "qcdata>=0.20.0",
+    "qcref>=0.3.0",
 ]
 
 classifiers = [
@@ -50,12 +50,15 @@ tcpb = ["tcpb>=0.16.0"]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.1.1",
-    "pytest>=7.2.2",
-    "pre-commit>=3.2.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.8.3",
+    "mypy>=1.15",
+    "pytest>=8.3",
+    "pre-commit>=4.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.12",
     "types-toml>=0.10.8.20240310",
+    "pre-commit-hooks>=5.0",
+    "detect-secrets>=1.5",
+    "typos>=1.30",
 ]
 
 [project.scripts]
@@ -67,29 +70,52 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers"
 
 [tool.ruff]
-exclude = [".venv"]
 line-length = 88
-target-version = "py39"
+target-version = "py310"
+extend-exclude = ["*.ipynb", "*.md"]
 
 [tool.ruff.lint]
-isort = { known-first-party = ["qccodec", "tests"] }
-select = ["I", "F401"]
+select = ["E", "F", "I", "B", "UP", "D"]
+ignore = ["E501"] # line length is the formatter's job
+
+[tool.ruff.lint.isort]
+known-first-party = ["qccodec", "tests"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"scripts/**" = ["D"]
+"docs/**" = ["D"]
+"examples/**" = ["D"]
+"build_tools/**" = ["D"]
 
 [tool.coverage.run]
 branch = true
-omit = ["*/tests/*", "*/migrations/*", "*site-packages*", "*__init__.py"]
+source = ["qccodec"]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.mypy]
+python_version = "3.10"
+files = ["src", "tests", "scripts"]
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
-warn_untyped_fields = true
 
 [tool.typos]
 files.extend-exclude = ["tests/data/**"]

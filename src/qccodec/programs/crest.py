@@ -9,7 +9,6 @@ import re
 from typing import Any
 
 import tomli_w
-from qcconst import constants
 from qcdata import (
     CalcType,
     ExecutionInfo,
@@ -19,6 +18,7 @@ from qcdata import (
     SinglePointData,
     Structure,
 )
+from qcref import constants
 
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
@@ -293,7 +293,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
             results=SinglePointData(provenance=provenance, energy=energy),
             execution=ExecutionInfo(scratch_dir=ctx.directory),
         )
-        for structure, energy in zip(structures, energies)
+        for structure, energy in zip(structures, energies, strict=True)
     ]
     if not trajectory:
         if ctx.failed:

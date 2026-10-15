@@ -206,10 +206,12 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     basename = parse_basename(stdout)
     try:
         file = ctx.path(f"{basename}_trj.xyz")
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         if ctx.failed:
             return []
-        raise ParserError(f"Trajectory file does not exist: {basename}_trj.xyz")
+        raise ParserError(
+            f"Trajectory file does not exist: {basename}_trj.xyz"
+        ) from exc
 
     # The trajectory file carries no charge/multiplicity; take them from the input.
     structures = Structure.open_multi(
@@ -234,7 +236,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         raise MatchNotFoundError(regex, stdout)
 
     trajectory: list[ProgramOutput] = []
-    for structure, step_stdout in zip(structures, per_step):
+    for structure, step_stdout in zip(structures, per_step, strict=False):
         parsed = ctx.decode(CalcType.gradient, stdout=initialization + step_stdout)
         assert isinstance(parsed, SinglePointData)  # for mypy
         values = parsed.model_dump()

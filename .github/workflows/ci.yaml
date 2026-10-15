@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, format, types, secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked --all-extras --all-groups
+      - name: No local or git sources for qc* packages
+        run: |
+          if awk '/^\[tool\.uv\.sources\]/{f=1;next} /^\[/{f=0} f' pyproject.toml | grep -E '^qc[a-z]+ *= *\{.*(path|git) *='; then
+            echo "::error::Remove path/git [tool.uv.sources] entries for qc* packages before merging."
+            exit 1
+          fi
+      - name: Pre-commit hooks
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+  tests:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      # Optional extras are installed and type-checked by the checks job; some
+      # (e.g. xtb-python) have no wheels for the newest Python.
+      - name: Install
+        run: uv sync --locked --all-groups
+      - name: Run tests
+        run: uv run pytest --cov --cov-report=term-missing

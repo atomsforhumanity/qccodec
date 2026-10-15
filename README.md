@@ -1,26 +1,23 @@
 # qccodec
 
-Encode `qcdata` inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects. Uses data structures from [qcdata](https://github.com/atomsforhumanity/qcdata).
-
 [![image](https://img.shields.io/pypi/v/qccodec.svg)](https://pypi.python.org/pypi/qccodec)
 [![image](https://img.shields.io/pypi/l/qccodec.svg)](https://pypi.python.org/pypi/qccodec)
 [![image](https://img.shields.io/pypi/pyversions/qccodec.svg)](https://pypi.python.org/pypi/qccodec)
-[![Actions status](https://github.com/atomsforhumanity/qccodec/workflows/Tests/badge.svg)](https://github.com/atomsforhumanity/qccodec/actions)
-[![Actions status](https://github.com/atomsforhumanity/qccodec/workflows/Basic%20Code%20Quality/badge.svg)](https://github.com/atomsforhumanity/qccodec/actions)
+[![CI](https://github.com/atomsforhumanity/qccodec/actions/workflows/ci.yaml/badge.svg)](https://github.com/atomsforhumanity/qccodec/actions/workflows/ci.yaml)
 
-`qccodec` works in harmony with a suite of other quantum chemistry tools for fast, structured, and interoperable quantum chemistry.
+Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program.
 
-## The QC Suite of Programs
+## The QC Suite
 
-The QC Suite works in harmony to provide fast, structured, and interoperable quantum chemistry tools.
+These packages work together to make quantum chemistry fast, structured, and interoperable.
 
-- [qcconst](https://github.com/atomsforhumanity/qcconst) - Physical constants, conversion factors, and a periodic table with clear source information for every value.
-- [qcdata](https://github.com/atomsforhumanity/qcdata) - Elegant and intuitive data structures for quantum chemistry, featuring seamless Jupyter Notebook visualizations. [Documentation](https://qcdata.docs.atomsforhumanity.org)
-- [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities using standardized [qcdata](https://qcdata.docs.atomsforhumanity.org/) data structures.
-- [qccodec](https://github.com/atomsforhumanity/qccodec) - A package for translating between standardized [qcdata](https://github.com/atomsforhumanity/qcdata) data structures and native QC program inputs and outputs.
-- [qccompute](https://github.com/atomsforhumanity/qccompute) - A package for operating quantum chemistry programs using standardized [qcdata](https://qcdata.docs.atomsforhumanity.org/) data structures. Built-in support for `TeraChem`, `ORCA`, `CREST`, `xTB`, and `geomeTRIC`, and any program you define a `qccodec.Codec` for.
-- [BigChem](https://github.com/mtzgroup/bigchem) - A distributed application for running quantum chemistry calculations at scale across clusters of computers or the cloud. Bring multi-node scaling to your favorite quantum chemistry program.
-- `ChemCloud` - A [web application](https://github.com/mtzgroup/chemcloud-server) and associated [Python client](https://github.com/mtzgroup/chemcloud-client) for exposing a BigChem cluster securely over the internet.
+- [qcref](https://github.com/atomsforhumanity/qcref) - Reference data for computational chemistry: CODATA physical constants, conversion factors, a periodic table, and solvent properties, each value with its source.
+- [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.atomsforhumanity.org)
+- [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities for [qcdata](https://github.com/atomsforhumanity/qcdata) structures.
+- [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program.
+- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs quantum chemistry programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs using [qccodec](https://github.com/atomsforhumanity/qccodec) codecs and returns structured results. [Documentation](https://qccompute.docs.atomsforhumanity.org)
+- [BigChem](https://github.com/mtzgroup/bigchem) - Distributed execution of qccompute calculations across clusters of computers or the cloud.
+- [ChemCloud](https://github.com/mtzgroup/chemcloud-client) - A [web application](https://github.com/mtzgroup/chemcloud-server) and [Python client](https://github.com/mtzgroup/chemcloud-client) that expose a BigChem cluster securely over the internet.
 
 ## ✨ Basic Usage
 
@@ -96,11 +93,11 @@ The QC Suite works in harmony to provide fast, structured, and interoperable qua
   data = decode("terachem", CalcType.hessian, stdout=stdout, directory=directory, input_data=input_data)
   ```
 
-## 💻 Contributing
+## Contributing
 
-Please see the [contributing guide](./CONTRIBUTING.md) for details on how to contribute new parsers to this project :)
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process. Adding support for a new program is covered there step by step.
 
-If there's data you'd like parsed from output files or want to support input files for a new program, please open an issue in this repo explaining the data items you'd like parsed and include an example output file containing the data, like [this](https://github.com/atomsforhumanity/qccodec/issues/2).
+If there's data you'd like parsed from output files or a program you'd like supported, open an issue describing the data and include an example output file, like [this](https://github.com/atomsforhumanity/qccodec/issues/2).
 
 ## Encoding inputs
 
@@ -311,9 +308,6 @@ mode and typed partial data on error, and encoded files stay inside the director
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full walkthrough of adding a program.
 
-## Development
+## Optional dependencies
 
-qccodec requires `qcdata>=0.20.0`. Run `uv sync --all-groups --locked` to install the
-project and development dependencies. Optional integrations install with
-`qccodec[geometric]`, `qccodec[xtb]`, or `qccodec[tcpb]`; their
-libraries are imported only when a calculation is invoked.
+Optional integrations install with `qccodec[geometric]`, `qccodec[xtb]`, or `qccodec[tcpb]`; their libraries are imported only when a calculation is invoked.

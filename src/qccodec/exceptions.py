@@ -1,3 +1,5 @@
+"""Exceptions raised by codecs, parsers, and the registry."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -7,7 +9,7 @@ from qcdata import StructuredData
 
 
 class BaseError(Exception):
-    """Base qccodec exceptions"""
+    """Base class for qccodec exceptions."""
 
     def __reduce__(self) -> tuple[Callable[..., Exception], tuple[object, ...]]:
         """Preserve error attributes and constructor-independent pickling."""
@@ -25,15 +27,15 @@ def _restore_error(
 
 
 class DecoderError(BaseError):
-    """Exception raised when a decoder error occurs"""
+    """Raised when native output cannot be decoded."""
 
 
 class EncoderError(BaseError):
-    """Exception raised when a encoder error occurs"""
+    """Raised when an input cannot be encoded for a program."""
 
 
 class ParserError(BaseError):
-    """Base exception for parsers"""
+    """Base class for parser failures; ``data`` holds any recovered results."""
 
     def __init__(self, message: str, data: StructuredData | None = None) -> None:
         """Retain the original failure and available calculation diagnostics."""
@@ -42,7 +44,7 @@ class ParserError(BaseError):
 
 
 class MatchNotFoundError(ParserError):
-    """Exception raised when a parsing match is not found"""
+    """Raised when a parser finds no match for its pattern."""
 
     def __init__(self, regex: str, contents: str) -> None:
         """Retain the original failure and available calculation diagnostics."""
@@ -54,11 +56,11 @@ class MatchNotFoundError(ParserError):
 
 
 class RegistryError(BaseError):
-    """Exception raised when a registry error occurs"""
+    """Raised when a codec or parser registration is invalid."""
 
 
 class DataCollectorError(BaseError):
-    """Exception raised when a data collector error occurs"""
+    """Raised when two parsers fill the same result field."""
 
 
 class CodecNotFoundError(EncoderError):
