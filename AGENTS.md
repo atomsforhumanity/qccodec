@@ -12,7 +12,7 @@ Instructions for AI coding agents (and a quick reference for people) working in 
 
 ## The qc* suite
 
-Dependencies point one way: qcref -> qcdata -> {qcinf, qccodec} -> qccompute. Never import a package that sits later in that order, and keep changes that span packages in separate pull requests, released in that order.
+Dependencies point one way: qcref -> qcdata -> {qcinf, qccodec} -> qccompute. Never import a package that sits later in that order (the integration tests in `tests/integration/` may use `qccompute`, a test-only dependency), and keep changes that span packages in separate pull requests, released in that order.
 
 ## Commands
 
@@ -20,6 +20,7 @@ Dependencies point one way: qcref -> qcdata -> {qcinf, qccodec} -> qccompute. Ne
 uv sync --all-extras --all-groups     # install everything
 uv run pre-commit install             # once per clone: run the checks on every commit
 uv run pytest                         # tests
+uv run pytest -m integration          # real programs via qccompute (uv sync --group integration --extra geometric)
 uv run ruff check --fix . && uv run ruff format .
 uv run mypy
 uv run pre-commit run --all-files     # exactly what CI checks

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted runner for private and GPU programs (TeraChem, ORCA) once one is configured.
+
+### Fixed
+
+- TeraChem optimizations from newer builds (2026.10 confirmed), which write `optim_trajectory.xyz` with the energy inside a `frame N SCF Energy = ...` comment instead of `optim.xyz`.
+
 ## [0.13.1] - 2026-10-14
 
 ### Changed

@@ -1,0 +1,94 @@
+name: Integration
+
+# Runs real programs through qccompute (tests marked "integration"). Not a required
+# check: program installs and GPU runners can fail for reasons unrelated to a change.
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # nightly, catches program and dependency drift
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/qccodec/programs/**"
+      - "src/qccodec/codec.py"
+      - "tests/integration/**"
+      - ".github/workflows/integration.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "src/qccodec/programs/**"
+      - "src/qccodec/codec.py"
+      - "tests/integration/**"
+      - ".github/workflows/integration.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cpu:
+    name: CPU programs (CREST, geomeTRIC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QCCODEC_REQUIRE_PROGRAMS: crest
+      # Official static build. conda-forge's crest 3.0.2 crashes in its optimizer
+      # (Fortran format error in ancopt.f90). Update the version and checksum together.
+      CREST_VERSION: v3.0.2
+      CREST_SHA256: 8e5bd18b06f99741ebd7bb71b3a996295f391b2f076aaeab739740f709e9554d # pragma: allowlist secret
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install CREST
+        run: |
+          curl -fsSL -o crest.tar.xz "https://github.com/crest-lab/crest/releases/download/${CREST_VERSION}/crest-gnu-12-ubuntu-latest.tar.xz"
+          echo "${CREST_SHA256}  crest.tar.xz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/programs"
+          tar xf crest.tar.xz -C "$RUNNER_TEMP/programs"
+          rm crest.tar.xz
+          echo "$RUNNER_TEMP/programs/crest" >> "$GITHUB_PATH"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install
+        run: uv sync --locked --group integration --extra geometric
+      - name: Program versions
+        run: crest --version | grep -i version
+      - name: Run integration tests
+        run: uv run pytest -m integration -rs
+
+  private:
+    name: Private/GPU programs (TeraChem, ORCA)
+    # Licensed programs that cannot be installed on GitHub-hosted runners, and GPU
+    # programs, run on the self-hosted runner whose label the QC_PRIVATE_RUNNER
+    # repository variable names; the job is skipped until that variable exists. Never
+    # run fork pull requests on self-hosted runners: they would execute untrusted code
+    # on the cluster.
+    if: >-
+      vars.QC_PRIVATE_RUNNER != '' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ vars.QC_PRIVATE_RUNNER }}
+    timeout-minutes: 60
+    env:
+      # Programs the runner must provide; a missing one fails the run instead of
+      # silently skipping its tests.
+      QCCODEC_REQUIRE_PROGRAMS: ${{ vars.QC_PRIVATE_PROGRAMS || 'terachem' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: uv sync --locked --group integration --extra geometric
+      - name: Hardware and programs
+        run: |
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+          for program in terachem orca crest; do
+            echo "$program: $(command -v "$program" || echo 'not installed')"
+          done
+      - name: Run integration tests
+        run: uv run pytest -m integration -rs

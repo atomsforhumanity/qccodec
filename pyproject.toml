@@ -60,6 +60,9 @@ dev = [
     "detect-secrets>=1.5",
     "typos>=1.30",
 ]
+integration = [
+    "qccompute>=0.15.0",
+]
 
 [project.scripts]
 qccodec = "qccodec.cli:main"
@@ -70,7 +73,10 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers"
+addopts = "--strict-markers -m 'not integration'"
+markers = [
+    "integration: runs a real program through qccompute; select with -m integration",
+]
 
 [tool.ruff]
 line-length = 88

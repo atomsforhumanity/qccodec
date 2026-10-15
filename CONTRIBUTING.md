@@ -50,6 +50,53 @@ uv run pytest --cov --cov-report=term-missing   # with coverage
 
 Parsers are tested through recorded program runs in `tests/data/<program>/<case>/`; see [Tests](#7-tests) under "Adding a program" below.
 
+## Integration tests
+
+Tests in `tests/integration/test_<program>.py` run real programs through
+[qccompute](https://github.com/atomsforhumanity/qccompute), which is a test-only
+dependency in the `integration` group. They are marked `integration` and deselected by
+default, and each test skips when its program is not on `PATH`.
+
+```sh
+uv sync --group integration --extra geometric
+uv run pytest -m integration -rs              # -rs lists what skipped and why
+uv run pytest -m integration --record-cases   # also save runs as fixture cases
+```
+
+Assert against reference values with tolerances, use the smallest molecule that
+exercises the feature, and keep each test to seconds. Only the latest release of each
+program is tested.
+
+`--record-cases` saves each run that names a case, `run(input, case="water_gradient")`,
+as `tests/data/<program>/<case>_<version>/` with `input.json`, `expected.json`, `stdout`,
+`encoded/`, and the output files, then replays it through `qccodec.testing.run_case`.
+Existing cases are never overwritten. Before committing a recorded case, delete output
+files no parser reads and check `stdout` for anything private; `execution` metadata
+(local paths, timings) is already stripped. This is the easiest way to add a fixture
+for a new program version.
+
+The [Integration workflow](.github/workflows/integration.yaml) runs nightly, on demand,
+and on pull requests that touch codecs or these tests. It is not a required check.
+
+- **CPU job.** Runs on GitHub-hosted runners. It installs the official CREST release
+  binary, pinned by version and checksum in the workflow. Add a CPU program with an
+  install step there and add it to `QCCODEC_REQUIRE_PROGRAMS`.
+- **Private/GPU job.** Runs licensed programs that cannot be installed on
+  GitHub-hosted runners (ORCA, TeraChem) and GPU programs (TeraChem) on a
+  self-hosted runner. It is skipped until the repository variable
+  `QC_PRIVATE_RUNNER` names the runner's label, or an
+  [Actions Runner Controller](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller)
+  scale set. The runner must provide the programs on `PATH`, a CUDA driver, network
+  access to the TeraChem license server, and `curl` and `git` for the setup actions.
+  `QC_PRIVATE_PROGRAMS` (default `terachem`) lists the programs it must have. Images
+  containing licensed programs stay on the runner host; never push them to a public
+  registry.
+- **Fork pull requests** never run on the self-hosted runner. Keep "Require approval
+  for all outside collaborators" enabled under Settings > Actions as a second guard.
+
+`QCCODEC_REQUIRE_PROGRAMS` (comma-separated) turns skips into failures for the listed
+programs, so a broken runner image cannot pass by skipping everything.
+
 ## Pull requests
 
 1. Branch from `master`.
@@ -245,8 +292,9 @@ parsers; by default it is passed only when the case holds output files).
 `qccodec.testing.run_case`, which checks the encoded files, the full decode, and each
 registered parser applied directly to its own file against the matching slice of
 `expected.json`. It also runs `qccodec.testing.check_codec` on every built-in codec.
-To add coverage, add a case directory; to create `expected.json` for a new case, run
-the codec once (`qccodec.decode(...)`), review the result, and save it with
+To add coverage, add a case directory. When the program is installed, record one with
+an [integration test](#integration-tests) and `--record-cases`; otherwise run the codec
+once (`qccodec.decode(...)`), review the result, and save it with
 `data.model_dump_json(indent=2)`. Keep encoder-specific error paths (rejected keywords,
 unsupported calculation types) as ordinary unit tests next to the program module's
 helpers, as `tests/test_terachem_encoders.py` does.

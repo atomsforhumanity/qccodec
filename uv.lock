@@ -1449,6 +1449,9 @@ dev = [
     { name = "types-toml" },
     { name = "typos" },
 ]
+integration = [
+    { name = "qccompute" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1472,6 +1475,20 @@ dev = [
     { name = "ruff", specifier = ">=0.12" },
     { name = "types-toml", specifier = ">=0.10.8.20240310" },
     { name = "typos", specifier = ">=1.30" },
+]
+integration = [{ name = "qccompute", specifier = ">=0.15.0" }]
+
+[[package]]
+name = "qccompute"
+version = "0.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "qccodec" },
+    { name = "qcdata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/42/f46f17a01df6040dc324820c6d9d06184376653e3bfd9a7f3a1f270c1323/qccompute-0.15.0.tar.gz", hash = "sha256:1af271670b44f3b6994633bc215b9cc1e42106dfb193e22224c8da6266716363", size = 519848 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/e0/19795ca89dac6068111e76bb016b9692028f028d6824b3d9e6e91363bb5b/qccompute-0.15.0-py3-none-any.whl", hash = "sha256:842dc786e5d5963ffb5b73f454782a392336f5b98aae4d3a410e7a5a28b873bb", size = 20896 },
 ]
 
 [[package]]
