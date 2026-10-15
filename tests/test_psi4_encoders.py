@@ -51,8 +51,8 @@ def test_method_string() -> None:
     )
 
 
-def test_keywords_split_into_options_and_driver_arguments() -> None:
-    """Psi4 options pass through untouched; driver arguments are set aside."""
+def test_keywords_split_into_options_driver_arguments_and_molecule() -> None:
+    """Psi4 options pass through untouched; the rest go where Psi4 expects them."""
     charges = [[-0.8, [0.0, 0.0, 5.0]]]
     job = _job(
         _encode(
@@ -61,11 +61,44 @@ def test_keywords_split_into_options_and_driver_arguments() -> None:
                 "scf__maxiter": 50,
                 "external_potentials": charges,
                 "dertype": 0,
+                "project_rot": True,
+                "symmetry": "c1",
             }
         )
     )
     assert job["options"] == {"scf_type": "pk", "scf__maxiter": 50}
-    assert job["kwargs"] == {"external_potentials": charges, "dertype": 0}
+    assert job["kwargs"] == {
+        "external_potentials": charges,
+        "dertype": 0,
+        "project_rot": True,
+    }
+    assert job["molecule"]["symmetry"] == "c1"
+
+
+def test_symmetry_defaults_to_psi4() -> None:
+    """Without a symmetry keyword, Psi4 detects symmetry in the fixed frame."""
+    assert _job(_encode())["molecule"]["symmetry"] is None
+
+
+def test_transition_state_options() -> None:
+    """A transition-state search sets opt_type and an exact starting Hessian."""
+    job = _job(_encode(calctype=CalcType.transition_state))
+    assert job["calctype"] == "transition_state"
+    assert job["options"] == {"opt_type": "ts", "full_hess_every": 0}
+    job = _job(
+        _encode(calctype=CalcType.transition_state, keywords={"FULL_HESS_EVERY": 3})
+    )
+    assert job["options"] == {"FULL_HESS_EVERY": 3, "opt_type": "ts"}
+
+
+@pytest.mark.parametrize(
+    ("calctype", "opt_type"),
+    [(CalcType.transition_state, "min"), (CalcType.optimization, "TS")],
+)
+def test_contradictory_opt_type(calctype: CalcType, opt_type: str) -> None:
+    """opt_type must agree with the calculation type."""
+    with pytest.raises(EncoderError, match="opt_type"):
+        _encode(calctype=calctype, keywords={"opt_type": opt_type})
 
 
 def test_molecule_is_in_bohr() -> None:
@@ -83,19 +116,29 @@ def test_model_required() -> None:
 
 
 def test_driver_molecule_block_fixes_the_frame() -> None:
-    """The molecule block stops Psi4 from moving, rotating, or symmetrizing it."""
-    block = driver.molecule_string(
-        {
-            "symbols": ["H", "H"],
-            "geometry": [[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]],
-            "charge": 0,
-            "multiplicity": 1,
-        }
-    )
-    lines = block.splitlines()
+    """The molecule block stops Psi4 from moving or rotating the molecule."""
+    molecule = {
+        "symbols": ["H", "H"],
+        "geometry": [[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]],
+        "charge": 0,
+        "multiplicity": 1,
+    }
+    lines = driver.molecule_string(molecule).splitlines()
     assert lines[0] == "0 1"
     assert lines[2] == "H 0.0 0.0 1.4"
-    assert {"units bohr", "no_com", "no_reorient", "symmetry c1"} <= set(lines)
+    assert {"units bohr", "no_com", "no_reorient"} <= set(lines)
+    assert not any(line.startswith("symmetry") for line in lines)
+    lines = driver.molecule_string({**molecule, "symmetry": "c1"}).splitlines()
+    assert lines[-1] == "symmetry c1"
+
+
+def test_driver_orbitals_merge_irreps_by_energy() -> None:
+    """Per-irrep orbital blocks become one energy-ordered list."""
+    energies, occupations = driver.orbitals(
+        [[-1.0, 0.5], [], [-0.2]], [[2, 0], [], [2]]
+    )
+    assert energies == [-1.0, -0.2, 0.5]
+    assert occupations == [2, 2, 0]
 
 
 def test_driver_wavenumbers() -> None:
@@ -107,3 +150,14 @@ def test_driver_to_plain() -> None:
     """Arrays and nested containers become JSON-ready lists."""
     value = {"a": np.arange(3), "b": (np.float64(1.5), [np.zeros((1, 2))])}
     assert driver.to_plain(value) == {"a": [0, 1, 2], "b": [1.5, [[[0.0, 0.0]]]]}
+
+
+@pytest.mark.parametrize(
+    "calctype",
+    [CalcType.hessian, CalcType.optimization, CalcType.transition_state],
+)
+def test_point_charges_only_for_single_points(calctype: CalcType) -> None:
+    """Psi4 1.11 mishandles point charges beyond energies and gradients."""
+    charges = [[-0.8, [0.0, 0.0, 5.0]]]
+    with pytest.raises(EncoderError, match="geomeTRIC"):
+        _encode(calctype=calctype, keywords={"external_potentials": charges})

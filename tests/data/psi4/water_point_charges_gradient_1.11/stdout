@@ -32,9 +32,9 @@
     -----------------------------------------------------------------------
 
 
-    Psi4 started on: Thursday, 15 October 2026 02:28PM
+    Psi4 started on: Thursday, 15 October 2026 02:50PM
 
-    Process ID: 1627788
+    Process ID: 1728696
     Host:       localhost
     PSIDATADIR: /home/user/micromamba/envs/psi4/share/psi4
     Memory:     500.0 MiB
@@ -59,7 +59,7 @@ gradient() will perform analytic gradient computation.
     Solid Harmonics ordering:            Gaussian
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:28:01 2026
+*** at Thu Oct 15 14:50:13 2026
 
    => Loading Basis Set <=
 
@@ -256,7 +256,7 @@ Properties computed using the SCF density matrix
 
  ------------------------------------------------------------------------------------
 
-*** tstop() called on localhost at Thu Oct 15 14:28:01 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:13 2026
 Module time:
 	user time   =       0.22 seconds =       0.00 minutes
 	system time =       0.02 seconds =       0.00 minutes
@@ -267,7 +267,7 @@ Total time:
 	total time  =          0 seconds =       0.00 minutes
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:28:01 2026
+*** at Thu Oct 15 14:50:13 2026
 
 
          ------------------------------------------------------------
@@ -319,7 +319,7 @@ Total time:
        3       -0.022855483324    -0.002598802201     0.018966542013
 
 
-*** tstop() called on localhost at Thu Oct 15 14:28:01 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:13 2026
 Module time:
 	user time   =       0.01 seconds =       0.00 minutes
 	system time =       0.00 seconds =       0.00 minutes
@@ -341,7 +341,7 @@ OEProp: No title given, name of density matrix used for the following properties
    Total alpha =  5.00000, Total beta =  5.00000, Total charge = -0.00000
 
 
-    Psi4 stopped on: Thursday, 15 October 2026 02:28PM
-    Psi4 wall time for execution: 0:00:00.28
+    Psi4 stopped on: Thursday, 15 October 2026 02:50PM
+    Psi4 wall time for execution: 0:00:00.27
 
 *** Psi4 exiting successfully. Buy a developer a beer!

@@ -133,5 +133,67 @@ def test_options_pass_through(run: Run, water: Structure) -> None:
 
 def test_invalid_option_fails(run: Run, water: Structure) -> None:
     """Psi4 rejects unknown options, and the error says so."""
-    with pytest.raises(Exception, match="return code 1"):
+    with pytest.raises(Exception, match="NOT_A_PSI4_OPTION is not a valid option"):
         run(_input(water, CalcType.energy, not_a_psi4_option=1))
+
+
+# Slightly pyramidal ammonia (bohr); its inversion saddle point is planar.
+AMMONIA = Structure(
+    symbols=["N", "H", "H", "H"],
+    geometry=np.array(
+        [
+            [0.0, 0.0, 0.25],
+            [1.77, 0.0, -0.10],
+            [-0.885, 1.533, -0.10],
+            [-0.885, -1.533, -0.10],
+        ]
+    ),
+)
+
+
+def test_transition_state(run: Run) -> None:
+    """optking finds ammonia's planar inversion saddle point: one imaginary mode."""
+    output = run(
+        _input(AMMONIA, CalcType.transition_state), case="ammonia_transition_state"
+    )
+    results = output.results
+    assert isinstance(results, OptimizationData)
+    assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)
+    final = results.trajectory[-1].input_data.structure
+    frequencies = run(_input(final, CalcType.hessian)).results.freqs_wavenumber
+    assert sum(f < 0 for f in frequencies) == 1
+
+
+# Water in a C2v-aligned frame (bohr): Psi4 detects C2v without moving it.
+SYMMETRIC_WATER = Structure(
+    symbols=["O", "H", "H"],
+    geometry=np.array([[0.0, 0.0, -0.12], [0.0, 1.43, 0.98], [0.0, -1.43, 0.98]]),
+)
+
+
+def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
+    """Psi4's detected symmetry and symmetry c1 give the same results in the same frame."""
+    detected = run(_input(SYMMETRIC_WATER, CalcType.gradient)).results
+    off = run(_input(SYMMETRIC_WATER, CalcType.gradient, symmetry="c1")).results
+    assert detected.extras["psi4_variables"]["SCF ITERATIONS"] > 0
+    assert np.isclose(detected.energy, off.energy, atol=1e-9)
+    assert np.allclose(detected.gradient, off.gradient, atol=1e-8)
+    assert detected.wavefunction is not None and off.wavefunction is not None
+    assert np.allclose(
+        detected.wavefunction.scf_eigenvalues_a,
+        off.wavefunction.scf_eigenvalues_a,
+        atol=1e-8,
+    )
+    assert np.array_equal(
+        detected.wavefunction.scf_occupations_a, off.wavefunction.scf_occupations_a
+    )
+
+
+def test_projecting_rotations(run: Run, water: Structure) -> None:
+    """Away from a stationary point Psi4 keeps rotations unless told to project them."""
+    default = run(_input(water, CalcType.hessian)).results.freqs_wavenumber
+    projected = run(
+        _input(water, CalcType.hessian, project_rot=True)
+    ).results.freqs_wavenumber
+    assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
+    assert len(projected) == 3  # 3N - 6

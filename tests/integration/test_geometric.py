@@ -66,6 +66,26 @@ def test_optimization_with_psi4(run: Run, water: Structure) -> None:
     assert np.isclose(output.results.energies[-1], -74.96590112, atol=1e-5)
 
 
+@requires("psi4")
+def test_qmmm_optimization_with_psi4(run: Run, water: Structure) -> None:
+    """QM/MM geometry optimization: geomeTRIC moves the QM atoms; charges stay fixed."""
+    charges = [[-0.8, [0.0, 0.0, 5.0]], [0.4, [1.0, 1.0, 6.0]]]
+    inp = _input(
+        water,
+        CalcType.optimization,
+        "psi4",
+        HF_STO3G,
+        scf_type="pk",
+        external_potentials=charges,
+    )
+    output = run(inp)
+    assert isinstance(output.results, OptimizationData)
+    energies = output.results.energies
+    assert energies[0] > energies[-1]
+    final = output.results.trajectory[-1].results
+    assert final.point_charge_gradient is not None
+
+
 @requires("terachem")
 def test_optimization_with_terachem_propagates_wavefunction(
     run: Run, hydrogen: Structure

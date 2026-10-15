@@ -7,15 +7,19 @@ inside ``main``, so the helpers can be tested without Psi4.
 
 ``job.json``::
 
-    {"calctype": "energy" | "gradient" | "hessian" | "optimization",
+    {"calctype": "energy" | "gradient" | "hessian" | "optimization"
+                 | "transition_state",
      "method": "hf/sto-3g",                  # first argument to psi4.energy() etc.
      "options": {...},                       # passed to psi4.set_options() unchanged
      "kwargs": {...},                        # extra driver keyword arguments
      "molecule": {"symbols": [...], "geometry": [[x, y, z], ...],  # bohr
-                  "charge": 0, "multiplicity": 1}}
+                  "charge": 0, "multiplicity": 1,
+                  "symmetry": None}}           # point group, or None for Psi4's choice
 
 ``results.json`` holds plain numbers and lists (atomic units, bohr), plus ``error``
-when the calculation raised. The process exits 1 on error.
+when the calculation raised. The script exits 0 even then: ``results.json`` is the
+record of success, so the codec's failure hook reports Psi4's own message instead of
+a bare exit status. A nonzero exit therefore means Psi4 itself crashed.
 """
 
 from __future__ import annotations
@@ -30,19 +34,34 @@ RESULTS_FILE = "results.json"
 
 
 def molecule_string(molecule: dict[str, Any]) -> str:
-    """Build a Psi4 molecule block in bohr that Psi4 will not move or symmetrize.
+    """Build a Psi4 molecule block in bohr that Psi4 will not move.
 
-    The frame is fixed (``no_com``, ``no_reorient``) so gradients and Hessians come
-    back in the input's coordinates, and ``symmetry c1`` keeps orbital data in one
-    block in input order.
+    The frame is fixed (``no_com``, ``no_reorient``) so gradients, Hessians, and
+    geometries come back in the input's coordinates. Psi4 then detects only symmetry
+    that the fixed frame already has, without moving atoms. ``molecule["symmetry"]``,
+    when set, names the point group instead (``"c1"`` turns symmetry off).
     """
     lines = [f"{molecule['charge']} {molecule['multiplicity']}"]
     for symbol, (x, y, z) in zip(
         molecule["symbols"], molecule["geometry"], strict=True
     ):
         lines.append(f"{symbol} {x!r} {y!r} {z!r}")
-    lines += ["units bohr", "no_com", "no_reorient", "symmetry c1"]
+    lines += ["units bohr", "no_com", "no_reorient"]
+    if molecule.get("symmetry"):
+        lines.append(f"symmetry {molecule['symmetry']}")
     return "\n".join(lines)
+
+
+def orbitals(
+    energies: list[list[float]], occupations: list[list[float]]
+) -> tuple[list[float], list[float]]:
+    """Merge per-irrep orbital energies and occupations, sorted by energy."""
+    pairs = sorted(
+        (e, o)
+        for block_e, block_o in zip(energies, occupations, strict=True)
+        for e, o in zip(block_e, block_o, strict=True)
+    )
+    return [e for e, _ in pairs], [o for _, o in pairs]
 
 
 def wavenumbers(omega: list[complex]) -> list[float]:
@@ -81,10 +100,16 @@ def _wavefunction_results(psi4: Any, wfn: Any, molecule: Any) -> dict[str, Any]:
     _try(results, "nmo", wfn.nmo)
     _try(results, "nalpha", wfn.nalpha)
     _try(results, "nbeta", wfn.nbeta)
-    _try(results, "eigenvalues_a", wfn.epsilon_a)
-    _try(results, "eigenvalues_b", wfn.epsilon_b)
-    _try(results, "occupations_a", wfn.occupation_a)
-    _try(results, "occupations_b", wfn.occupation_b)
+    for spin in ("a", "b"):
+        try:
+            energies, occupations = orbitals(
+                [to_plain(b) for b in getattr(wfn, f"epsilon_{spin}")().nph],
+                [to_plain(b) for b in getattr(wfn, f"occupation_{spin}")().nph],
+            )
+        except Exception:
+            continue
+        results[f"eigenvalues_{spin}"] = energies
+        results[f"occupations_{spin}"] = occupations
     _try(results, "dipole", lambda: psi4.variable("SCF DIPOLE"))
     try:
         psi4.oeprop(wfn, "MULLIKEN_CHARGES")
@@ -113,7 +138,7 @@ def run(psi4: Any, job: dict[str, Any], results: dict[str, Any]) -> None:
     calctype = job["calctype"]
     kwargs = {**job["kwargs"], "return_wfn": True}
 
-    if calctype == "optimization":
+    if calctype in ("optimization", "transition_state"):
         energy, wfn, history = psi4.optimize(
             job["method"], return_history=True, **kwargs
         )
@@ -151,26 +176,22 @@ def run(psi4: Any, job: dict[str, Any], results: dict[str, Any]) -> None:
     results.update(_wavefunction_results(psi4, wfn, molecule))
 
 
-def main() -> int:
-    """Run ``job.json`` and write ``results.json``; return the process exit code."""
+def main() -> None:
+    """Run ``job.json`` and write ``results.json``, recording any error in it."""
     with open(JOB_FILE) as f:
         job = json.load(f)
     results: dict[str, Any] = {}
-    status = 0
     try:
         import psi4  # type: ignore[import-not-found]
 
         run(psi4, job, results)
     except Exception as exc:
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stdout)
         results["error"] = f"{type(exc).__name__}: {exc}"
-        status = 1
     with open(RESULTS_FILE, "w") as f:
         json.dump(results, f)
-    return status
 
 
 if __name__ == "__main__":
-    # Psi4 reports any SystemExit, even status 0, as a crash; exit only on failure.
-    if main():
-        sys.exit(1)
+    # No sys.exit: Psi4 reports any SystemExit, even status 0, as a crash.
+    main()

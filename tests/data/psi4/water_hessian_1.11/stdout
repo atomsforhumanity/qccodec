@@ -32,9 +32,9 @@
     -----------------------------------------------------------------------
 
 
-    Psi4 started on: Thursday, 15 October 2026 02:27PM
+    Psi4 started on: Thursday, 15 October 2026 02:50PM
 
-    Process ID: 1627706
+    Process ID: 1728619
     Host:       localhost
     PSIDATADIR: /home/user/micromamba/envs/psi4/share/psi4
     Memory:     500.0 MiB
@@ -57,7 +57,7 @@ gradient() will perform analytic gradient computation.
     Solid Harmonics ordering:            Gaussian
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:27:58 2026
+*** at Thu Oct 15 14:50:11 2026
 
    => Loading Basis Set <=
 
@@ -171,10 +171,10 @@ gradient() will perform analytic gradient computation.
                         Total Energy        Delta E     RMS |[F,P]|
 
    @RHF iter SAD:   -74.19489806299137   -7.41949e+01   0.00000e+00 
-   @RHF iter   1:   -74.91350707051895   -7.18609e-01   3.58584e-02 DIIS/ADIIS
-   @RHF iter   2:   -74.96345376101216   -4.99467e-02   5.50028e-03 DIIS/ADIIS
-   @RHF iter   3:   -74.96434348007217   -8.89719e-04   1.27226e-03 DIIS/ADIIS
-   @RHF iter   4:   -74.96441285067793   -6.93706e-05   1.24124e-04 DIIS/ADIIS
+   @RHF iter   1:   -74.91350707051895   -7.18609e-01   3.58584e-02 ADIIS/DIIS
+   @RHF iter   2:   -74.96345376101216   -4.99467e-02   5.50028e-03 ADIIS/DIIS
+   @RHF iter   3:   -74.96434348007217   -8.89719e-04   1.27226e-03 ADIIS/DIIS
+   @RHF iter   4:   -74.96441285067793   -6.93706e-05   1.24124e-04 ADIIS/DIIS
    @RHF iter   5:   -74.96441400601212   -1.15533e-06   9.36088e-06 DIIS
    @RHF iter   6:   -74.96441401121291   -5.20079e-09   4.46421e-07 DIIS
    @RHF iter   7:   -74.96441401122431   -1.13971e-11   1.67796e-09 DIIS
@@ -232,18 +232,18 @@ Properties computed using the SCF density matrix
 
  ------------------------------------------------------------------------------------
 
-*** tstop() called on localhost at Thu Oct 15 14:27:59 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:11 2026
 Module time:
-	user time   =       0.23 seconds =       0.00 minutes
+	user time   =       0.24 seconds =       0.00 minutes
 	system time =       0.02 seconds =       0.00 minutes
-	total time  =          1 seconds =       0.02 minutes
+	total time  =          0 seconds =       0.00 minutes
 Total time:
-	user time   =       0.23 seconds =       0.00 minutes
+	user time   =       0.24 seconds =       0.00 minutes
 	system time =       0.02 seconds =       0.00 minutes
-	total time  =          1 seconds =       0.02 minutes
+	total time  =          0 seconds =       0.00 minutes
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:27:59 2026
+*** at Thu Oct 15 14:50:11 2026
 
 
          ------------------------------------------------------------
@@ -295,7 +295,7 @@ Total time:
        3       -0.018859522225    -0.002415352789     0.016579628686
 
 
-*** tstop() called on localhost at Thu Oct 15 14:27:59 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:11 2026
 Module time:
 	user time   =       0.00 seconds =       0.00 minutes
 	system time =       0.00 seconds =       0.00 minutes
@@ -303,7 +303,7 @@ Module time:
 Total time:
 	user time   =       0.24 seconds =       0.00 minutes
 	system time =       0.02 seconds =       0.00 minutes
-	total time  =          1 seconds =       0.02 minutes
+	total time  =          0 seconds =       0.00 minutes
 
   Based on options and gradient (rms=1.86E-02), recommend projecting translations and not projecting rotations.
 hessian() will perform analytic frequency computation.
@@ -315,7 +315,7 @@ hessian() will perform analytic frequency computation.
     Solid Harmonics ordering:            Gaussian
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:27:59 2026
+*** at Thu Oct 15 14:50:11 2026
 
    => Loading Basis Set <=
 
@@ -429,10 +429,10 @@ hessian() will perform analytic frequency computation.
                         Total Energy        Delta E     RMS |[F,P]|
 
    @RHF iter SAD:   -74.19489806299137   -7.41949e+01   0.00000e+00 
-   @RHF iter   1:   -74.91350707051895   -7.18609e-01   3.58584e-02 DIIS/ADIIS
-   @RHF iter   2:   -74.96345376101216   -4.99467e-02   5.50028e-03 DIIS/ADIIS
-   @RHF iter   3:   -74.96434348007217   -8.89719e-04   1.27226e-03 DIIS/ADIIS
-   @RHF iter   4:   -74.96441285067793   -6.93706e-05   1.24124e-04 DIIS/ADIIS
+   @RHF iter   1:   -74.91350707051895   -7.18609e-01   3.58584e-02 ADIIS/DIIS
+   @RHF iter   2:   -74.96345376101216   -4.99467e-02   5.50028e-03 ADIIS/DIIS
+   @RHF iter   3:   -74.96434348007217   -8.89719e-04   1.27226e-03 ADIIS/DIIS
+   @RHF iter   4:   -74.96441285067793   -6.93706e-05   1.24124e-04 ADIIS/DIIS
    @RHF iter   5:   -74.96441400601212   -1.15533e-06   9.36088e-06 DIIS
    @RHF iter   6:   -74.96441401121291   -5.20079e-09   4.46421e-07 DIIS
    @RHF iter   7:   -74.96441401122431   -1.13971e-11   1.67796e-09 DIIS
@@ -490,18 +490,18 @@ Properties computed using the SCF density matrix
 
  ------------------------------------------------------------------------------------
 
-*** tstop() called on localhost at Thu Oct 15 14:27:59 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:11 2026
 Module time:
-	user time   =       0.08 seconds =       0.00 minutes
+	user time   =       0.10 seconds =       0.00 minutes
 	system time =       0.00 seconds =       0.00 minutes
 	total time  =          0 seconds =       0.00 minutes
 Total time:
-	user time   =       0.32 seconds =       0.01 minutes
+	user time   =       0.35 seconds =       0.01 minutes
 	system time =       0.02 seconds =       0.00 minutes
-	total time  =          1 seconds =       0.02 minutes
+	total time  =          0 seconds =       0.00 minutes
 
 *** tstart() called on localhost
-*** at Thu Oct 15 14:27:59 2026
+*** at Thu Oct 15 14:50:11 2026
 
 
          ------------------------------------------------------------
@@ -676,15 +676,15 @@ Total time:
 
 
 
-*** tstop() called on localhost at Thu Oct 15 14:27:59 2026
+*** tstop() called on localhost at Thu Oct 15 14:50:11 2026
 Module time:
 	user time   =       0.01 seconds =       0.00 minutes
 	system time =       0.00 seconds =       0.00 minutes
 	total time  =          0 seconds =       0.00 minutes
 Total time:
-	user time   =       0.33 seconds =       0.01 minutes
+	user time   =       0.36 seconds =       0.01 minutes
 	system time =       0.02 seconds =       0.00 minutes
-	total time  =          1 seconds =       0.02 minutes
+	total time  =          0 seconds =       0.00 minutes
 
 
   ==> Harmonic Vibrational Analysis <==
@@ -817,7 +817,7 @@ OEProp: No title given, name of density matrix used for the following properties
 
 Warning: thermodynamics relations excluded imaginary frequencies: ['752.2711i' '591.2996i' '480.0422i']
 
-    Psi4 stopped on: Thursday, 15 October 2026 02:27PM
-    Psi4 wall time for execution: 0:00:00.40
+    Psi4 stopped on: Thursday, 15 October 2026 02:50PM
+    Psi4 wall time for execution: 0:00:00.42
 
 *** Psi4 exiting successfully. Buy a developer a beer!

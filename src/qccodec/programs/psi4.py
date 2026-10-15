@@ -12,24 +12,41 @@ Inputs map to Psi4 as follows:
   for ``psi4.energy("hf/sto-3g")``. Leave ``basis`` empty for composite methods or to
   set ``basis`` in ``keywords``.
 - ``keywords`` go to ``psi4.set_options`` unchanged, so every Psi4 option and its
-  module-scoped form (``"scf__maxiter"``) works as in Psi4's documentation.
-- Driver keyword arguments are the exception: ``external_potentials`` (point charges
-  for QM/MM electrostatic embedding, ``[[charge, [x, y, z]], ...]`` in bohr) and
-  ``dertype`` are passed to ``psi4.energy()``/``gradient()``/``frequency()``/
-  ``optimize()`` instead.
+  module-scoped form (``"scf__maxiter"``) works as in Psi4's documentation. Three
+  kinds of keyword are not Psi4 options and are routed instead:
+
+  - Driver arguments go to ``psi4.energy()``/``gradient()``/``frequency()``/
+    ``optimize()``: ``external_potentials`` (point charges for QM/MM electrostatic
+    embedding, ``[[charge, [x, y, z]], ...]`` in bohr), ``dertype`` (``0`` or
+    ``"energy"`` for derivatives by finite differences of energies, ``1`` or
+    ``"gradient"`` for Hessians from finite differences of gradients), and
+    ``project_trans``/``project_rot`` (whether frequency analysis removes
+    translations and rotations; Psi4 decides by default).
+  - ``symmetry`` is the molecule block's point group, e.g. ``"c1"`` to turn symmetry
+    off. By default Psi4 detects whatever symmetry the input frame already has.
+
 - ``cmdline_args`` are appended to the ``psi4`` command, e.g. ``["-n", "4"]`` for
   four threads or ``["--memory", "8GB"]``.
 
-The structure runs in a fixed frame without symmetry (``no_com``, ``no_reorient``,
-``symmetry c1``), so gradients, Hessians, and point-charge gradients are in the
-input's coordinates. No input field carries atom indices.
+The molecule keeps the input's frame (``no_com``, ``no_reorient``): Psi4 never moves
+or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
+input's coordinates, and symmetry detection only finds symmetry the frame already
+has. No input field carries atom indices.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (``psi4.frequency``: also
-frequencies, normal modes, and the gradient), and ``optimization`` (``psi4.optimize``
-with optking; every step carries its energy and gradient). Every single point also
+frequencies, normal modes, and the gradient), ``optimization`` and
+``transition_state`` (``psi4.optimize`` with optking; every step carries its energy
+and gradient). A transition-state search sets ``opt_type ts`` and, unless given,
+``full_hess_every 0`` (an exact Hessian at the first step). Every single point also
 records Mulliken charges in ``atomic_charges`` when the method supports them, the
 gradient on external point charges in ``point_charge_gradient``, and all scalar Psi4
 variables in ``extras["psi4_variables"]``.
+
+Psi4 1.11 handles point charges correctly only for energies and gradients. Its
+Hessians with ``external_potentials`` fail, and its optimizations reset the molecule
+to the starting geometry at every step, so they never move. The codec rejects those
+combinations; for QM/MM geometry optimizations, run geomeTRIC with Psi4 gradients as
+its child.
 """
 
 from __future__ import annotations
@@ -61,6 +78,7 @@ codec = Codec(
         CalcType.gradient,
         CalcType.hessian,
         CalcType.optimization,
+        CalcType.transition_state,
     },
 )
 
@@ -68,7 +86,12 @@ DRIVER_FILE = "input.py"
 JOB_FILE = "job.json"
 RESULTS_FILE = "results.json"
 # Keywords that are arguments of the Psi4 driver call rather than Psi4 options.
-DRIVER_KWARGS = frozenset({"external_potentials", "dertype"})
+DRIVER_KWARGS = frozenset(
+    {"external_potentials", "dertype", "project_trans", "project_rot"}
+)
+# Keywords that are directives of the molecule block.
+MOLECULE_KEYWORDS = frozenset({"symmetry"})
+OPTIMIZATIONS = [CalcType.optimization, CalcType.transition_state]
 _DRIVER_SOURCE = (Path(__file__).with_name("_psi4_driver.py")).read_text()
 SINGLE_POINTS = [CalcType.energy, CalcType.gradient, CalcType.hessian]
 
@@ -81,7 +104,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write ``job.json`` and the driver script, and build the ``psi4`` command.
 
     Raises:
-        EncoderError: The model is missing.
+        EncoderError: The model is missing, ``opt_type`` contradicts the
+            calculation type, or point charges are combined with a calculation
+            Psi4 cannot run with them.
     """
     if inp.model is None:
         raise EncoderError(
@@ -90,8 +115,28 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     method = inp.model.method
     if inp.model.basis:
         method = f"{method}/{inp.model.basis}"
-    options = {k: v for k, v in inp.keywords.items() if k not in DRIVER_KWARGS}
-    kwargs = {k: v for k, v in inp.keywords.items() if k in DRIVER_KWARGS}
+    options: dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
+    molecule_keywords: dict[str, Any] = {}
+    for key, value in inp.keywords.items():
+        name = key.lower()
+        if name in DRIVER_KWARGS:
+            kwargs[name] = value
+        elif name in MOLECULE_KEYWORDS:
+            molecule_keywords[name] = value
+        else:
+            options[key] = value
+    _optimizer_options(inp.calctype, options)
+    if "external_potentials" in kwargs and inp.calctype not in (
+        CalcType.energy,
+        CalcType.gradient,
+    ):
+        raise EncoderError(
+            "Psi4 1.11 supports external_potentials only for energies and gradients: "
+            "its Hessians fail and its optimizations never leave the starting "
+            "geometry. For QM/MM optimizations, run geomeTRIC with Psi4 gradients as "
+            "its child."
+        )
     job = {
         "calctype": inp.calctype.value,
         "method": method,
@@ -102,6 +147,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             "geometry": inp.structure.geometry.tolist(),
             "charge": inp.structure.charge,
             "multiplicity": inp.structure.multiplicity,
+            "symmetry": molecule_keywords.get("symmetry"),
         },
     }
     return invocation(
@@ -112,6 +158,24 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         # Keep Psi4's scratch files in the calculation directory.
         environment={"PSI_SCRATCH": "."},
     )
+
+
+def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:
+    """Make optking's search type match the calculation type.
+
+    Raises:
+        EncoderError: ``opt_type`` asks for the other kind of search.
+    """
+    lower = {k.lower(): k for k in options}
+    opt_type = str(options[lower["opt_type"]]).lower() if "opt_type" in lower else None
+    if calctype == CalcType.transition_state:
+        if opt_type not in (None, "ts"):
+            raise EncoderError("A transition_state calculation needs opt_type 'ts'.")
+        options.setdefault(lower.get("opt_type", "opt_type"), "ts")
+        # optking's guess Hessian rarely finds a saddle point; start from an exact one.
+        options.setdefault(lower.get("full_hess_every", "full_hess_every"), 0)
+    elif calctype == CalcType.optimization and opt_type == "ts":
+        raise EncoderError("Use calctype transition_state for opt_type 'ts'.")
 
 
 # ------------------------------------------------------------------ decoding
@@ -188,7 +252,7 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in fields.items() if v is not None}
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
+@codec.parser(file="directory", target="trajectory", calctypes=OPTIMIZATIONS)
 def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     """Build the optimization trajectory from optking's history.
 

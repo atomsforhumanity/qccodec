@@ -29,6 +29,7 @@
       ]
     ],
     "charge": 0,
-    "multiplicity": 1
+    "multiplicity": 1,
+    "symmetry": null
   }
 }
