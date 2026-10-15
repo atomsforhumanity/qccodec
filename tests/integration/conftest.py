@@ -7,7 +7,8 @@ Integration tests are marked ``integration`` and deselected by default. Run them
 
 Each test skips when its program is not on ``PATH``. Pass ``--record-cases`` to save
 each run that names a case as ``tests/data/<program>/<case>_<version>/`` for the
-offline parser tests; review and prune the files before committing them. Existing
+offline parser tests, with this machine's home directory and hostname replaced in
+text files; review and prune the files before committing them. Existing
 cases are never overwritten, so delete one first to re-record it.
 """
 
@@ -17,6 +18,7 @@ import json
 import os
 import re
 import shutil
+import socket
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -141,8 +143,26 @@ def _record_case(output: ProgramOutput, scratch: Path, root: Path, case: str) ->
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
 
+    _scrub(dest)
     # A recorded case must replay offline, or it is useless as a fixture.
     run_case(codec, load_case(dest), rtol=1e-6)
+
+
+def _scrub(dest: Path) -> None:
+    """Replace this machine's home directory and hostname in recorded text files."""
+    replacements = {str(Path.home()): "/home/user", socket.gethostname(): "localhost"}
+    for path in dest.rglob("*"):
+        if not path.is_file() or path.parent.name == "encoded":
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        scrubbed = text
+        for old, new in replacements.items():
+            scrubbed = scrubbed.replace(old, new)
+        if scrubbed != text:
+            path.write_text(scrubbed)
 
 
 def _without_execution(value: Any) -> Any:

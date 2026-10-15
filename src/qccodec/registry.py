@@ -20,6 +20,7 @@ _BUILTIN: dict[str, str] = {
     "orca": "orca",
     "crest": "crest",
     "xtb": "xtb",
+    "psi4": "psi4",
     "geometric": "geometric",
     "terachem-fe": "tcpb",
     "terachem-pbs": "tcpb",

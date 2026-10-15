@@ -1,0 +1,53 @@
+{
+  "calctype": "gradient",
+  "method": "hf/sto-3g",
+  "options": {
+    "scf_type": "pk"
+  },
+  "kwargs": {
+    "external_potentials": [
+      [
+        -0.8,
+        [
+          0.0,
+          0.0,
+          5.0
+        ]
+      ],
+      [
+        0.4,
+        [
+          1.0,
+          1.0,
+          6.0
+        ]
+      ]
+    ]
+  },
+  "molecule": {
+    "symbols": [
+      "O",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.524,
+        1.687,
+        0.48
+      ],
+      [
+        1.146,
+        -0.45,
+        -1.354
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1
+  }
+}

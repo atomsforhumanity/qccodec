@@ -57,6 +57,15 @@ def test_optimization_with_crest(run: Run, water: Structure) -> None:
 HF_STO3G = Model(method="hf", basis="sto-3g")
 
 
+@requires("psi4")
+def test_optimization_with_psi4(run: Run, water: Structure) -> None:
+    """geomeTRIC drives Psi4 gradients to the HF/STO-3G minimum optking also finds."""
+    inp = _input(water, CalcType.optimization, "psi4", HF_STO3G, scf_type="pk")
+    output = run(inp)
+    assert isinstance(output.results, OptimizationData)
+    assert np.isclose(output.results.energies[-1], -74.96590112, atol=1e-5)
+
+
 @requires("terachem")
 def test_optimization_with_terachem_propagates_wavefunction(
     run: Run, hydrogen: Structure

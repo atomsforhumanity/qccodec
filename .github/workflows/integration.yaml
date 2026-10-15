@@ -30,11 +30,11 @@ permissions:
 
 jobs:
   cpu:
-    name: CPU programs (CREST, xtb, geomeTRIC)
+    name: CPU programs (CREST, xtb, Psi4, geomeTRIC)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      QCCODEC_REQUIRE_PROGRAMS: crest,xtb
+      QCCODEC_REQUIRE_PROGRAMS: crest,xtb,psi4
       # Official static build. conda-forge's crest 3.0.2 crashes in its optimizer
       # (Fortran format error in ancopt.f90). Update the version and checksum together.
       CREST_VERSION: v3.0.2
@@ -64,6 +64,21 @@ jobs:
           echo "$RUNNER_TEMP/programs/xtb/bin" >> "$GITHUB_PATH"
           echo "XTBPATH=$RUNNER_TEMP/programs/xtb/share/xtb" >> "$GITHUB_ENV"
           echo "GXTB_EXECUTABLE=$RUNNER_TEMP/programs/xtb/bin/xtb" >> "$GITHUB_ENV"
+      # Psi4 ships through conda only. A wrapper exposes the psi4 command without
+      # putting the environment's python ahead of uv's on PATH.
+      - name: Install Psi4
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: psi4
+          create-args: -c conda-forge psi4=1.11 python=3.12
+          cache-environment: true
+          init-shell: none
+      - name: Put psi4 on PATH
+        run: |
+          mkdir -p "$RUNNER_TEMP/programs/bin"
+          printf '#!/bin/sh\nexec "%s" "$@"\n' "$MAMBA_ROOT_PREFIX/envs/psi4/bin/psi4" > "$RUNNER_TEMP/programs/bin/psi4"
+          chmod +x "$RUNNER_TEMP/programs/bin/psi4"
+          echo "$RUNNER_TEMP/programs/bin" >> "$GITHUB_PATH"
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -74,6 +89,7 @@ jobs:
         run: |
           crest --version | grep -i version
           xtb --version | grep -i version
+          echo "psi4 $(psi4 --version)"
       - name: Run integration tests
         run: uv run pytest -m integration -rs
 
