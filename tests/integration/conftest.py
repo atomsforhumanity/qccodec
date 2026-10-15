@@ -82,13 +82,20 @@ def run(request: pytest.FixtureRequest, tmp_path: Path) -> Run:
     def _run(
         input_data: ProgramInput, case: str | None = None, **kwargs: Any
     ) -> ProgramOutput:
-        if not (record and case):
-            return compute(input_data, **kwargs)
         scratch = tmp_path / "scratch"
-        output = compute(
-            input_data, scratch_dir=scratch, rm_scratch_dir=False, **kwargs
-        )
-        _record_case(output, scratch, DATA_DIR / input_data.program, case)
+        if record and case:
+            kwargs.update(scratch_dir=scratch, rm_scratch_dir=False)
+        try:
+            output = compute(input_data, **kwargs)
+        except Exception as exc:
+            # Show the program's own output; pytest prints it under "Captured stdout".
+            logs = getattr(exc, "logs", None)
+            if logs:
+                print(f"--- last 100 lines of {input_data.program} output ---")
+                print("\n".join(logs.splitlines()[-100:]))
+            raise
+        if record and case:
+            _record_case(output, scratch, DATA_DIR / input_data.program, case)
         return output
 
     return _run
