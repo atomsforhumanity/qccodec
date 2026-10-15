@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - An `xtb` codec that runs the xtb program on the command line: energies, gradients, Hessians (with frequencies and normal modes), and optimizations with GFN0-, GFN1-, GFN2-xTB, GFN-FF, and g-xTB. Keywords pass through as xtb's own command-line flags; partial charges fill `atomic_charges`. xtb errors, unknown command-line options (which xtb only warns about, for example `--gxtb` on a build without g-xTB), and optimizations that run out of cycles raise `CalculationError`, although xtb exits 0 for the last two.
 - A "Supported programs" README section, including when to run xTB through `xtb` or `crest`.
-- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted GPU runner (TeraChem, ORCA) once one is configured.
+- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted runner for private and GPU programs (TeraChem, ORCA) once one is configured.
 
 ### Removed
 

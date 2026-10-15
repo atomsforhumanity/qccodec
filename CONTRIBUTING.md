@@ -82,12 +82,16 @@ and on pull requests that touch codecs or these tests. It is not a required chec
   and the xtb build that ships g-xTB, which also runs every other xtb method, each
   pinned by version and checksum in the workflow. Add a CPU program with an
   install step there and add it to `QCCODEC_REQUIRE_PROGRAMS`.
-- **GPU job.** Runs TeraChem (and ORCA when installed) on a self-hosted runner. It is
-  skipped until the repository variable `QC_GPU_RUNNER` names a runner label or
+- **Private/GPU job.** Runs licensed programs that cannot be installed on
+  GitHub-hosted runners (ORCA, TeraChem) and GPU programs (TeraChem) on a
+  self-hosted runner. It is skipped until the repository variable
+  `QC_PRIVATE_RUNNER` names the runner's label, or an
   [Actions Runner Controller](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller)
-  scale set. The runner image must provide the programs, a CUDA driver, network access
-  to the TeraChem license server, and `curl` and `git` for the setup actions.
-  `QC_GPU_PROGRAMS` (default `terachem`) lists the programs the image must have.
+  scale set. The runner must provide the programs on `PATH`, a CUDA driver, network
+  access to the TeraChem license server, and `curl` and `git` for the setup actions.
+  `QC_PRIVATE_PROGRAMS` (default `terachem`) lists the programs it must have. Images
+  containing licensed programs stay on the runner host; never push them to a public
+  registry.
 - **Fork pull requests** never run on the self-hosted runner. Keep "Require approval
   for all outside collaborators" enabled under Settings > Actions as a second guard.
 
