@@ -161,3 +161,6 @@ cython_debug/
 #.idea/
 # Fixture cases hold real program outputs, whatever their extension (crestopt.log, xtbopt.log, ...).
 !tests/data/**
+
+# Psi4 writes these next to whatever it runs
+timer.dat
