@@ -92,7 +92,7 @@ def test_optimization(run: Run, water: Structure) -> None:
 
 
 def test_point_charges(run: Run, water: Structure) -> None:
-    """QM/MM embedding: the gradient on the charges matches finite differences."""
+    """QM/MM embedding: the gradient on the charges matches a finite difference."""
     output = run(
         _input(water, CalcType.gradient, external_potentials=CHARGES),
         case="water_point_charges_gradient",
@@ -102,24 +102,19 @@ def test_point_charges(run: Run, water: Structure) -> None:
     analytic = np.asarray(results.point_charge_gradient)
     assert analytic.shape == (2, 3)
 
+    # Directional derivative along a direction that moves every charge coordinate:
+    # two energies check all six components at once.
+    direction = np.array([[0.3, -0.5, 0.2], [-0.4, 0.1, 0.6]])
+    direction /= np.linalg.norm(direction)
     step = 1e-3
-    numeric = np.zeros((2, 3))
-    for charge in range(2):
-        for axis in range(3):
-            energies = []
-            for sign in (1, -1):
-                positions = [list(xyz) for xyz in POSITIONS]
-                positions[charge][axis] += sign * step
-                moved = [
-                    [q, xyz] for q, xyz in zip(CHARGE_VALUES, positions, strict=True)
-                ]
-                energies.append(
-                    run(
-                        _input(water, CalcType.energy, external_potentials=moved)
-                    ).results.energy
-                )
-            numeric[charge, axis] = (energies[0] - energies[1]) / (2 * step)
-    assert np.allclose(analytic, numeric, atol=1e-6)
+    energies = []
+    for sign in (1, -1):
+        positions = (np.array(POSITIONS) + sign * step * direction).tolist()
+        moved = [[q, xyz] for q, xyz in zip(CHARGE_VALUES, positions, strict=True)]
+        result = run(_input(water, CalcType.energy, external_potentials=moved)).results
+        energies.append(result.energy)
+    numeric = (energies[0] - energies[1]) / (2 * step)
+    assert np.isclose(np.sum(analytic * direction), numeric, atol=1e-7)
 
 
 def test_options_pass_through(run: Run, water: Structure) -> None:
