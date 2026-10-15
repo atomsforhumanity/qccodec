@@ -45,7 +45,7 @@ jobs:
       GXTB_ARCHIVE: xtb-6.7.1-gxtb-140526-linux-x86_64.tar.xz
       GXTB_SHA256: cdfb81164f8d3300fc451dbbf2414528b533e71f7a30ec824b564cd30d6d9e5c # pragma: allowlist secret
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install CREST
         run: |
           curl -fsSL -o crest.tar.xz "https://github.com/crest-lab/crest/releases/download/${CREST_VERSION}/crest-gnu-12-ubuntu-latest.tar.xz"
@@ -64,7 +64,7 @@ jobs:
           echo "$RUNNER_TEMP/programs/xtb/bin" >> "$GITHUB_PATH"
           echo "XTBPATH=$RUNNER_TEMP/programs/xtb/share/xtb" >> "$GITHUB_ENV"
           echo "GXTB_EXECUTABLE=$RUNNER_TEMP/programs/xtb/bin/xtb" >> "$GITHUB_ENV"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           python-version: "3.12"
@@ -95,8 +95,8 @@ jobs:
       # silently skipping its tests.
       QCCODEC_REQUIRE_PROGRAMS: ${{ vars.QC_PRIVATE_PROGRAMS || 'terachem' }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - name: Install
