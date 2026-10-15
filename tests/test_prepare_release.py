@@ -44,3 +44,13 @@ def test_changelog_without_unreleased_section_is_rejected(tmp_path, monkeypatch)
 def test_repository_changelog_has_unreleased_section():
     changelog = SCRIPT.parents[1] / "CHANGELOG.md"
     assert "## [unreleased]" in changelog.read_text()
+
+
+def test_set_version_rewrites_only_the_project_version(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\nversion = "0.1.0"\n\n[tool.other]\nversion = "keep"\n'
+    )
+    load_script().set_version("0.2.0")
+    text = (tmp_path / "pyproject.toml").read_text()
+    assert 'version = "0.2.0"' in text and 'version = "keep"' in text
