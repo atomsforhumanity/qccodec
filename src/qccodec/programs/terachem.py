@@ -256,9 +256,12 @@ def parse_excited_states(stdout: str) -> list[dict]:
 
 @codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
 def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
-    """Build an optimization trajectory from ``scr*/optim.xyz`` and stdout.
+    """Build an optimization trajectory from the scratch trajectory file and stdout.
 
-    Each step's stdout is decoded as a gradient calculation with this codec.
+    Each step's stdout is decoded as a gradient calculation with this codec. Builds
+    through at least 2023.09 write ``scr*/optim.xyz`` with the energy first in each
+    comment line; newer builds (2026.10 confirmed) write ``scr*/optim_trajectory.xyz``
+    with comments such as ``frame 0 SCF Energy = -7.49e+01 Hartree, ...``.
     """
     if ctx.input_data is None:
         raise ParserError("Optimization trajectory parsing requires input_data.")
@@ -266,8 +269,12 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         return []
     stdout = ctx.stdout or ""
 
+    try:
+        trajectory_file = ctx.path("scr*/optim_trajectory.xyz")
+    except FileNotFoundError:
+        trajectory_file = ctx.path("scr*/optim.xyz")
     structures = Structure.open_multi(
-        ctx.path("scr*/optim.xyz"),
+        trajectory_file,
         charge=ctx.input_data.structure.charge,
         multiplicity=ctx.input_data.structure.multiplicity,
     )
@@ -299,7 +306,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         parsed = ctx.decode(CalcType.gradient, stdout=step_logs)
         assert isinstance(parsed, SinglePointData)  # for mypy
         values = parsed.model_dump()
-        values["energy"] = structure.extras[Structure._xyz_comment_key][0]
+        values["energy"] = _comment_energy(structure)
         results = SinglePointData(**values)
         step_input = ProgramInput.model_validate(
             {
@@ -323,6 +330,12 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
 
 
 # ------------------------------------------------------- unregistered helpers
+
+
+def _comment_energy(structure: Structure) -> float:
+    """Read the energy from a TeraChem trajectory frame's xyz comment line."""
+    comment = " ".join(structure.extras[Structure._xyz_comment_key])
+    return float(re_search(r"[-+]?\d+\.\d+(?:[eE][-+]?\d+)?", comment).group(0))
 
 
 def parse_version_control_details(stdout: str) -> str:

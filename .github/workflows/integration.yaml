@@ -1,0 +1,87 @@
+name: Integration
+
+# Runs real programs through qccompute (tests marked "integration"). Not a required
+# check: program installs and GPU runners can fail for reasons unrelated to a change.
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # nightly, catches program and dependency drift
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/qccodec/programs/**"
+      - "src/qccodec/codec.py"
+      - "tests/integration/**"
+      - ".github/workflows/integration.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "src/qccodec/programs/**"
+      - "src/qccodec/codec.py"
+      - "tests/integration/**"
+      - ".github/workflows/integration.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cpu:
+    name: CPU programs (CREST, geomeTRIC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -el {0} # login shell activates the micromamba environment
+    env:
+      QCCODEC_REQUIRE_PROGRAMS: crest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: tests/integration/envs/cpu.yaml
+          cache-environment: true
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install
+        run: uv sync --locked --group integration --extra geometric
+      - name: Program versions
+        run: crest --version | grep -i version
+      - name: Run integration tests
+        run: uv run pytest -m integration -rs
+
+  gpu:
+    name: GPU programs (TeraChem, ORCA)
+    # Runs on the self-hosted runner scale set named by the QC_GPU_RUNNER repository
+    # variable; the job is skipped until that variable exists. Never run fork pull
+    # requests on self-hosted runners: they would execute untrusted code on the cluster.
+    if: >-
+      vars.QC_GPU_RUNNER != '' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ vars.QC_GPU_RUNNER }}
+    timeout-minutes: 60
+    env:
+      # Programs the runner image must provide; a missing one fails the run
+      # instead of silently skipping its tests.
+      QCCODEC_REQUIRE_PROGRAMS: ${{ vars.QC_GPU_PROGRAMS || 'terachem' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: uv sync --locked --group integration --extra geometric
+      - name: GPU and programs
+        run: |
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+          for program in terachem orca crest; do
+            echo "$program: $(command -v "$program" || echo 'not installed')"
+          done
+      - name: Run integration tests
+        run: uv run pytest -m integration -rs

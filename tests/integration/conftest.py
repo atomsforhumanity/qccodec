@@ -1,0 +1,166 @@
+"""Fixtures for integration tests that run real programs through qccompute.
+
+Integration tests are marked ``integration`` and deselected by default. Run them with::
+
+    uv sync --group integration --extra geometric
+    uv run pytest -m integration
+
+Each test skips when its program is not on ``PATH``. Pass ``--record-cases`` to save
+each run that names a case as ``tests/data/<program>/<case>_<version>/`` for the
+offline parser tests; review and prune the files before committing them. Existing
+cases are never overwritten, so delete one first to re-record it.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pytest
+from qcdata import ProgramInput, ProgramOutput, Structure
+
+from qccodec import get_codec
+from qccodec.native import SubprocessInput
+from qccodec.testing import load_case, run_case
+
+DATA_DIR = Path(__file__).parent.parent / "data"
+# Output files larger than this are not copied into recorded cases (wavefunctions,
+# checkpoints, ...). Parsers that need them get a hand-made case instead.
+MAX_RECORDED_FILE_BYTES = 1_000_000
+
+
+def required_programs() -> set[str]:
+    """Programs that must not be skipped, from ``QCCODEC_REQUIRE_PROGRAMS``.
+
+    CI sets this (comma-separated) so a runner image that lacks a program fails its
+    tests instead of silently skipping them.
+    """
+    return set(os.environ.get("QCCODEC_REQUIRE_PROGRAMS", "").replace(",", " ").split())
+
+
+def requires(*programs: str) -> pytest.MarkDecorator:
+    """Skip a test unless every program is on ``PATH`` or listed as required."""
+    required = required_programs()
+    missing = [p for p in programs if shutil.which(p) is None and p not in required]
+    return pytest.mark.skipif(
+        bool(missing), reason=f"not on PATH: {', '.join(missing)}"
+    )
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add ``--record-cases``."""
+    parser.addoption(
+        "--record-cases",
+        action="store_true",
+        default=False,
+        help="Save integration runs that name a case as tests/data/<program>/<case>/.",
+    )
+
+
+Run = Callable[..., ProgramOutput]
+
+
+@pytest.fixture
+def run(request: pytest.FixtureRequest, tmp_path: Path) -> Run:
+    """Return ``run(input, case=None, **compute_kwargs)``, which calls qccompute.
+
+    With ``--record-cases`` and a ``case`` name, the run happens in a kept scratch
+    directory and is saved as a fixture case, which is then replayed through
+    ``qccodec.testing.run_case`` to prove it is self-consistent.
+    """
+    # Imported here so the unit-test suite collects without the integration group.
+    from qccompute import compute
+
+    record = bool(request.config.getoption("--record-cases"))
+
+    def _run(
+        input_data: ProgramInput, case: str | None = None, **kwargs: Any
+    ) -> ProgramOutput:
+        if not (record and case):
+            return compute(input_data, **kwargs)
+        scratch = tmp_path / "scratch"
+        output = compute(
+            input_data, scratch_dir=scratch, rm_scratch_dir=False, **kwargs
+        )
+        _record_case(output, scratch, DATA_DIR / input_data.program, case)
+        return output
+
+    return _run
+
+
+def _record_case(output: ProgramOutput, scratch: Path, root: Path, case: str) -> None:
+    """Write ``output`` and its scratch directory as ``root/<case>_<version>``.
+
+    The program version in the name keeps fixtures from different releases apart.
+    """
+    input_data = output.input_data
+    codec = get_codec(input_data.program)
+    native = codec.encode(input_data)
+    version = output.results.provenance.program_version or "unknown"
+    if codec.version_key is not None:
+        version = codec.version_key(version)
+    dest = root / f"{case}_{re.sub(r'[^0-9A-Za-z.]+', '_', version).strip('_')}"
+    if dest.exists():
+        # Fixtures from older program versions cannot be regenerated; never replace one.
+        pytest.fail(f"{dest} exists; delete it first to re-record this case.")
+    (dest / "encoded").mkdir(parents=True)
+
+    (dest / "input.json").write_text(input_data.model_dump_json(indent=2) + "\n")
+    expected = _without_execution(json.loads(output.results.model_dump_json()))
+    (dest / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    if output.logs is not None:
+        (dest / "stdout").write_text(output.logs)
+    if isinstance(native, SubprocessInput):
+        (dest / "encoded" / "command.txt").write_text("\n".join(native.command) + "\n")
+    for name, content in native.files.items():
+        path = dest / "encoded" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(content, bytes):
+            path.write_bytes(content)
+        else:
+            path.write_text(content)
+
+    for path in sorted(p for p in scratch.rglob("*") if p.is_file()):
+        name = path.relative_to(scratch).as_posix()
+        if name in native.files or path.stat().st_size > MAX_RECORDED_FILE_BYTES:
+            continue
+        target = dest / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+
+    # A recorded case must replay offline, or it is useless as a fixture.
+    run_case(codec, load_case(dest), rtol=1e-6)
+
+
+def _without_execution(value: Any) -> Any:
+    """Drop ``execution`` metadata (local paths, timings); fixture replay ignores it."""
+    if isinstance(value, dict):
+        return {k: _without_execution(v) for k, v in value.items() if k != "execution"}
+    if isinstance(value, list):
+        return [_without_execution(v) for v in value]
+    return value
+
+
+@pytest.fixture(scope="session")
+def hydrogen() -> Structure:
+    """H2 at 1.4 bohr. Reference values depend on this geometry; do not change."""
+    return Structure(
+        symbols=["H", "H"], geometry=np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]])
+    )
+
+
+@pytest.fixture(scope="session")
+def water() -> Structure:
+    """Distorted water (bohr). Reference values depend on this geometry; do not change."""
+    return Structure(
+        symbols=["O", "H", "H"],
+        geometry=np.array(
+            [[0.0, 0.0, 0.0], [0.524, 1.687, 0.48], [1.146, -0.45, -1.354]]
+        ),
+    )
