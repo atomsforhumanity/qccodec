@@ -1,0 +1,108 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": 5,
+  "calcinfo_nbeta": 5,
+  "calcinfo_nbasis": 7,
+  "calcinfo_nmo": 7,
+  "extras": {
+    "psi4_variables": {
+      "CURRENT ENERGY": -74.9644140112243,
+      "CURRENT REFERENCE ENERGY": -74.9644140112243,
+      "DD SOLVATION ENERGY": 0.0,
+      "HF KINETIC ENERGY": 74.56271546582015,
+      "HF POTENTIAL ENERGY": -149.52712947704447,
+      "HF TOTAL ENERGY": -74.9644140112243,
+      "HF VIRIAL RATIO": 2.0053873915789495,
+      "NUCLEAR REPULSION ENERGY": 9.08842963006359,
+      "ONE-ELECTRON ENERGY": -122.18135135050821,
+      "PCM POLARIZATION ENERGY": 0.0,
+      "PE ENERGY": 0.0,
+      "SCF ITERATION ENERGY": -74.9644140112243,
+      "SCF ITERATIONS": 7.0,
+      "SCF TOTAL ENERGY": -74.9644140112243,
+      "TWO-ELECTRON ENERGY": 38.12850770922032
+    }
+  },
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "psi4",
+    "program_version": "1.11",
+    "qcdata_version": "0.20.1"
+  },
+  "energy": -74.9644140112243,
+  "gradient": [
+    [
+      0.032075111496655206,
+      0.023483904382355314,
+      -0.01694614596310079
+    ],
+    [
+      -0.013215589271685466,
+      -0.021068551593565354,
+      0.0003665172769692221
+    ],
+    [
+      -0.018859522224969172,
+      -0.0024153527887883497,
+      0.016579628686129333
+    ]
+  ],
+  "hessian": null,
+  "nuclear_repulsion_energy": 9.08842963006359,
+  "wavefunction": {
+    "extras": {},
+    "scf_eigenvalues_a": [
+      -20.243879152345567,
+      -1.2633158375392775,
+      -0.6110763309331495,
+      -0.4529529314094562,
+      -0.3909436857152909,
+      0.5954144257898145,
+      0.7274045261703452
+    ],
+    "scf_eigenvalues_b": [
+      -20.243879152345567,
+      -1.2633158375392775,
+      -0.6110763309331495,
+      -0.4529529314094562,
+      -0.3909436857152909,
+      0.5954144257898145,
+      0.7274045261703452
+    ],
+    "scf_occupations_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "scf_occupations_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "qcdata_version": "0.20.1"
+  },
+  "freqs_wavenumber": [],
+  "normal_modes_cartesian": null,
+  "gibbs_free_energy": null,
+  "scf_dipole_moment": [
+    0.49963763741117995,
+    0.3699352210202981,
+    -0.261577388461521
+  ],
+  "atomic_charges": [
+    -0.35491110449839525,
+    0.17740285066503192,
+    0.17750825383336133
+  ],
+  "point_charge_gradient": null,
+  "qcdata_version": "0.20.1"
+}

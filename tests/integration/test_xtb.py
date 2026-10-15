@@ -1,6 +1,8 @@
 """xtb runs through qccompute: GFN-xTB, GFN-FF, and g-xTB."""
 
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -98,13 +100,20 @@ def test_gfn0(run: Run, water: Structure) -> None:
 
 @pytest.fixture
 def gxtb(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Put the g-xTB build of xtb, named by GXTB_EXECUTABLE, first on PATH."""
+    """Make sure the xtb on PATH is a g-xTB build, or skip.
+
+    ``GXTB_EXECUTABLE`` names such a build when the default xtb is not one.
+    """
     path = os.environ.get("GXTB_EXECUTABLE")
-    if not path:
-        pytest.skip("GXTB_EXECUTABLE does not name the g-xTB build of xtb")
-    monkeypatch.setenv(
-        "PATH", f"{Path(path).resolve().parent}{os.pathsep}{os.environ['PATH']}"
+    if path:
+        directory = Path(path).resolve().parent
+        monkeypatch.setenv("PATH", f"{directory}{os.pathsep}{os.environ['PATH']}")
+    xtb = shutil.which("xtb")
+    usage = (
+        subprocess.run([xtb, "--help"], capture_output=True, text=True) if xtb else None
     )
+    if usage is None or "--gxtb" not in usage.stdout + usage.stderr:
+        pytest.skip("no g-xTB build of xtb; set GXTB_EXECUTABLE or put one on PATH")
 
 
 @pytest.mark.usefixtures("gxtb")
