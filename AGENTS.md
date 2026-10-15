@@ -9,6 +9,7 @@ Instructions for AI coding agents (and a quick reference for people) working in 
 - Keywords pass through to the program in its native form, so each program's own documentation applies. The exception is atom indices: they are 0-based in `ProgramInput` (matching `structure`), and each codec converts them for programs that count from 1. List those fields in the codec module's docstring.
 - Results must describe the input structure exactly. Many programs move, reorient, or symmetrize the molecule (center of mass, standard orientation, symmetry frame); every codec must turn that off (for example Psi4's `no_com`, `no_reorient`, `symmetry c1`) so gradients, Hessians, normal modes, and trajectories are in the input's frame and atom order. Check this for each new program, test it (compare a gradient with a reference or an optimization's first geometry with the input), and document it in the codec module's docstring. If a program cannot be stopped from transforming the structure, the codec must transform its results back.
 - Parsers are small functions registered with `@codec.parser(...)`; keep them independent of each other and of execution.
+- Every program has a runnable example script per kind of calculation in `examples/<program>/` (`single_point.py`, `optimization.py`, `transition_state.py`, `conformer_search.py`) and a docs page in `docs/programs/`; the codec module docstring is that page's reference text. `tests/test_examples.py` enforces this. See CONTRIBUTING.md.
 - Every parser is tested through fixture cases in `tests/data/<program>/<case>/` (`input.json`, `expected.json`, outputs, optional `case.json` and `encoded/`), run by `qccodec.testing`. Add a case for every new parser, program version, or bug fix. See CONTRIBUTING.md.
 
 ## The qc* suite
@@ -25,6 +26,7 @@ uv run pytest -m integration          # real programs via qccompute (uv sync --g
 uv run ruff check --fix . && uv run ruff format .
 uv run mypy
 uv run pre-commit run --all-files     # exactly what CI checks
+uv run mkdocs serve                   # docs preview (docs/, examples/, codec docstrings)
 ```
 
 Use `uv add` / `uv remove` for dependencies; never edit `uv.lock` by hand.

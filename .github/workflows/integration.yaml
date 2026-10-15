@@ -70,7 +70,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-name: psi4
-          create-args: -c conda-forge psi4=1.11 python=3.12
+          create-args: -c conda-forge psi4=1.11 pyddx=0.7 python=3.12
           cache-environment: true
           init-shell: none
       - name: Put psi4 on PATH

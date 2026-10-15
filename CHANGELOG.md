@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- A runnable example script for every program and calculation type in `examples/<program>/` (`single_point.py`, `optimization.py`, `transition_state.py`, `conformer_search.py`), showing every common option (implicit solvent, parallelism, convergence, program extras) and each program's quirks. The integration suite runs every script, and `tests/test_examples.py` fails if a program lacks one.
+- A documentation site at https://qccodec.docs.atomsforhumanity.org: a page per program (the codec module's docstring plus its example scripts), guides to decoding output and writing a codec, and an API reference. A Docs workflow builds it on pull requests and publishes it on release tags or by hand. The README now points there.
 - A `psi4` codec: energy, gradient, hessian (with frequencies and normal modes), optimization, and transition_state (optking, with energies and gradients for every step; transition states set `opt_type ts` and, unless given, `full_hess_every 0`) for any Psi4 method. Psi4 runs a small driver script with its own interpreter (`psi4 input.py -k`), so the calling environment never imports Psi4, and results come back as JSON instead of parsed text. Keywords pass to `psi4.set_options` unchanged, except driver arguments (`external_potentials` for QM/MM point charges in bohr, `dertype`, `project_trans`, `project_rot`) and the molecule's `symmetry`. The molecule keeps the input's frame (`no_com`, `no_reorient`); Psi4 detects only symmetry that frame already has, and `symmetry: c1` turns it off. Results also fill `atomic_charges` (Mulliken), `point_charge_gradient`, orbital energies and occupations, the dipole, and every scalar Psi4 variable in `extras["psi4_variables"]`. Psi4 errors raise `CalculationError` with Psi4's own message. Point charges are rejected for hessian, optimization, and transition_state, which Psi4 1.11 gets wrong (Hessians fail or disagree with finite differences of its gradients; optimizations never leave the starting geometry); run geomeTRIC with Psi4 gradients for QM/MM optimizations.
 - AGENTS.md and CONTRIBUTING.md require every codec to keep results in the input structure's frame.
 - Recorded integration cases replace this machine's home directory and hostname in text files.
@@ -26,6 +28,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- geomeTRIC's `coordsys="hdlc"` ran TRIC; it now adds Cartesian coordinates as geomeTRIC's own interface does.
+- CREST optimization trajectories were shifted to the center of mass; they are now in the input's frame.
+- ORCA: `{"numgrad": False}` still requested numerical gradients, and scalar keywords such as `{"tightscf": True}` were dropped silently. `True` now adds a simple-input word, `False`/`None` leaves it out, and any other non-dictionary value is an error.
 - TeraChem optimizations from newer builds (2026.10 confirmed), which write `optim_trajectory.xyz` with the energy inside a `frame N SCF Energy = ...` comment instead of `optim.xyz`.
 
 ## [0.13.1] - 2026-10-14

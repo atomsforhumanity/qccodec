@@ -1,4 +1,25 @@
-"""TeraChem frontend (``terachem-fe``) and protobuf (``terachem-pbs``) clients via tcpb."""
+"""TeraChem servers through the tcpb client: ``terachem-fe`` and ``terachem-pbs``.
+
+``terachem-fe`` talks to a TeraChem frontend server and ``terachem-pbs`` to a TeraChem
+protocol-buffer server (``terachem -s <port>``), keeping TeraChem and its GPU state
+running between calculations. Install the client with ``qccodec[tcpb]``.
+
+The whole ``ProgramInput`` is handed to the tcpb client, which builds the server job
+itself. ``model.method`` must be a method the server protocol knows (``hf``,
+``b3lyp``, ``wb97x``, ...); unrestricted runs set ``{"restricted": False,
+"closed_shell": False}`` rather than a "u" prefix; other ``keywords`` follow TeraChem's
+``tc.in`` names, with values sent as text (write ``"yes"``/``"no"``, not booleans).
+
+The client finds the server through the environment variables ``TCPB_HOST`` and
+``TCPB_PORT`` (``terachem-pbs``) or ``TCPB_FRONTEND_HOST`` and ``TCPB_FRONTEND_PORT``
+(``terachem-fe``), read when tcpb is first imported; nothing in ``ProgramInput`` sets
+them.
+
+Calculation types: ``energy`` and ``gradient``.
+
+tcpb 0.16.0 builds outputs with the pre-0.19 qcdata models, so this codec refuses to
+run with it; it needs a tcpb release built against current qcdata.
+"""
 
 from __future__ import annotations
 

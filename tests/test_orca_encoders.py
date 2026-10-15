@@ -125,3 +125,40 @@ def test_validate_keywords_raises_error_if_basis_block_contains_basis_keyword():
     keywords = {"basis": {"basis": "def2-svp"}}
     with pytest.raises(EncoderError):
         _validate_keywords(keywords)
+
+
+def _inp_lines(calctype: CalcType, keywords: dict) -> list[str]:
+    native = encode(
+        ProgramInput(
+            program="orca",
+            structure=water,
+            calctype=calctype,
+            model=Model(method="hf", basis="sto-3g"),
+            keywords=keywords,
+        )
+    )
+    return str(native.files["orca.inp"]).splitlines()
+
+
+def test_true_keywords_are_simple_input_words() -> None:
+    """True adds a simple-input word; False and None leave it out."""
+    lines = _inp_lines(
+        CalcType.gradient,
+        {"TightSCF": True, "numgrad": False, "slowconv": None, "d3bj": True},
+    )
+    assert "! tightscf" in lines and "! d3bj" in lines
+    assert not any("numgrad" in line or "slowconv" in line for line in lines)
+
+
+def test_numfreq_flag_and_block() -> None:
+    """numfreq as a flag or a block switches the Hessian to numerical; False doesn't."""
+    assert "! numfreq" in _inp_lines(CalcType.hessian, {"numfreq": True})
+    assert "! numfreq" in _inp_lines(CalcType.hessian, {"numfreq": {"dx": 0.005}})
+    assert "! freq" in _inp_lines(CalcType.hessian, {"numfreq": False})
+
+
+@pytest.mark.parametrize("value", ["yes", 1, 2.5])
+def test_other_scalar_keywords_are_rejected(value: object) -> None:
+    """Nothing is dropped silently: a scalar must be a flag, maxcore, or pal."""
+    with pytest.raises(EncoderError, match="tightscf"):
+        _inp_lines(CalcType.energy, {"tightscf": value})

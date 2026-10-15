@@ -1,4 +1,30 @@
-"""CREST: TOML input encoding and parsing of its stdout and output files."""
+"""CREST: write ``input.toml``, run ``crest input.toml``, and parse its output files.
+
+Inputs map to CREST 3's TOML input as follows:
+
+- ``keywords`` are the TOML document itself, so CREST's own input-file keys apply:
+  top-level settings such as ``threads`` or ``runtype``, and sections such as
+  ``{"calculation": {"level": [{"alpb": "water"}]}}`` or ``{"cregen": {...}}``.
+  CREST stops on keys it does not know.
+- ``model.method`` (``gfn2``, ``gfn1``, ``gfn0``, ``gfnff``, ...) and the structure's
+  charge and multiplicity are written into every ``[[calculation.level]]``; setting
+  ``charge`` or ``uhf`` in ``keywords`` is an error.
+- ``runtype`` defaults from the calculation type (``singlepoint``, ``numhess``,
+  ``optimize``, ``imtd-gc``); a given ``runtype`` must match it, e.g. ``nci`` or
+  ``entropy`` for conformer searches.
+- ``threads`` defaults to the number of CPUs, at most 16. CREST itself always runs
+  with ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
+
+Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
+and normal modes), ``optimization``, and ``conformer_search``. Rotamers are parsed only
+with the decode option ``{"collect_rotamers": True}``; there can be thousands. CREST
+optimizes with the center of mass at the origin; the codec shifts optimization
+trajectories back into the input's frame. No input field carries atom indices.
+
+CREST computes GFN-xTB and GFN-FF with its built-in tblite and gfnff libraries, so it
+needs no separate xtb. Use the official static build: conda-forge's CREST 3.0.2 crashes
+in its optimizer.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +33,7 @@ import math
 import os
 from typing import Any
 
+import numpy as np
 import tomli_w
 from qcdata import (
     CalcType,
@@ -232,12 +259,31 @@ codec.parser(
 )(parse_g98_normal_modes)
 
 
+def _to_input_frame(structures: list[Structure], start: Structure) -> list[Structure]:
+    """Undo CREST's shift of the molecule to its center of mass.
+
+    CREST optimizes with the center of mass at the origin, so its trajectory is the
+    input translated (not rotated). The first frame is the input structure, which gives
+    the translation; frames are returned unchanged if that is not a pure translation.
+    """
+    if not structures or len(structures[0].symbols) != len(start.symbols):
+        return structures
+    offset = np.asarray(start.geometry) - np.asarray(structures[0].geometry)
+    shift = offset.mean(axis=0)
+    if not np.allclose(offset, shift, atol=1e-4):
+        return structures
+    return [
+        s.model_copy(update={"geometry": np.asarray(s.geometry) + shift})
+        for s in structures
+    ]
+
+
 @codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
 def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     """Build an optimization trajectory from ``crestopt.log`` and ``crest.engrad``.
 
     Intermediate steps expose energies only; the final step gains the gradient when
-    ``crest.engrad`` is present.
+    ``crest.engrad`` is present. Geometries are moved back into the input's frame.
     """
     if ctx.input_data is None:
         raise ParserError("Optimization trajectory parsing requires input_data.")
@@ -247,6 +293,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         multiplicity=ctx.input_data.structure.multiplicity,
     )
     energies = [float(s.extras[Structure._xyz_comment_key][1]) for s in structures]
+    structures = _to_input_frame(structures, ctx.input_data.structure)
     try:
         version = parse_version(ctx.stdout) if ctx.stdout else None
     except MatchNotFoundError:
