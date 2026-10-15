@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from qcdata import CalcType, ProgramInput
+from qcdata import CalcType, Model, ProgramInput
 
 from qccodec import get_codec, supported_programs
 from qccodec.testing import Case, cases, check_codec, run_case
@@ -20,15 +20,20 @@ def test_case(case: Case) -> None:
     run_case(get_codec(case.input_data.program), case)
 
 
+# Programs whose models are not ab initio method/basis pairs.
+SEMIEMPIRICAL = {"xtb": "gfn2"}
+
+
 @pytest.mark.parametrize("program", supported_programs())
 def test_builtin_codecs_satisfy_the_contract(
     program: str, prog_input_factory: Callable[..., ProgramInput]
 ) -> None:
     """Every built-in codec passes the structural checks."""
     codec = get_codec(program)
-    inputs = (
-        [prog_input_factory(CalcType.energy, program)]
-        if CalcType.energy in codec.calctypes
-        else []
-    )
+    inputs = []
+    if CalcType.energy in codec.calctypes:
+        inp = prog_input_factory(CalcType.energy, program)
+        if program in SEMIEMPIRICAL:
+            inp = inp.model_copy(update={"model": Model(method=SEMIEMPIRICAL[program])})
+        inputs.append(inp)
     check_codec(codec, inputs=inputs)

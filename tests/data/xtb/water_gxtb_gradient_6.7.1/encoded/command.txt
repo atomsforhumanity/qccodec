@@ -1,0 +1,8 @@
+xtb
+structure.xyz
+--grad
+--chrg
+0
+--uhf
+0
+--gxtb

@@ -78,8 +78,9 @@ for a new program version.
 The [Integration workflow](.github/workflows/integration.yaml) runs nightly, on demand,
 and on pull requests that touch codecs or these tests. It is not a required check.
 
-- **CPU job.** Runs on GitHub-hosted runners. It installs the official CREST release
-  binary, pinned by version and checksum in the workflow. Add a CPU program with an
+- **CPU job.** Runs on GitHub-hosted runners. It installs the official CREST release binary
+  and the xtb build that ships g-xTB, which also runs every other xtb method, each
+  pinned by version and checksum in the workflow. Add a CPU program with an
   install step there and add it to `QCCODEC_REQUIRE_PROGRAMS`.
 - **Private/GPU job.** Runs licensed programs that cannot be installed on
   GitHub-hosted runners (ORCA, TeraChem) and GPU programs (TeraChem) on a

@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import math
 import os
-import re
 from typing import Any
 
 import tomli_w
@@ -18,13 +17,12 @@ from qcdata import (
     SinglePointData,
     Structure,
 )
-from qcref import constants
 
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..utils import re_finditer, re_search
-from ._common import invocation
+from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
 
 codec = Codec(
     "crest",
@@ -226,38 +224,12 @@ def parse_numhess1(contents: str) -> list[list[float]]:
     return [numbers[i * n : (i + 1) * n] for i in range(n)]
 
 
-@codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])
-def parse_g98_freqs(contents: str) -> list[float]:
-    """Parse vibrational frequencies (wavenumbers) from CREST's ``g98.out``."""
-    regex = r"Frequencies\s+--\s+(?P<floats>(?:-?\d+\.\d+\s*)+)"
-    matches = re_finditer(regex, contents)
-    return [float(f) for m in matches for f in m.group("floats").split()]
-
-
-@codec.parser(
-    file="g98.out", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
+codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])(
+    parse_g98_freqs
 )
-def parse_g98_normal_modes(contents: str) -> list[list[list[float]]]:
-    """Parse normal mode displacements from ``g98.out`` as (n_modes, n_atoms, 3) in Bohr."""
-    block_re = re.compile(r"(Frequencies\s+--.*?)(?=Frequencies\s+--|$)", re.DOTALL)
-    floats_re = re.compile(r"[-+]?\d*\.\d+")
-    modes: list[list[list[float]]] = []
-    for block in block_re.findall(contents):
-        n_freqs = len(block.splitlines()[0].split()[2:])
-        displacements = floats_re.findall(block.split("Atom AN")[1])
-        block_modes: list[list[list[float]]] = [[] for _ in range(n_freqs)]
-        n_atoms = len(displacements) // (3 * n_freqs)
-        for i in range(n_atoms):
-            for j in range(n_freqs):
-                index = i * (3 * n_freqs) + j * 3
-                block_modes[j].append(
-                    [
-                        float(v) * constants.ANGSTROM_TO_BOHR
-                        for v in displacements[index : index + 3]
-                    ]
-                )
-        modes.extend(block_modes)
-    return modes
+codec.parser(
+    file="g98.out", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
+)(parse_g98_normal_modes)
 
 
 @codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])

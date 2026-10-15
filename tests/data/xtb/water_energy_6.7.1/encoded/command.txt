@@ -1,0 +1,9 @@
+xtb
+structure.xyz
+--sp
+--chrg
+0
+--uhf
+0
+--gfn
+2

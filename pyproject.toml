@@ -9,7 +9,7 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.20.0",
+    "qcdata>=0.20.1",
     "qcref>=0.3.0",
 ]
 
@@ -45,7 +45,6 @@ Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.m
 
 [project.optional-dependencies]
 geometric = ["geometric>=1.0.1,<2"]
-xtb = ["xtb"]
 tcpb = ["tcpb>=0.16.0"]
 
 [dependency-groups]
