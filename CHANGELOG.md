@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted GPU runner (TeraChem, ORCA) once one is configured.
+- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted runner for private and GPU programs (TeraChem, ORCA) once one is configured.
 
 ### Fixed
 

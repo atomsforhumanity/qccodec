@@ -60,21 +60,23 @@ jobs:
       - name: Run integration tests
         run: uv run pytest -m integration -rs
 
-  gpu:
-    name: GPU programs (TeraChem, ORCA)
-    # Runs on the self-hosted runner scale set named by the QC_GPU_RUNNER repository
-    # variable; the job is skipped until that variable exists. Never run fork pull
-    # requests on self-hosted runners: they would execute untrusted code on the cluster.
+  private:
+    name: Private/GPU programs (TeraChem, ORCA)
+    # Licensed programs that cannot be installed on GitHub-hosted runners, and GPU
+    # programs, run on the self-hosted runner whose label the QC_PRIVATE_RUNNER
+    # repository variable names; the job is skipped until that variable exists. Never
+    # run fork pull requests on self-hosted runners: they would execute untrusted code
+    # on the cluster.
     if: >-
-      vars.QC_GPU_RUNNER != '' &&
+      vars.QC_PRIVATE_RUNNER != '' &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ vars.QC_GPU_RUNNER }}
+    runs-on: ${{ vars.QC_PRIVATE_RUNNER }}
     timeout-minutes: 60
     env:
-      # Programs the runner image must provide; a missing one fails the run
-      # instead of silently skipping its tests.
-      QCCODEC_REQUIRE_PROGRAMS: ${{ vars.QC_GPU_PROGRAMS || 'terachem' }}
+      # Programs the runner must provide; a missing one fails the run instead of
+      # silently skipping its tests.
+      QCCODEC_REQUIRE_PROGRAMS: ${{ vars.QC_PRIVATE_PROGRAMS || 'terachem' }}
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
@@ -82,7 +84,7 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: uv sync --locked --group integration --extra geometric
-      - name: GPU and programs
+      - name: Hardware and programs
         run: |
           nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
           for program in terachem orca crest; do
