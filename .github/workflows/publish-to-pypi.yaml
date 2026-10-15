@@ -19,8 +19,8 @@ jobs:
       contents: read
       id-token: write # trusted publishing
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Tag must match the package version
         run: |
           version="$(sed -n 's/^version *= *"\(.*\)"/\1/p' pyproject.toml | head -n1)"
@@ -39,7 +39,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Extract release notes from CHANGELOG.md
         run: |
           awk -v v="$GITHUB_REF_NAME" '
