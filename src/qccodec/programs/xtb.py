@@ -168,12 +168,28 @@ def _flags(keywords: dict[str, Any]) -> list[str]:
 
 @codec.failure
 def failure(ctx: Context) -> str | None:
-    """Xtb exits 0 when an optimization runs out of cycles; catch that and errors."""
+    """Catch xtb errors, including those it reports with exit code 0.
+
+    xtb warns about unknown command-line options and then runs without them, so a
+    misspelled keyword, or ``gxtb`` on an xtb build without g-xTB, would otherwise
+    silently produce a different calculation. It also exits 0 when an optimization
+    runs out of cycles.
+    """
     stdout = ctx.stdout or ""
     if "abnormal termination of xtb" in stdout:
         # The error block lists causes from outermost (-3-) to innermost (-1-).
         reasons = re.findall(r"^-\d+- (.+)$", stdout, flags=re.MULTILINE)
         return "xtb stopped: " + ("; ".join(reversed(reasons)) or "see logs")
+    unknown = sorted(set(re.findall(r"Unknown option '([^']+)' provided", stdout)))
+    if unknown:
+        message = f"xtb ignored unknown options {unknown}."
+        if "--gxtb" in unknown:
+            message += (
+                " This xtb build has no g-xTB; run the xtb build from"
+                " https://github.com/grimme-lab/g-xtb (with qccompute, set"
+                " QCCOMPUTE_XTB_EXECUTABLE or executables={'xtb': path})."
+            )
+        return message
     match = re.search(r"FAILED TO CONVERGE GEOMETRY OPTIMIZATION[^*\n]*", stdout)
     if match:
         return f"xtb: {match.group(0).strip().lower()}"

@@ -116,3 +116,9 @@ def test_gxtb(run: Run, water: Structure, calctype: CalcType) -> None:
     assert np.isclose(output.results.energy, -76.437424197961, atol=1e-6)
     if calctype == CalcType.hessian:
         assert np.asarray(output.results.hessian).shape == (9, 9)
+
+
+def test_unknown_option_fails(run: Run, water: Structure) -> None:
+    """xtb only warns about unknown flags; the codec turns that into a failure."""
+    with pytest.raises(Exception, match="unknown options"):
+        run(_input(water, CalcType.energy, gfn2_typo=True))

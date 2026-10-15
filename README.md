@@ -122,9 +122,12 @@ ProgramInput(
 ```
 
 g-xTB is distributed as its own build of xtb (see
-[grimme-lab/g-xtb](https://github.com/grimme-lab/g-xtb)). With qccompute, point
-`program="xtb"` at that build with `QCCOMPUTE_XTB_EXECUTABLE` or
-`compute(..., executables={"xtb": path})`.
+[grimme-lab/g-xtb](https://github.com/grimme-lab/g-xtb)). That build also runs
+GFN0/1/2-xTB and GFN-FF, so it can be your only xtb. With qccompute, put it on `PATH`
+or point `program="xtb"` at it with `QCCOMPUTE_XTB_EXECUTABLE` or
+`compute(..., executables={"xtb": path})`. xtb ignores command-line options it does
+not know, so the codec fails any run whose output reports an unknown option, such as
+`--gxtb` on an xtb build without g-xTB, or a misspelled keyword.
 
 ## Contributing
 
