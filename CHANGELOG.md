@@ -8,7 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- An `xtb` codec that runs the xtb program on the command line: energies, gradients, Hessians (with frequencies and normal modes), and optimizations with GFN0-, GFN1-, GFN2-xTB, GFN-FF, and g-xTB. Keywords pass through as xtb's own command-line flags; partial charges fill `atomic_charges`. Optimizations that run out of cycles and other xtb errors raise `CalculationError`, although xtb exits 0 for the former.
+- A "Supported programs" README section, including when to run xTB through `xtb` or `crest`.
 - Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted GPU runner (TeraChem, ORCA) once one is configured.
+
+### Removed
+
+- The xtb-python codec and the `xtb` extra. xtb-python has had no release since 2022 and has no wheels for current Python; `program="xtb"` now runs the xtb program instead.
+
+### Changed
+
+- Require `qcdata>=0.20.1` for `SinglePointData.atomic_charges`.
 
 ### Fixed
 

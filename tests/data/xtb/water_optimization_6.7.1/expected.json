@@ -1,0 +1,458 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "xtb",
+    "program_version": "6.7.1",
+    "qcdata_version": "0.20.1"
+  },
+  "trajectory": [
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "xtb",
+        "cmdline_args": [],
+        "calctype": "energy",
+        "model": {
+          "extras": {},
+          "method": "gfn2",
+          "basis": null,
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "opt": null
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "energy:",
+              "-5.070218272202",
+              "gnorm:",
+              "0.018389627695",
+              "xtb:",
+              "6.7.1",
+              "(edcfbbe)"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.5240000000000076,
+              1.6870000000000038,
+              0.4799999999999999
+            ],
+            [
+              1.1459999999999926,
+              -0.45,
+              -1.3540000000000074
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": null,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": null,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "xtb",
+          "program_version": "6.7.1",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -5.070218272202,
+        "gradient": null,
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": null,
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "xtb",
+        "cmdline_args": [],
+        "calctype": "energy",
+        "model": {
+          "extras": {},
+          "method": "gfn2",
+          "basis": null,
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "opt": null
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "energy:",
+              "-5.070459034598",
+              "gnorm:",
+              "0.008039417666",
+              "xtb:",
+              "6.7.1",
+              "(edcfbbe)"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              0.01192454652233237,
+              0.008945790895026432,
+              -0.006175099076036827
+            ],
+            [
+              0.5170002572737058,
+              1.6859397060979229,
+              0.4860584210217107
+            ],
+            [
+              1.1410751962039618,
+              -0.4578854969929455,
+              -1.3538833219456814
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": null,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": null,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "xtb",
+          "program_version": "6.7.1",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -5.070459034598,
+        "gradient": null,
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": null,
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "xtb",
+        "cmdline_args": [],
+        "calctype": "energy",
+        "model": {
+          "extras": {},
+          "method": "gfn2",
+          "basis": null,
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "opt": null
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "energy:",
+              "-5.070542670903",
+              "gnorm:",
+              "0.000925711253",
+              "xtb:",
+              "6.7.1",
+              "(edcfbbe)"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              0.02439623134920805,
+              0.018248883689175894,
+              -0.012664402578713782
+            ],
+            [
+              0.5086586061113056,
+              1.6884356692215845,
+              0.49546140967703234
+            ],
+            [
+              1.136945162539505,
+              -0.46968455291075667,
+              -1.3567970070983262
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": null,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": null,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "xtb",
+          "program_version": "6.7.1",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -5.070542670903,
+        "gradient": null,
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": null,
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "xtb",
+        "cmdline_args": [],
+        "calctype": "energy",
+        "model": {
+          "extras": {},
+          "method": "gfn2",
+          "basis": null,
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "opt": null
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "energy:",
+              "-5.070544350787",
+              "gnorm:",
+              "0.000183987189",
+              "xtb:",
+              "6.7.1",
+              "(edcfbbe)"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              0.02604652772106472,
+              0.019442875536369142,
+              -0.013544589946913516
+            ],
+            [
+              0.507077356207479,
+              1.6904745618174142,
+              0.4981530664404552
+            ],
+            [
+              1.1368761160714562,
+              -0.47291743735379854,
+              -1.3586084764935302
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": null,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": null,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "xtb",
+          "program_version": "6.7.1",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -5.070544350787,
+        "gradient": null,
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": null,
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    }
+  ],
+  "qcdata_version": "0.20.1"
+}

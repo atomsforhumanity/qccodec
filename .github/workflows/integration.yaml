@@ -30,15 +30,22 @@ permissions:
 
 jobs:
   cpu:
-    name: CPU programs (CREST, geomeTRIC)
+    name: CPU programs (CREST, xtb, geomeTRIC)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      QCCODEC_REQUIRE_PROGRAMS: crest
+      QCCODEC_REQUIRE_PROGRAMS: crest,xtb
       # Official static build. conda-forge's crest 3.0.2 crashes in its optimizer
       # (Fortran format error in ancopt.f90). Update the version and checksum together.
       CREST_VERSION: v3.0.2
       CREST_SHA256: 8e5bd18b06f99741ebd7bb71b3a996295f391b2f076aaeab739740f709e9554d # pragma: allowlist secret
+      # Official xtb release, plus the xtb build that ships g-xTB (run through
+      # GXTB_EXECUTABLE). Update versions and checksums together.
+      XTB_VERSION: "6.7.1"
+      XTB_SHA256: 62a8d18778286e815292ee53d76ce447daf460a4dea3782c0f25cbac7019b5df # pragma: allowlist secret
+      GXTB_VERSION: v2.0.1
+      GXTB_ARCHIVE: xtb-6.7.1-gxtb-140526-linux-x86_64.tar.xz
+      GXTB_SHA256: cdfb81164f8d3300fc451dbbf2414528b533e71f7a30ec824b564cd30d6d9e5c # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v5
       - name: Install CREST
@@ -49,6 +56,18 @@ jobs:
           tar xf crest.tar.xz -C "$RUNNER_TEMP/programs"
           rm crest.tar.xz
           echo "$RUNNER_TEMP/programs/crest" >> "$GITHUB_PATH"
+      - name: Install xtb and g-xTB
+        run: |
+          curl -fsSL -o xtb.tar.xz "https://github.com/grimme-lab/xtb/releases/download/v${XTB_VERSION}/xtb-${XTB_VERSION}-linux-x86_64.tar.xz"
+          curl -fsSL -o gxtb.tar.xz "https://github.com/grimme-lab/g-xtb/releases/download/${GXTB_VERSION}/${GXTB_ARCHIVE}"
+          printf '%s  xtb.tar.xz\n%s  gxtb.tar.xz\n' "$XTB_SHA256" "$GXTB_SHA256" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/programs/xtb" "$RUNNER_TEMP/programs/gxtb"
+          tar xf xtb.tar.xz -C "$RUNNER_TEMP/programs/xtb" --strip-components=1
+          tar xf gxtb.tar.xz -C "$RUNNER_TEMP/programs/gxtb" --strip-components=1
+          rm xtb.tar.xz gxtb.tar.xz
+          echo "$RUNNER_TEMP/programs/xtb/bin" >> "$GITHUB_PATH"
+          echo "XTBPATH=$RUNNER_TEMP/programs/xtb/share/xtb" >> "$GITHUB_ENV"
+          echo "GXTB_EXECUTABLE=$RUNNER_TEMP/programs/gxtb/bin/xtb" >> "$GITHUB_ENV"
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -56,7 +75,10 @@ jobs:
       - name: Install
         run: uv sync --locked --group integration --extra geometric
       - name: Program versions
-        run: crest --version | grep -i version
+        run: |
+          crest --version | grep -i version
+          xtb --version | grep -i version
+          "$GXTB_EXECUTABLE" --version | grep -i version
       - name: Run integration tests
         run: uv run pytest -m integration -rs
 

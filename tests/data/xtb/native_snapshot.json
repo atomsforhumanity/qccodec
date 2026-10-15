@@ -1,8 +1,0 @@
-{
-  "description": "Synthetic native snapshot for decoder tests; not a physical reference calculation.",
-  "energy": -1.0,
-  "gradient": [[0.1, 0.2, 0.3]],
-  "dipole": [0.0, 0.0, 0.0],
-  "orbital_eigenvalues": [-0.5],
-  "version": "fixture"
-}

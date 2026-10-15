@@ -1,0 +1,8 @@
+xtb
+structure.xyz
+--hess
+--chrg
+0
+--uhf
+0
+--gxtb

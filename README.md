@@ -93,6 +93,39 @@ These packages work together to make quantum chemistry fast, structured, and int
   data = decode("terachem", CalcType.hessian, stdout=stdout, directory=directory, input_data=input_data)
   ```
 
+## Supported programs
+
+| `program` | Calculation types | Notes |
+| --- | --- | --- |
+| `terachem` | energy, gradient, hessian, optimization | GPU quantum chemistry |
+| `terachem-fe`, `terachem-pbs` | energy, gradient | TeraChem servers through tcpb (`qccodec[tcpb]`) |
+| `orca` | energy, gradient, hessian, optimization, transition_state | |
+| `crest` | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
+| `xtb` | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB |
+| `geometric` | optimization, transition_state | Drives any gradient program (`qccodec[geometric]`) |
+
+### Running xTB
+
+Both `xtb` and `crest` run the GFN-xTB methods and give the same GFN2-xTB energies and
+gradients. Use `program="xtb"` for single points, Hessians, and optimizations with
+xtb's full set of options, and for g-xTB. Use `program="crest"` for conformer searches
+and the other CREST workflows.
+
+```python
+ProgramInput(
+    program="xtb",
+    calctype="gradient",
+    structure=structure,
+    model={"method": "gfn2"},          # gfn0, gfn1, gfn2, gfnff, or gxtb
+    keywords={"alpb": "water", "etemp": 300},  # become --alpb water --etemp 300
+)
+```
+
+g-xTB is distributed as its own build of xtb (see
+[grimme-lab/g-xtb](https://github.com/grimme-lab/g-xtb)). With qccompute, point
+`program="xtb"` at that build with `QCCOMPUTE_XTB_EXECUTABLE` or
+`compute(..., executables={"xtb": path})`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process. Adding support for a new program is covered there step by step.
@@ -213,7 +246,7 @@ success). When the hook returns a message, decoding recovers what it can and rai
 Programs driven through a Python API skip parsers entirely:
 
 ```python
-codec = Codec("xtb", calctypes={CalcType.energy, CalcType.gradient}, encode=encode, decode=decode)
+codec = Codec("mlp", calctypes={CalcType.energy, CalcType.gradient}, encode=encode, decode=decode)
 ```
 
 where `decode(input_data, native_output)` maps `native_output.value` into a qcdata
@@ -310,4 +343,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full walkthrough of adding a pr
 
 ## Optional dependencies
 
-Optional integrations install with `qccodec[geometric]`, `qccodec[xtb]`, or `qccodec[tcpb]`; their libraries are imported only when a calculation is invoked.
+Optional integrations install with `qccodec[geometric]` or `qccodec[tcpb]`; their libraries are imported only when a calculation is invoked.

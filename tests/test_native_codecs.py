@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import json
-import sys
 from collections.abc import Callable
-from enum import Enum
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 import pytest
@@ -21,7 +18,6 @@ from qcdata import (
 
 from qccodec import (
     Codec,
-    PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
@@ -79,7 +75,7 @@ def test_builtin_discovery_is_independent_of_parsers() -> None:
     assert {"orca", "terachem", "crest", "xtb", "geometric"} <= set(
         supported_programs()
     )
-    assert get_codec("xtb").parsers == []
+    assert get_codec("geometric").parsers == []
 
 
 def test_crest_zero_exit_failure_preserves_energy(
@@ -138,96 +134,6 @@ def test_crest_rotamers_are_opt_in(
         )
         assert isinstance(standalone, ConformerSearchData)
         assert bool(standalone.rotamers) is enabled
-
-
-def test_xtb_encode_and_decode_do_not_import_xtb(
-    prog_input_factory: Callable[..., ProgramInput],
-    monkeypatch: pytest.MonkeyPatch,
-    test_data_dir: Path,
-) -> None:
-    """Xtb encode and decode do not import xtb."""
-    monkeypatch.setitem(sys.modules, "xtb", None)
-    codec = get_codec("xtb")
-    inp = prog_input_factory("gradient", "xtb")
-    native = codec.encode(inp)
-    assert isinstance(native, PythonInput)
-    assert native.kwargs["uhf"] == inp.structure.multiplicity - 1
-    assert native.kwargs["numbers"] == list(inp.structure.atomic_numbers)
-    snapshot = json.loads((test_data_dir / "xtb/native_snapshot.json").read_text())
-    data = codec.decode(inp, PythonOutput(value=snapshot))
-    assert isinstance(data, SinglePointData)
-    assert data.gradient is not None
-    assert data.energy == -1 and data.gradient.tolist() == [[0.1, 0.2, 0.3]]
-    assert data.provenance.program_version == "fixture"
-
-
-@pytest.mark.parametrize("fail", [False, True])
-def test_xtb_native_sequence_and_cleanup(
-    monkeypatch: pytest.MonkeyPatch, fail: bool
-) -> None:
-    """Xtb native sequence and cleanup."""
-    from qccodec.programs.xtb import invoke_xtb
-
-    calls: list[tuple[object, ...]] = []
-
-    class Param(Enum):
-        GFN2xTB = 1
-
-    class Calculator:
-        def __init__(self, *args: object) -> None:
-            """Initialize the fake native object used by the binding test."""
-            calls.append(("constructor", args))
-
-        def set_verbosity(self, value: float) -> None:
-            """Record the requested native logging level."""
-            calls.append(("verbosity", value))
-
-        def set_output(self, filename: str) -> None:
-            """Record the native output-unit binding."""
-            calls.append(("output", filename))
-
-        def set_accuracy(self, value: float) -> None:
-            """Record a translated native calculator setting."""
-            calls.append(("accuracy", value))
-
-        def singlepoint(self) -> SimpleNamespace:
-            """Return native getter functions or simulate SCF failure."""
-            calls.append(("singlepoint",))
-            if fail:
-                raise RuntimeError("SCF failed")
-            return SimpleNamespace(
-                get_energy=lambda: -1,
-                get_gradient=lambda: [[0, 0, 0]],
-                get_dipole=lambda: [0, 0, 0],
-                get_orbital_eigenvalues=lambda: [-0.5],
-            )
-
-        def release_output(self) -> None:
-            """Record cleanup even when native invocation fails."""
-            calls.append(("release",))
-
-    monkeypatch.setitem(sys.modules, "xtb", SimpleNamespace())
-    monkeypatch.setitem(
-        sys.modules,
-        "xtb.interface",
-        SimpleNamespace(Calculator=Calculator, Param=Param),
-    )
-    monkeypatch.setitem(sys.modules, "xtb.libxtb", SimpleNamespace(VERBOSITY_FULL=2))
-    monkeypatch.setattr("importlib.metadata.version", lambda name: "1.0")
-    kwargs: dict[str, Any] = dict(
-        method="GFN2xTB",
-        numbers=[1],
-        positions=np.array([[0.0, 0.0, 0.0]]),
-        charge=0,
-        uhf=0,
-        settings={"accuracy": 0.1},
-    )
-    if fail:
-        with pytest.raises(RuntimeError):
-            invoke_xtb(**kwargs)
-    else:
-        assert invoke_xtb(**kwargs)["energy"] == -1
-    assert calls[-1] == ("release",) and ("accuracy", 0.1) in calls
 
 
 def test_geometric_binding_and_failure_trajectory(

@@ -1,0 +1,64 @@
+{
+  "extras": {},
+  "files": {},
+  "program": "xtb",
+  "cmdline_args": [],
+  "calctype": "gradient",
+  "model": {
+    "extras": {},
+    "method": "gfn2",
+    "basis": null,
+    "qcdata_version": "0.20.1"
+  },
+  "keywords": {},
+  "subprograms": [],
+  "structure": {
+    "extras": {},
+    "symbols": [
+      "O",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.524,
+        1.687,
+        0.48
+      ],
+      [
+        1.146,
+        -0.45,
+        -1.354
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "identifiers": {
+      "extras": {},
+      "name": null,
+      "name_IUPAC": null,
+      "smiles": null,
+      "canonical_smiles": null,
+      "canonical_smiles_program": null,
+      "canonical_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+      "inchi": null,
+      "inchikey": null,
+      "pubchem_cid": null,
+      "pubchem_sid": null,
+      "pubchem_conformerid": null,
+      "qcdata_version": "0.20.1"
+    },
+    "connectivity": [],
+    "qcdata_version": "0.20.1"
+  },
+  "structures": {},
+  "qcdata_version": "0.20.1"
+}
