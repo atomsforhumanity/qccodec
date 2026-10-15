@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- geomeTRIC trajectories included every finite-difference gradient behind a Hessian (2 x 3N per Hessian), so a transition-state search on ammonia reported 27 "steps". The trajectory now holds one frame per optimizer step, and each Hessian geomeTRIC computes is attached to the frame at its geometry (`hessian="first+last"` puts one on the final frame).
 - geomeTRIC's `coordsys="hdlc"` ran TRIC; it now adds Cartesian coordinates as geomeTRIC's own interface does.
 - CREST optimization trajectories were shifted to the center of mass; they are now in the input's frame.
 - ORCA: `{"numgrad": False}` still requested numerical gradients, and scalar keywords such as `{"tightscf": True}` were dropped silently. `True` now adds a simple-input word, `False`/`None` leaves it out, and any other non-dictionary value is an error.
