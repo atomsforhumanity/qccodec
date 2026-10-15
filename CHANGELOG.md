@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.13.1] - 2026-10-14
+
 ### Changed
 
 - Development tooling: shared ruff (including Google docstring rules), mypy (fully typed library code), and pytest settings; pre-commit hooks that run the locked tools through `uv run`; one CI workflow; a tag-driven release workflow with `scripts/prepare_release.py` and an approval-gated PyPI deployment. Added CONTRIBUTING.md and AGENTS.md.
@@ -343,7 +345,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.13.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.13.1...HEAD
+[0.13.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.1
 [0.13.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.0
 [0.12.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.12.0
 [0.11.2]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.11.2
