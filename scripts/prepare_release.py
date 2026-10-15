@@ -16,6 +16,28 @@ from datetime import date
 from pathlib import Path
 
 
+def set_version(version: str) -> None:
+    """Set the ``version`` in pyproject.toml's [project] table.
+
+    Args:
+        version: The version being released.
+
+    Raises:
+        SystemExit: pyproject.toml has no version line.
+    """
+    path = Path("pyproject.toml")
+    text, count = re.subn(
+        r'^version\s*=\s*"[^"]*"',
+        f'version = "{version}"',
+        path.read_text(),
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        sys.exit("pyproject.toml has no 'version = \"...\"' line.")
+    path.write_text(text)
+
+
 def update_changelog(version: str, repo_url: str) -> None:
     """Move the [unreleased] notes under a dated heading and update compare links.
 
@@ -52,7 +74,8 @@ def main() -> None:
     pyproject = Path("pyproject.toml").read_text()
     match = re.search(r'^Source\s*=\s*["\']([^"\']+)["\']', pyproject, re.MULTILINE)
     repo_url = match.group(1).rstrip("/") if match else ""
-    subprocess.run(["uv", "version", version], check=True)  # also refreshes uv.lock
+    set_version(version)
+    subprocess.run(["uv", "lock"], check=True)  # record the new version in uv.lock
     update_changelog(version, repo_url)
     print(f"Prepared {version}. Review the diff, then commit and open a pull request.")
 

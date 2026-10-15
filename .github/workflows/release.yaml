@@ -21,7 +21,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Tag must match the package version
         run: |
-          version="$(uv version --short)"
+          version="$(sed -n 's/^version *= *"\(.*\)"/\1/p' pyproject.toml | head -n1)"
           if [ "$version" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match pyproject version $version."
             exit 1
