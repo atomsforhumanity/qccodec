@@ -1,0 +1,194 @@
+"""Psi4 runs through qccompute: single points, optimization, and QM/MM embedding."""
+
+import numpy as np
+import pytest
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramInput,
+    SinglePointData,
+    Structure,
+)
+
+from .conftest import Run, requires
+
+pytestmark = [pytest.mark.integration, requires("psi4")]
+
+# HF/STO-3G with exact (PK) integrals on the shared distorted water, Psi4 1.11.
+# ORCA 6.0.0 agrees to 2e-7 Hartree and 1e-6 Hartree/bohr.
+ENERGY = -74.96441401121291
+GRADIENT = [
+    [0.032075111496655206, 0.023483904382355314, -0.01694614596310079],
+    [-0.013215589271685466, -0.021068551593565354, 0.0003665172769692221],
+    [-0.018859522224969172, -0.0024153527887883497, 0.016579628686129333],
+]
+# Two point charges in Psi4's [charge, [x, y, z]] form, positions in bohr.
+CHARGE_VALUES = [-0.8, 0.4]
+POSITIONS = [[0.0, 0.0, 5.0], [1.0, 1.0, 6.0]]
+CHARGES = [[q, xyz] for q, xyz in zip(CHARGE_VALUES, POSITIONS, strict=True)]
+
+
+def _input(
+    structure: Structure, calctype: CalcType, **keywords: object
+) -> ProgramInput:
+    return ProgramInput(
+        program="psi4",
+        structure=structure,
+        calctype=calctype,
+        model=Model(method="hf", basis="sto-3g"),
+        keywords={"scf_type": "pk", **keywords},
+    )
+
+
+def test_energy(run: Run, water: Structure) -> None:
+    """Energy plus the extra data Psi4 provides."""
+    output = run(_input(water, CalcType.energy), case="water_energy")
+    results = output.results
+    assert isinstance(results, SinglePointData)
+    assert results.provenance.program == "psi4"
+    assert results.energy is not None
+    assert np.isclose(results.energy, ENERGY, atol=1e-8)
+    assert results.calcinfo_nbasis == 7 and results.calcinfo_nalpha == 5
+    assert (
+        results.atomic_charges is not None and abs(sum(results.atomic_charges)) < 1e-6
+    )
+    assert results.scf_dipole_moment is not None
+    assert "SCF TOTAL ENERGY" in results.extras["psi4_variables"]
+
+
+def test_gradient_in_input_frame(run: Run, water: Structure) -> None:
+    """The gradient is in the input's frame: Psi4 must not move or rotate the molecule."""
+    output = run(_input(water, CalcType.gradient), case="water_gradient")
+    assert np.isclose(output.results.energy, ENERGY, atol=1e-8)
+    assert np.allclose(output.results.gradient, GRADIENT, atol=1e-7)
+
+
+def test_hessian(run: Run, water: Structure) -> None:
+    """Hessian with frequencies, normal modes, and the gradient."""
+    output = run(_input(water, CalcType.hessian), case="water_hessian")
+    results = output.results
+    hessian = np.asarray(results.hessian)
+    assert hessian.shape == (9, 9)
+    assert np.allclose(hessian, hessian.T, atol=1e-8)
+    assert np.allclose(results.gradient, GRADIENT, atol=1e-7)
+    assert results.freqs_wavenumber
+    modes = np.asarray(results.normal_modes_cartesian)
+    assert modes.shape == (len(results.freqs_wavenumber), 3, 3)
+
+
+def test_optimization(run: Run, water: Structure) -> None:
+    """optking goes downhill from exactly the input geometry; every step has a gradient."""
+    output = run(_input(water, CalcType.optimization), case="water_optimization")
+    results = output.results
+    assert isinstance(results, OptimizationData)
+    trajectory = results.trajectory
+    assert np.array_equal(trajectory[0].input_data.structure.geometry, water.geometry)
+    assert np.isclose(results.energies[0], ENERGY, atol=1e-8)
+    assert np.isclose(results.energies[-1], -74.96590112165362, atol=1e-6)
+    assert all(np.diff(results.energies) <= 1e-8)
+    assert all(step.results.gradient is not None for step in trajectory)
+    assert np.abs(np.asarray(trajectory[-1].results.gradient)).max() < 3e-4
+
+
+def test_point_charges(run: Run, water: Structure) -> None:
+    """QM/MM embedding: the gradient on the charges matches a finite difference."""
+    output = run(
+        _input(water, CalcType.gradient, external_potentials=CHARGES),
+        case="water_point_charges_gradient",
+    )
+    results = output.results
+    assert not np.isclose(results.energy, ENERGY, atol=1e-4)  # the charges matter
+    analytic = np.asarray(results.point_charge_gradient)
+    assert analytic.shape == (2, 3)
+
+    # Directional derivative along a direction that moves every charge coordinate:
+    # two energies check all six components at once.
+    direction = np.array([[0.3, -0.5, 0.2], [-0.4, 0.1, 0.6]])
+    direction /= np.linalg.norm(direction)
+    step = 1e-3
+    energies = []
+    for sign in (1, -1):
+        positions = (np.array(POSITIONS) + sign * step * direction).tolist()
+        moved = [[q, xyz] for q, xyz in zip(CHARGE_VALUES, positions, strict=True)]
+        result = run(_input(water, CalcType.energy, external_potentials=moved)).results
+        energies.append(result.energy)
+    numeric = (energies[0] - energies[1]) / (2 * step)
+    assert np.isclose(np.sum(analytic * direction), numeric, atol=1e-7)
+
+
+def test_options_pass_through(run: Run, water: Structure) -> None:
+    """Keywords reach psi4.set_options unchanged, including module-scoped options."""
+    output = run(
+        _input(water, CalcType.energy, scf__d_convergence=1e-10, e_convergence=1e-10)
+    )
+    assert output.logs is not None
+    assert np.isclose(output.results.energy, ENERGY, atol=1e-8)
+
+
+def test_invalid_option_fails(run: Run, water: Structure) -> None:
+    """Psi4 rejects unknown options, and the error says so."""
+    with pytest.raises(Exception, match="NOT_A_PSI4_OPTION is not a valid option"):
+        run(_input(water, CalcType.energy, not_a_psi4_option=1))
+
+
+# Slightly pyramidal ammonia (bohr); its inversion saddle point is planar.
+AMMONIA = Structure(
+    symbols=["N", "H", "H", "H"],
+    geometry=np.array(
+        [
+            [0.0, 0.0, 0.25],
+            [1.77, 0.0, -0.10],
+            [-0.885, 1.533, -0.10],
+            [-0.885, -1.533, -0.10],
+        ]
+    ),
+)
+
+
+def test_transition_state(run: Run) -> None:
+    """optking finds ammonia's planar inversion saddle point: one imaginary mode."""
+    output = run(
+        _input(AMMONIA, CalcType.transition_state), case="ammonia_transition_state"
+    )
+    results = output.results
+    assert isinstance(results, OptimizationData)
+    assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)
+    final = results.trajectory[-1].input_data.structure
+    frequencies = run(_input(final, CalcType.hessian)).results.freqs_wavenumber
+    assert sum(f < 0 for f in frequencies) == 1
+
+
+# Water in a C2v-aligned frame (bohr): Psi4 detects C2v without moving it.
+SYMMETRIC_WATER = Structure(
+    symbols=["O", "H", "H"],
+    geometry=np.array([[0.0, 0.0, -0.12], [0.0, 1.43, 0.98], [0.0, -1.43, 0.98]]),
+)
+
+
+def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
+    """Psi4's detected symmetry and symmetry c1 give the same results in the same frame."""
+    detected = run(_input(SYMMETRIC_WATER, CalcType.gradient)).results
+    off = run(_input(SYMMETRIC_WATER, CalcType.gradient, symmetry="c1")).results
+    assert detected.extras["psi4_variables"]["SCF ITERATIONS"] > 0
+    assert np.isclose(detected.energy, off.energy, atol=1e-9)
+    assert np.allclose(detected.gradient, off.gradient, atol=1e-8)
+    assert detected.wavefunction is not None and off.wavefunction is not None
+    assert np.allclose(
+        detected.wavefunction.scf_eigenvalues_a,
+        off.wavefunction.scf_eigenvalues_a,
+        atol=1e-8,
+    )
+    assert np.array_equal(
+        detected.wavefunction.scf_occupations_a, off.wavefunction.scf_occupations_a
+    )
+
+
+def test_projecting_rotations(run: Run, water: Structure) -> None:
+    """Away from a stationary point Psi4 keeps rotations unless told to project them."""
+    default = run(_input(water, CalcType.hessian)).results.freqs_wavenumber
+    projected = run(
+        _input(water, CalcType.hessian, project_rot=True)
+    ).results.freqs_wavenumber
+    assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
+    assert len(projected) == 3  # 3N - 6

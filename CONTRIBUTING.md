@@ -163,6 +163,14 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 or a `PythonInput(function=..., kwargs=...)` for programs with a Python API.
 Raise `EncoderError` for anything the program cannot run. Never execute here.
 
+Keep the input's frame. Many programs move the molecule to its center of mass, rotate
+it to a standard orientation, or symmetrize it, which leaves gradients, Hessians, and
+geometries in a frame the caller never gave. Turn every such transformation off in the
+encoder (Psi4: `no_com`, `no_reorient`, `symmetry c1`), and add an integration test
+that would catch a moved frame, such as comparing a gradient with a reference or an
+optimization's first geometry with the input. If a program offers no way to keep the
+frame, transform its results back.
+
 ### 3. Parsers
 
 Each parser is a small function from contents to one value:

@@ -102,6 +102,7 @@ These packages work together to make quantum chemistry fast, structured, and int
 | `orca` | energy, gradient, hessian, optimization, transition_state | |
 | `crest` | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
 | `xtb` | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB |
+| `psi4` | energy, gradient, hessian, optimization | Any Psi4 method; point charges for QM/MM |
 | `geometric` | optimization, transition_state | Drives any gradient program (`qccodec[geometric]`) |
 
 ### Running xTB

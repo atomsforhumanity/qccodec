@@ -1,0 +1,35 @@
+{
+  "calctype": "energy",
+  "method": "hf/sto-3g",
+  "options": {
+    "scf_type": "pk"
+  },
+  "kwargs": {},
+  "molecule": {
+    "symbols": [
+      "O",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.524,
+        1.687,
+        0.48
+      ],
+      [
+        1.146,
+        -0.45,
+        -1.354
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "symmetry": null
+  }
+}
