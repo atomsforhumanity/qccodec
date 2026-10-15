@@ -7,3 +7,11 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  # Keeps uv.lock current so CI tests the dependency versions users install.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dependencies:
+        patterns: ["*"]
