@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.14.0] - 2026-10-15
+
 ### Added
 
 - A runnable example script for every program and calculation type in `examples/<program>/` (`single_point.py`, `optimization.py`, `transition_state.py`, `conformer_search.py`), showing every common option (implicit solvent, parallelism, convergence, program extras) and each program's quirks. The integration suite runs every script, and `tests/test_examples.py` fails if a program lacks one.
@@ -15,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Recorded integration cases replace this machine's home directory and hostname in text files.
 - An `xtb` codec that runs the xtb program on the command line: energies, gradients, Hessians (with frequencies and normal modes), and optimizations with GFN0-, GFN1-, GFN2-xTB, GFN-FF, and g-xTB. Keywords pass through as xtb's own command-line flags; partial charges fill `atomic_charges`. xtb errors, unknown command-line options (which xtb only warns about, for example `--gxtb` on a build without g-xTB), and optimizations that run out of cycles raise `CalculationError`, although xtb exits 0 for the last two.
 - A "Supported programs" README section, including when to run xTB through `xtb` or `crest`.
-- Integration tests in `tests/integration/` that run CREST, TeraChem, ORCA, and geomeTRIC through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted runner for private and GPU programs (TeraChem, ORCA) once one is configured.
+- Integration tests in `tests/integration/` that run CREST, xtb, Psi4, TeraChem, ORCA, geomeTRIC, and every example script through qccompute (a test-only dependency group). They are deselected by default (`pytest -m integration`), skip when a program is missing, and can save runs as fixture cases with `--record-cases`. A new Integration workflow runs them nightly on GitHub-hosted runners (CREST, geomeTRIC) and on a self-hosted runner for private and GPU programs (TeraChem, ORCA) once one is configured.
 
 ### Removed
 
@@ -374,7 +376,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.13.1...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.14.0...HEAD
+[0.14.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.14.0
 [0.13.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.1
 [0.13.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.0
 [0.12.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.12.0
