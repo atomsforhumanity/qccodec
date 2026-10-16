@@ -9,7 +9,7 @@ inside ``main``, so the helpers can be tested without Psi4.
 
     {"calctype": "energy" | "gradient" | "hessian" | "optimization"
                  | "transition_state",
-     "method": "hf/sto-3g",                  # first argument to psi4.energy() etc.
+     "method": "wb97x-d/def2-svp",           # first argument to psi4.energy() etc.
      "options": {...},                       # passed to psi4.set_options() unchanged
      "kwargs": {...},                        # extra driver keyword arguments
      "molecule": {"symbols": [...], "geometry": [[x, y, z], ...],  # bohr
