@@ -34,7 +34,9 @@ prog_input = ProgramInput(
     calctype=CalcType.optimization,
     structure=structure,
     # Simple-input words after the method: convergence preset, solvent, ...
-    model=Model(method="hf TightOpt", basis="sto-3g"),  # add "CPCM(water)" for solvent
+    model=Model(
+        method="wB97X-D3 TightOpt", basis="def2-SVP"
+    ),  # add "CPCM(water)" for solvent
     keywords={
         "maxcore": 1000,  # memory per process, MB
         # "pal": 4,  # parallel processes (needs OpenMPI)

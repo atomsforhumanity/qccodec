@@ -12,7 +12,7 @@ How the codec talks to ORCA (manual: https://www.faccts.de/docs/orca/6.0/manual/
 
 - ``model.method`` and ``model.basis`` start the simple-input line, ``! method basis``.
   Further simple-input words go in ``model.method`` after the method name, e.g.
-  "b3lyp D3BJ TightSCF" or "hf CPCM(water)". Leave ``basis`` out for composite
+  "wB97X-D3 TightSCF" or "b3lyp D3BJ CPCM(water)". Leave ``basis`` out for composite
   methods such as "r2scan-3c".
 - The calculation type adds ``! Energy``, ``! EnGrad``, or ``! Freq``.
 - ``maxcore`` (MB per process) and ``pal`` (number of processes) become ``%maxcore``
@@ -45,8 +45,8 @@ prog_input = ProgramInput(
     calctype=calctype,
     structure=structure,
     # Simple-input words after the method; CPCM(water) is implicit solvent.
-    model=Model(method="hf TightSCF CPCM(water)", basis="sto-3g"),
-    # e.g. Model(method="b3lyp D3BJ", basis="def2-svp"), or "uhf"/"uks" for open shells
+    model=Model(method="wB97X-D3 TightSCF CPCM(water)", basis="def2-SVP"),
+    # e.g. Model(method="r2SCAN-3c") with no basis, or "uks" for open shells
     keywords={
         "maxcore": 1000,  # memory per process, MB
         # "pal": 4,  # parallel processes (needs OpenMPI)

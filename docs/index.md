@@ -31,8 +31,8 @@ prog_input = ProgramInput(
         symbols=["O", "H", "H"],
         geometry=[[0.0, 0.0, 0.0], [0.524, 1.687, 0.48], [1.146, -0.45, -1.354]],
     ),
-    model=Model(method="hf", basis="sto-3g"),
-    keywords={"scf_type": "pk"},  # Psi4's own option names
+    model=Model(method="wb97x-d", basis="def2-svp"),
+    keywords={"d_convergence": 1e-8},  # Psi4's own option names
 )
 output = compute(prog_input)
 print(output.results.energy, output.results.gradient)
