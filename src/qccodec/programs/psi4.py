@@ -8,8 +8,8 @@ Psi4. The script calls the Psi4 driver for the calculation type and writes
 
 Inputs map to Psi4 as follows:
 
-- ``model.method`` and ``model.basis`` form the method string, e.g. ``"hf/sto-3g"``
-  for ``psi4.energy("hf/sto-3g")``. Leave ``basis`` empty for composite methods or to
+- ``model.method`` and ``model.basis`` form the method string, e.g. ``"wb97x-d/def2-svp"``
+  for ``psi4.energy("wb97x-d/def2-svp")``. Leave ``basis`` empty for composite methods or to
   set ``basis`` in ``keywords``.
 - ``keywords`` go to ``psi4.set_options`` unchanged, so every Psi4 option and its
   module-scoped form (``"scf__maxiter"``) works as in Psi4's documentation. Two
@@ -111,7 +111,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """
     if inp.model is None:
         raise EncoderError(
-            "psi4 requires a model, e.g. {'method': 'hf', 'basis': 'sto-3g'}."
+            "psi4 requires a model, e.g. {'method': 'wb97x-d', 'basis': 'def2-svp'}."
         )
     method = inp.model.method
     if inp.model.basis:

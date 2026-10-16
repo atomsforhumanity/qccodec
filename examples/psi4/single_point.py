@@ -5,7 +5,7 @@ Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
 
 How the codec talks to Psi4 (https://psicode.org/psi4manual/master/):
 
-- ``model.method`` and ``model.basis`` become Psi4's method string, e.g. "hf/sto-3g".
+- ``model.method`` and ``model.basis`` become Psi4's method string, e.g. "wb97x-d/def2-svp".
   Leave ``basis`` out for composite methods such as "mp2/cc-pv[dt]z".
 - ``keywords`` go to ``psi4.set_options`` unchanged, so use Psi4's option names.
   Module-scoped options are written "module__option", e.g. "scf__maxiter".
@@ -34,10 +34,10 @@ prog_input = ProgramInput(
     program="psi4",
     calctype=calctype,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),  # e.g. "b3lyp-d3bj"/"def2-svp"
+    model=Model(method="wb97x-d", basis="def2-svp"),  # e.g. "b3lyp-d3bj"/"def2-tzvp"
     keywords={
         # Any Psi4 option, exactly as in Psi4's documentation:
-        "scf_type": "pk",  # exact integrals; Psi4's default is density fitting
+        # "scf_type": "pk",  # exact integrals instead of density fitting
         "e_convergence": 1e-8,
         "d_convergence": 1e-8,
         "scf__maxiter": 100,  # module-scoped option

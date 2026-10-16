@@ -32,9 +32,8 @@ prog_input = ProgramInput(
     program="psi4",
     calctype=CalcType.optimization,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),
+    model=Model(method="wb97x-d", basis="def2-svp"),
     keywords={
-        "scf_type": "pk",
         # optking settings:
         "g_convergence": "gau",  # or "qchem", "gau_tight", "gau_verytight", ...
         "geom_maxiter": 50,

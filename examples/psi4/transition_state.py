@@ -7,6 +7,9 @@ Notes for Psi4 transition-state searches:
 
 - The codec sets ``opt_type ts`` and, unless you set it, ``full_hess_every 0``: an
   exact Hessian at the first step, which optking needs to find a saddle point.
+  Psi4 has analytic Hessians only for Hartree-Fock, so for DFT it takes finite
+  differences of gradients, which it runs by calling ``psi4`` again: keep ``psi4``
+  on PATH (not only in ``executables``).
   Setting ``opt_type`` to anything else is an error for this calculation type.
 - Start close to the saddle point. This example starts from nearly planar ammonia;
   its inversion transition state is planar, with one imaginary frequency.
@@ -34,9 +37,8 @@ prog_input = ProgramInput(
     program="psi4",
     calctype=CalcType.transition_state,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),
+    model=Model(method="wb97x-d", basis="def2-svp"),
     keywords={
-        "scf_type": "pk",
         "geom_maxiter": 50,
         # "full_hess_every": 3,  # recompute the exact Hessian every 3 steps
         # "step_type": "rs_i_rfo",  # optking's default for transition states

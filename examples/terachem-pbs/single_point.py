@@ -49,7 +49,7 @@ prog_input = ProgramInput(
     program="terachem-pbs",
     calctype=calctype,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),  # e.g. "wb97x"/"6-31gss"
+    model=Model(method="wb97xd3", basis="def2-svp"),  # e.g. "b3lyp"/"6-31gss"
     keywords={
         # tc.in options, as strings TeraChem understands:
         "purify": "no",

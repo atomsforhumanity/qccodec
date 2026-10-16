@@ -82,7 +82,7 @@ native = encode(
         program="terachem",
         calctype="energy",
         structure=Structure.open("molecule.xyz"),
-        model={"method": "hf", "basis": "sto-3g"},
+        model={"method": "wb97xd3", "basis": "def2-svp"},
     )
 )
 native.command  # ("terachem", "tc.in")

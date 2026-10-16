@@ -34,7 +34,7 @@ prog_input = ProgramInput(
     program="terachem",
     calctype=CalcType.optimization,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),
+    model=Model(method="wb97xd3", basis="def2-svp"),
     keywords={
         "purify": "no",
         "new_minimizer": "yes",  # required

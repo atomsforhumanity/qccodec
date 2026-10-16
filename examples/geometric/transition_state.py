@@ -54,8 +54,7 @@ gradient_program = ProgramSpec(
 # gradient_program = ProgramSpec(
 #     program="psi4",
 #     calctype=CalcType.gradient,
-#     model=Model(method="hf", basis="sto-3g"),
-#     keywords={"scf_type": "pk"},
+#     model=Model(method="wb97x-d", basis="def2-svp"),
 #     cmdline_args=["-n", "1", "--memory", "2GB"],
 # )
 

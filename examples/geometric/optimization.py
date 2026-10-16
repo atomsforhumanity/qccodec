@@ -54,9 +54,8 @@ gradient_program = ProgramSpec(
 # gradient_program = ProgramSpec(
 #     program="psi4",
 #     calctype=CalcType.gradient,
-#     model=Model(method="hf", basis="sto-3g"),
+#     model=Model(method="wb97x-d", basis="def2-svp"),
 #     keywords={
-#         "scf_type": "pk",
 #         "external_potentials": [[-0.2, [0.0, 0.0, 8.0]], [0.2, [2.0, 2.0, 9.0]]],
 #     },
 #     cmdline_args=["-n", "1", "--memory", "2GB"],
@@ -66,7 +65,7 @@ gradient_program = ProgramSpec(
 # gradient_program = ProgramSpec(
 #     program="terachem",
 #     calctype=CalcType.gradient,
-#     model=Model(method="b3lyp", basis="6-31g*"),
+#     model=Model(method="wb97xd3", basis="def2-svp"),
 #     keywords={"dftd": "d3"},
 # )
 

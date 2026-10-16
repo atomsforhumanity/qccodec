@@ -37,7 +37,7 @@ prog_input = ProgramInput(
     program="orca",
     calctype=CalcType.transition_state,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),
+    model=Model(method="wB97X-D3", basis="def2-SVP"),
     keywords={
         "maxcore": 1000,  # memory per process, MB
         # "pal": 4,  # parallel processes (needs OpenMPI)

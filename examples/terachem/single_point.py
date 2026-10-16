@@ -46,7 +46,7 @@ prog_input = ProgramInput(
     program="terachem",
     calctype=calctype,
     structure=structure,
-    model=Model(method="hf", basis="sto-3g"),  # e.g. "wb97x"/"6-31gss", "ub3lyp"
+    model=Model(method="wb97xd3", basis="def2-svp"),  # wB97X-D3; e.g. "b3lyp", "ub3lyp"
     keywords={
         # Any tc.in keyword, exactly as in TeraChem's manual:
         "purify": "no",
