@@ -8,21 +8,24 @@ Notes for geomeTRIC transition-state searches (https://geometric.readthedocs.io/
 
 - ``CalcType.transition_state`` turns on geomeTRIC's saddle-point optimizer.
   geomeTRIC needs a starting Hessian, which it builds by finite differences of child
-  gradients (two per Cartesian coordinate); ``"hessian": "first"`` is the default.
-  ``results.trajectory`` holds every gradient calculation, so those displaced
-  structures appear in it, and in ``results.energies``, before the optimization
-  steps. The last entry is the transition state.
+  gradients (two per Cartesian coordinate). Those displaced gradients are not
+  optimizer steps, so ``results.trajectory`` leaves them out: it holds one frame per
+  step, and each Hessian geomeTRIC computes is attached to the frame at its
+  geometry (``frame.results.hessian``).
+- ``"hessian"`` chooses when: ``"first"`` (the default) at the start,
+  ``"first+last"`` also at the end, which is how this example checks its result,
+  ``"each"`` at every step (costly).
 - Start close to the saddle point. This example starts from nearly planar ammonia;
   its inversion transition state is planar, with one imaginary frequency.
-- Check the result with a Hessian (e.g. examples/crest/single_point.py with
-  CalcType.hessian, as done at the end here): a transition state has exactly one
-  imaginary (negative) frequency.
+- A transition state has exactly one negative Hessian eigenvalue (one imaginary
+  frequency). The final frame's Hessian shows it, whatever the child program.
 - The child program, coordinate systems, constraints, and QM/MM point charges work
   as in optimization.py; swap the ``ProgramSpec`` for xtb, Psi4, TeraChem, ...
 - Transition-state steps use a small trust radius by default (``trust`` 0.01,
   ``tmax`` 0.03 angstrom), so expect more steps than for a minimum.
 """
 
+import numpy as np
 from qccompute import compute
 from qcdata import CalcType, Model, ProgramInput, ProgramSpec, Structure
 
@@ -65,7 +68,7 @@ prog_input = ProgramInput(
         "coordsys": "tric",  # or "dlc", "prim", "cart"
         "maxiter": 100,
         "convergence_set": "gau",  # or "gau_tight", ...
-        # "hessian": "first",  # or "each": exact Hessian every step (costly)
+        "hessian": "first+last",  # exact Hessians at the start and the end
         # "trust": 0.01,  # starting trust radius (angstrom)
         # "tmax": 0.03,  # largest trust radius (angstrom)
     },
@@ -78,18 +81,11 @@ output = compute(
 )
 
 results = output.results
-print("Gradient calculations:", len(results.trajectory))
+print("Steps:", len(results.trajectory))
 print("Transition-state energy (Hartree):", results.energies[-1])
 print("Transition-state structure (bohr):\n", results.final_structure.geometry)
 
-# Confirm the saddle point: exactly one imaginary (negative) frequency.
-hessian = compute(
-    ProgramInput(
-        program="crest",
-        calctype=CalcType.hessian,
-        structure=results.final_structure,
-        model=Model(method="gfn2"),
-        keywords={"threads": 1},
-    )
-)
-print("Frequencies (cm^-1):", hessian.results.freqs_wavenumber)
+# Confirm the saddle point: exactly one negative eigenvalue of the final Hessian.
+final_hessian = results.trajectory[-1].results.hessian
+eigenvalues = np.linalg.eigvalsh(final_hessian)
+print("Negative Hessian eigenvalues:", int((eigenvalues < -1e-3).sum()), "(1 for a TS)")

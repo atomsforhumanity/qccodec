@@ -19,6 +19,12 @@ Inputs map to geomeTRIC as follows:
 
 Calculation types: ``optimization`` and ``transition_state`` (``transition=True``;
 geomeTRIC computes a starting Hessian from finite differences of child gradients).
+
+The trajectory holds one frame per optimizer step. Gradients at the displaced
+geometries of a finite-difference Hessian are not steps, so they are left out, unless
+one fails. Each Hessian geomeTRIC computes is attached to the frame at its geometry
+(``frame.results.hessian``): the first frame for ``hessian="first"``, the default for
+transition states, and also the last frame for ``"first+last"`` or ``"last"``.
 Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
 With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
@@ -63,6 +69,9 @@ class GeometricOutcome(TypedDict):
     version: str | None
     error: str | None
 
+
+# geomeTRIC computes finite-difference Hessians in directories below this one.
+HESSIAN_DISPLACEMENT = "hessian/displace"
 
 # coordsys -> (geometric.internal class, connect, addcart), as in geomeTRIC's run_json.
 COORDINATE_SYSTEMS: dict[str, tuple[str, bool, bool]] = {
@@ -130,7 +139,14 @@ def make_engine(
         def calc_new(
             self, coords: NDArray[np.float64], *args: object
         ) -> dict[str, float | NDArray[np.float64]]:
-            """Evaluate a trial geometry and keep its child output in the trajectory."""
+            """Evaluate a geometry; optimizer steps join the trajectory.
+
+            Gradients at the displaced geometries of a finite-difference Hessian
+            (geomeTRIC runs them in ``hessian/displace/...``) are not optimizer steps,
+            so they stay out of the trajectory unless they fail.
+            """
+            dirname = str(args[0]) if args else ""
+            displacement = HESSIAN_DISPLACEMENT in dirname.replace("\\", "/")
             updated = Structure.model_validate(
                 {**structure.model_dump(), "geometry": coords}
             )
@@ -143,9 +159,10 @@ def make_engine(
                 if trajectory
                 else None,
             )
-            trajectory.append(
-                cast(ProgramOutput[ProgramInput, SinglePointData], output)
-            )
+            if not displacement or not output.success:
+                trajectory.append(
+                    cast(ProgramOutput[ProgramInput, SinglePointData], output)
+                )
             if not output.success:
                 raise RuntimeError(
                     "A child calculation failed during geomeTRIC optimization."
@@ -177,6 +194,8 @@ def invoke_geometric(
     import geometric
 
     trajectory: list[ProgramOutput[ProgramInput, SinglePointData]] = []
+    hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]] = []
+    compute_hessian = None
     outcome: GeometricOutcome = {
         "trajectory": trajectory,
         "version": geometric.__version__,
@@ -208,6 +227,18 @@ def invoke_geometric(
             compute_child,
             trajectory,
         )
+        # Record every Cartesian Hessian geomeTRIC computes, with its geometry.
+        compute_hessian = geometric.optimize.calc_cartesian_hessian
+
+        def recording_hessian(
+            coords: NDArray[np.float64], *args: Any, **kwargs: Any
+        ) -> NDArray[np.float64]:
+            """Compute the Hessian as geomeTRIC would and remember it."""
+            hessian = compute_hessian(coords, *args, **kwargs)
+            hessians.append((np.array(coords, copy=True), np.array(hessian, copy=True)))
+            return hessian
+
+        geometric.optimize.calc_cartesian_hessian = recording_hessian
         optimizer = geometric.optimize.Optimizer(
             structure.geometry.flatten(),
             molecule,
@@ -221,7 +252,30 @@ def invoke_geometric(
         optimizer.optimizeGeometry()
     except Exception:
         outcome["error"] = traceback.format_exc()
+    finally:
+        if compute_hessian is not None:
+            geometric.optimize.calc_cartesian_hessian = compute_hessian
+        _attach_hessians(trajectory, hessians)
     return outcome
+
+
+def _attach_hessians(
+    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]],
+    hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]],
+) -> None:
+    """Put each Hessian on the trajectory frame computed at the same geometry.
+
+    With ``hessian="first"`` (the default for transition states) that is the first
+    frame; ``"last"`` and ``"first+last"`` also give the final frame one.
+    """
+    for coords, hessian in hessians:
+        for i in range(len(trajectory) - 1, -1, -1):
+            frame = trajectory[i]
+            geometry = frame.input_data.structure.geometry.flatten()
+            if geometry.shape == coords.shape and np.allclose(geometry, coords):
+                results = frame.results.model_copy(update={"hessian": hessian})
+                trajectory[i] = frame.model_copy(update={"results": results})
+                break
 
 
 def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData:

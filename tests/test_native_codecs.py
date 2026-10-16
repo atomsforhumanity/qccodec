@@ -279,3 +279,43 @@ def test_geometric_coordinate_systems_match_geometric() -> None:
     geometric = pytest.importorskip("geometric")
     for class_name, _, _ in COORDINATE_SYSTEMS.values():
         assert hasattr(geometric.internal, class_name)
+
+
+def test_geometric_hessians_attach_to_the_frame_at_their_geometry() -> None:
+    """Each recorded Hessian goes on the last frame computed at the same geometry."""
+    import numpy as np
+    from qcdata import CalcType, ProgramOutput, SinglePointData, Structure
+
+    from qccodec.programs.geometric import _attach_hessians
+
+    def frame(z: float) -> ProgramOutput:
+        structure = Structure(
+            symbols=["H", "H"], geometry=np.array([[0.0, 0, 0], [0, 0, z]])
+        )
+        return ProgramOutput(
+            input_data=ProgramInput(
+                program="test", calctype=CalcType.gradient, structure=structure
+            ),
+            success=True,
+            results=SinglePointData.model_validate(
+                {
+                    "provenance": {"program": "test"},
+                    "energy": -1.0,
+                    "gradient": np.zeros((2, 3)),
+                }
+            ),
+        )
+
+    trajectory = [frame(1.4), frame(1.35), frame(1.3)]
+    first, last = np.eye(6), 2 * np.eye(6)
+    _attach_hessians(
+        trajectory,
+        [
+            (np.array([0, 0, 0, 0, 0, 1.4]), first),
+            (np.array([0, 0, 0, 0, 0, 1.3]), last),
+            (np.array([0, 0, 0, 0, 0, 9.9]), 3 * np.eye(6)),  # no such frame
+        ],
+    )
+    assert np.array_equal(trajectory[0].results.hessian, first)
+    assert trajectory[1].results.hessian is None
+    assert np.array_equal(trajectory[2].results.hessian, last)

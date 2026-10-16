@@ -135,7 +135,11 @@ NEAR_PLANAR_AMMONIA = Structure(
 
 @requires("crest")
 def test_transition_state_with_crest(run: Run) -> None:
-    """geomeTRIC's saddle-point search on GFN2-xTB gradients finds one imaginary mode."""
+    """geomeTRIC's saddle-point search: one frame per step, Hessians on their frames.
+
+    The finite-difference gradients behind each Hessian (2 x 3N per Hessian) stay out
+    of the trajectory; the Hessians land on the first and last frames.
+    """
     inp = _input(
         NEAR_PLANAR_AMMONIA,
         CalcType.transition_state,
@@ -143,16 +147,15 @@ def test_transition_state_with_crest(run: Run) -> None:
         Model(method="gfn2"),
         threads=1,
     )
+    inp = inp.model_copy(update={"keywords": {"hessian": "first+last"}})
     output = run(inp)
     assert isinstance(output.results, OptimizationData)
+    trajectory = output.results.trajectory
+    assert len(trajectory) < 2 * 3 * len(NEAR_PLANAR_AMMONIA.symbols)
     assert np.isclose(output.results.energies[-1], -4.4165068, atol=1e-6)
-    final = output.results.trajectory[-1].input_data.structure
-    hessian = ProgramInput(
-        program="crest",
-        calctype=CalcType.hessian,
-        structure=final,
-        model=Model(method="gfn2"),
-        keywords={"threads": 1},
-    )
-    frequencies = run(hessian).results.freqs_wavenumber
-    assert sum(f < 0 for f in frequencies) == 1
+    with_hessian = [
+        i for i, f in enumerate(trajectory) if f.results.hessian is not None
+    ]
+    assert with_hessian == [0, len(trajectory) - 1]
+    eigenvalues = np.linalg.eigvalsh(np.asarray(trajectory[-1].results.hessian))
+    assert (eigenvalues < -1e-3).sum() == 1  # a first-order saddle point
