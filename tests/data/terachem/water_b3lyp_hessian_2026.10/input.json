@@ -1,0 +1,66 @@
+{
+  "extras": {},
+  "files": {},
+  "program": "terachem",
+  "cmdline_args": [],
+  "calctype": "hessian",
+  "model": {
+    "extras": {},
+    "method": "b3lyp",
+    "basis": "6-31g",
+    "qcdata_version": "0.20.1"
+  },
+  "keywords": {
+    "purify": "no"
+  },
+  "subprograms": [],
+  "structure": {
+    "extras": {},
+    "symbols": [
+      "O",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        0.022531001997713594,
+        0.017650541231852297,
+        -0.012249224534705398
+      ],
+      [
+        0.5009229288099285,
+        1.7183882034872506,
+        0.5180806028365682
+      ],
+      [
+        1.147442147965631,
+        -0.49902392855765926,
+        -1.3798296942644486
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "identifiers": {
+      "extras": {},
+      "name": null,
+      "name_IUPAC": null,
+      "smiles": null,
+      "canonical_smiles": null,
+      "canonical_smiles_program": null,
+      "canonical_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+      "inchi": null,
+      "inchikey": null,
+      "pubchem_cid": null,
+      "pubchem_sid": null,
+      "pubchem_conformerid": null,
+      "qcdata_version": "0.20.1"
+    },
+    "connectivity": [],
+    "qcdata_version": "0.20.1"
+  },
+  "structures": {},
+  "qcdata_version": "0.20.1"
+}

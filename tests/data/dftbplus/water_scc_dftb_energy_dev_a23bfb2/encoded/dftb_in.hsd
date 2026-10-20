@@ -1,0 +1,22 @@
+Geometry = xyzFormat {
+  <<< "geometry.xyz"
+}
+Hamiltonian = DFTB {
+  Scc = Yes
+  Charge = 0
+  MaxAngularMomentum {
+    O = "p"
+    H = "s"
+  }
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/opt/dftb-params/mio-1-1/"
+    Separator = "-"
+    Suffix = ".skf"
+  }
+}
+Options {
+  WriteResultsTag = Yes
+}
+ParserOptions {
+  ParserVersion = 14
+}

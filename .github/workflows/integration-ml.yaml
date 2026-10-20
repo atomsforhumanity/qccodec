@@ -1,0 +1,113 @@
+name: Integration (ML potentials)
+
+# Runs the machine-learned-potential codecs against their real libraries (tests marked
+# "integration"). Separate from the Integration workflow because the libraries are
+# large PyTorch installs and need two environments: mace-torch pins e3nn==0.4.4 and
+# fairchem-core needs e3nn>=0.5. Not a required check.
+
+on:
+  schedule:
+    - cron: "47 7 * * *" # nightly, catches library and model drift
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/qccodec/programs/_python.py"
+      - "src/qccodec/programs/aimnet2.py"
+      - "src/qccodec/programs/fairchem.py"
+      - "src/qccodec/programs/mace.py"
+      - "src/qccodec/programs/orb.py"
+      - "src/qccodec/programs/torchani.py"
+      - "src/qccodec/model_cache.py"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_aimnet2.py"
+      - "tests/integration/test_fairchem.py"
+      - "tests/integration/test_mace.py"
+      - "tests/integration/test_orb.py"
+      - "tests/integration/test_torchani.py"
+      - "examples/aimnet2/**"
+      - "examples/fairchem/**"
+      - "examples/mace/**"
+      - "examples/orb/**"
+      - "examples/torchani/**"
+      - ".github/workflows/integration-ml.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "src/qccodec/programs/_python.py"
+      - "src/qccodec/programs/aimnet2.py"
+      - "src/qccodec/programs/fairchem.py"
+      - "src/qccodec/programs/mace.py"
+      - "src/qccodec/programs/orb.py"
+      - "src/qccodec/programs/torchani.py"
+      - "src/qccodec/model_cache.py"
+      - ".github/workflows/integration-ml.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ml:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: FAIR-Chem, AIMNet2, TorchANI
+            packages: fairchem-core aimnet torchani
+            programs: aimnet2,torchani
+            tests: >-
+              tests/integration/test_fairchem.py
+              tests/integration/test_aimnet2.py
+              tests/integration/test_torchani.py
+            examples: fairchem or aimnet2 or torchani
+          - name: MACE, Orb
+            packages: mace-torch orb-models
+            programs: mace,orb
+            tests: tests/integration/test_mace.py tests/integration/test_orb.py
+            examples: mace or orb
+    env:
+      # FAIR-Chem's weights are gated on Hugging Face. The token is a repository
+      # secret, so pull requests from forks never see it and skip those tests; a
+      # failing download fails the run only where the token exists.
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      QCCODEC_REQUIRE_PROGRAMS: >-
+        ${{ matrix.programs }}${{ secrets.HF_TOKEN != '' && contains(matrix.packages, 'fairchem') && ',fairchem' || '' }}
+      TORCHANI_NO_WARN_EXTENSIONS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install
+        # CPU-only PyTorch first: a fraction of the default (CUDA) wheels' size and
+        # enough for water-sized tests. The libraries then reuse it.
+        run: |
+          uv sync --locked --group integration --extra geometric
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install ${{ matrix.packages }}
+      # Only openly licensed weights are cached. This repository is public, and pull
+      # requests from forks can restore caches saved on master, so FAIR-Chem's gated
+      # weights are downloaded with the token on every run instead.
+      - name: Cache open model weights
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/aimnet
+            ~/.cache/mace
+            ~/.cache/cached_path
+            ~/.local/share/Torchani
+          key: ml-weights-${{ matrix.programs }}-v1
+      - name: Library versions
+        run: |
+          uv pip list 2>/dev/null | grep -iE "^(torch|fairchem-core|aimnet|torchani|mace-torch|orb-models|e3nn) "
+      - name: Run integration tests
+        run: |
+          uv run --no-sync pytest -m integration -rs ${{ matrix.tests }}
+          uv run --no-sync pytest -m integration -rs tests/integration/test_examples.py -k "${{ matrix.examples }}"

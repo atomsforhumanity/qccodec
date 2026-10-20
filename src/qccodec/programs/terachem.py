@@ -14,10 +14,20 @@ Inputs map to TeraChem as follows:
 - ``cmdline_args`` are appended to the ``terachem`` command.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (``run frequencies``; the
-Hessian and gradient are parsed, frequencies and normal modes are not yet), and
-``optimization``, which requires ``new_minimizer yes`` in ``keywords``. TeraChem refuses
-Hessians away from a stationary point unless ``mincheck false`` is set. TeraChem keeps the input's coordinates and atom
-order. No input field carries atom indices.
+Hessian, gradient, frequencies, and normal modes, the last two from
+``scr.geometry/Frequencies.dat``), and ``optimization``, which requires
+``new_minimizer yes`` in ``keywords``. TeraChem refuses Hessians away from a stationary
+point unless ``mincheck false`` is set. TeraChem keeps the input's coordinates and atom
+order.
+
+Optimizations take one keyword that is not a ``tc.in`` line: ``constraints``, the same
+dictionary the geomeTRIC codec takes, e.g. ``{"freeze": [{"type": "xyz", "indices":
+[0, 1]}], "set": [{"type": "distance", "indices": [0, 2], "value": 2.8}]}``. Types are
+``xyz``, ``distance``, ``angle``, and ``dihedral``; ``set`` values are in bohr for
+distances and degrees for angles. The codec writes them as TeraChem's
+``$constraint_freeze`` and ``$constraint_set`` groups, converting the 0-based
+``indices`` to TeraChem's 1-based atom numbers and distances to angstrom. Scans are not
+supported. ``indices`` is the only input field that carries atom indices.
 
 The orbital files ``c0`` (or ``ca0``/``cb0``) can seed the next calculation: qccompute's
 ``propagate_wfn=True`` does this between geomeTRIC steps. A run is a failure unless
@@ -27,6 +37,7 @@ stdout ends with ``Job finished:``.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from qcdata import (
     CalcType,
@@ -122,13 +133,19 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         "basis": ".model.basis",
         "method": ".model.method",
     }
-    for key, value in inp.keywords.items():
+    keywords = dict(inp.keywords)
+    constraints = keywords.pop("constraints", None)
+    for key, value in keywords.items():
         if key in non_keywords:
             raise EncoderError(
                 f"Keyword '{key}' should not be set as a keyword. It "
                 f"should be set at '{non_keywords[key]}'",
             )
         lines.append(f"{key:<{PADDING}} {str(value).lower()}")  # lowercase booleans
+    if constraints:
+        if inp.calctype != CalcType.optimization:
+            raise EncoderError("constraints apply to optimizations only.")
+        lines.extend(["end", "", *constraint_groups(constraints)])
 
     return invocation(
         inp,
@@ -136,6 +153,73 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         "tc.in",
         wavefunction_files=("scr*/c0", "scr*/ca0", "scr*/cb0"),
     )
+
+
+# geomeTRIC constraint type -> (TeraChem name, number of atoms or None for any).
+CONSTRAINT_TYPES: dict[str, tuple[str, int | None]] = {
+    "xyz": ("xyz", None),
+    "distance": ("bond", 2),
+    "angle": ("angle", 3),
+    "dihedral": ("dihedral", 4),
+}
+
+
+def constraint_groups(constraints: dict[str, Any]) -> list[str]:
+    """Write geomeTRIC-style constraints as ``$constraint_freeze``/``$constraint_set``.
+
+    Args:
+        constraints: ``{"freeze": [...], "set": [...]}``, each entry
+            ``{"type": "xyz" | "distance" | "angle" | "dihedral", "indices": [...]}``
+            with 0-based atom indices; ``set`` entries add ``"value"`` (bohr for
+            distances, degrees for angles and dihedrals).
+
+    Returns:
+        ``tc.in`` lines with 1-based atom indices and distances in angstrom.
+
+    Raises:
+        EncoderError: An unknown group or type, a wrong number of atoms, or a missing
+            value.
+    """
+    lines: list[str] = []
+    for group, entries in constraints.items():
+        if group not in ("freeze", "set"):
+            raise EncoderError(
+                f"Unknown constraint group {group!r}; use 'freeze' or 'set' (scans "
+                "are not supported)."
+            )
+        lines.append(f"$constraint_{group}")
+        for entry in entries:
+            kind = str(entry.get("type", "")).lower()
+            if kind not in CONSTRAINT_TYPES:
+                raise EncoderError(
+                    f"Unknown constraint type {entry.get('type')!r}; use one of "
+                    f"{sorted(CONSTRAINT_TYPES)}."
+                )
+            name, count = CONSTRAINT_TYPES[kind]
+            indices = [int(i) for i in entry.get("indices", [])]
+            if not indices or (count is not None and len(indices) != count):
+                raise EncoderError(
+                    f"A {kind} constraint takes {count or 'one or more'} atom indices, "
+                    f"not {indices}."
+                )
+            if kind == "xyz":
+                atoms = ",".join(str(i + 1) for i in indices)
+            else:
+                atoms = "_".join(str(i + 1) for i in indices)
+            if group == "set":
+                if "value" not in entry or kind == "xyz":
+                    raise EncoderError(
+                        f"A set constraint needs a distance, angle, or dihedral and a "
+                        f"value: {entry}."
+                    )
+                value = float(entry["value"])
+                if kind == "distance":
+                    value *= constants.BOHR_TO_ANGSTROM
+                lines.append(f"{name} {value:.10g} {atoms}")
+            else:
+                lines.append(f"{name} {atoms}")
+        lines.append("$end")
+    return lines
 
 
 def propagate_wfn(output: ProgramOutput, inp: ProgramInput) -> ProgramInput:
@@ -226,6 +310,68 @@ def parse_hessian(stdout: str) -> list[list[float]]:
                 f"elements, expected {len(hessian)}."
             )
     return hessian
+
+
+def _frequency_blocks(contents: str) -> tuple[list[float], list[list[list[float]]]]:
+    """Read every mode from ``Frequencies.dat``.
+
+    TeraChem lists the vibrational modes in blocks of columns: a row of mode numbers,
+    a row of frequencies (cm^-1, negative for imaginary modes), a dashed rule, then
+    three rows per atom (x, y, z, the first prefixed with the atom number). The modes
+    are un-mass-weighted Cartesian displacements, as qcdata expects.
+
+    Returns:
+        The frequencies and the modes, (n_modes, n_atoms, 3).
+
+    Raises:
+        ParserError: The file holds no modes or a block is malformed.
+    """
+    natoms = int(re_search(r"Number Atoms:\s+(\d+)", contents).group(1))
+    lines = contents.splitlines()
+    freqs: list[float] = []
+    modes: list[list[list[float]]] = []
+    i = 0
+    while i < len(lines):
+        fields = lines[i].split()
+        if not fields or not all(f.isdigit() for f in fields) or i + 2 >= len(lines):
+            i += 1
+            continue
+        ncol = len(fields)
+        block_freqs = [float(f) for f in lines[i + 1].split()]
+        rows = [line.split() for line in lines[i + 3 : i + 3 + 3 * natoms]]
+        values = [row[-ncol:] for row in rows]
+        if len(block_freqs) != ncol or any(len(row) != ncol for row in values):
+            raise ParserError(f"Malformed Frequencies.dat block at line {i + 1}.")
+        for column in range(ncol):
+            displacement = [float(row[column]) for row in values]
+            modes.append([displacement[a : a + 3] for a in range(0, 3 * natoms, 3)])
+        freqs.extend(block_freqs)
+        i += 3 + 3 * natoms
+    if not freqs:
+        raise ParserError("Frequencies.dat holds no vibrational modes.")
+    return freqs, modes
+
+
+@codec.parser(
+    file="scr*/Frequencies.dat",
+    target="freqs_wavenumber",
+    calctypes=[CalcType.hessian],
+    required=False,
+)
+def parse_frequencies(contents: str) -> list[float]:
+    """Parse vibrational frequencies (cm^-1) from ``scr.*/Frequencies.dat``."""
+    return _frequency_blocks(contents)[0]
+
+
+@codec.parser(
+    file="scr*/Frequencies.dat",
+    target="normal_modes_cartesian",
+    calctypes=[CalcType.hessian],
+    required=False,
+)
+def parse_normal_modes(contents: str) -> list[list[list[float]]]:
+    """Parse normal modes (n_modes, n_atoms, 3) from ``scr.*/Frequencies.dat``."""
+    return _frequency_blocks(contents)[1]
 
 
 @codec.parser(target=("provenance", "program_version"), required=False)

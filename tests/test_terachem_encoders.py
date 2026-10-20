@@ -59,3 +59,70 @@ def test_encode_raises_error_qcdata_args_passed_as_keywords(prog_input_factory):
         prog_input_factory.keywords[keyword] = "some value"
         with pytest.raises(EncoderError):
             encode(prog_input_factory)
+
+
+def test_constraints_become_freeze_and_set_groups(prog_input_factory):
+    """geomeTRIC-style constraints are written 1-based, distances in angstrom."""
+    inp = prog_input_factory("optimization")
+    inp = inp.model_copy(
+        update={
+            "keywords": {
+                "new_minimizer": "yes",
+                "constraints": {
+                    "freeze": [
+                        {"type": "xyz", "indices": [0, 2]},
+                        {"type": "angle", "indices": [1, 0, 2]},
+                    ],
+                    "set": [
+                        {"type": "distance", "indices": [0, 1], "value": 2.0},
+                        {"type": "dihedral", "indices": [0, 1, 2, 0], "value": 120},
+                    ],
+                },
+            }
+        }
+    )
+    text = encode(inp).files["tc.in"]
+    tail = text.split("new_minimizer")[1].splitlines()[1:]
+    assert tail == [
+        "end",
+        "",
+        "$constraint_freeze",
+        "xyz 1,3",
+        "angle 2_1_3",
+        "$end",
+        "$constraint_set",
+        "bond 1.058354421 1_2",
+        "dihedral 120 1_2_3_1",
+        "$end",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("constraints", "match"),
+    [
+        ({"scan": []}, "scans are not supported"),
+        ({"freeze": [{"type": "position", "indices": [0]}]}, "Unknown constraint"),
+        ({"freeze": [{"type": "distance", "indices": [0]}]}, "takes 2"),
+        ({"set": [{"type": "distance", "indices": [0, 1]}]}, "needs"),
+    ],
+)
+def test_invalid_constraints(prog_input_factory, constraints, match):
+    """Unsupported groups, types, atom counts, and missing values are rejected."""
+    inp = prog_input_factory("optimization")
+    inp = inp.model_copy(
+        update={"keywords": {"new_minimizer": "yes", "constraints": constraints}}
+    )
+    with pytest.raises(EncoderError, match=match):
+        encode(inp)
+
+
+def test_constraints_only_for_optimizations(prog_input_factory):
+    """Single points have nothing to constrain."""
+    inp = prog_input_factory("gradient")
+    inp = inp.model_copy(
+        update={
+            "keywords": {"constraints": {"freeze": [{"type": "xyz", "indices": [0]}]}}
+        }
+    )
+    with pytest.raises(EncoderError, match="optimizations only"):
+        encode(inp)

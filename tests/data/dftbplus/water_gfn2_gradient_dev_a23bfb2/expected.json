@@ -1,0 +1,51 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "dftbplus",
+    "program_version": "dev-a23bfb2",
+    "qcdata_version": "0.20.1"
+  },
+  "energy": -5.07021823219039,
+  "gradient": [
+    [
+      -0.0107971089567203,
+      -0.00814918875743872,
+      0.0055626874954388
+    ],
+    [
+      0.00481358127936225,
+      0.00628785824696895,
+      -0.00093836243548269
+    ],
+    [
+      0.00598352767735805,
+      0.00186133051046973,
+      -0.00462432505995611
+    ]
+  ],
+  "hessian": null,
+  "nuclear_repulsion_energy": null,
+  "wavefunction": null,
+  "freqs_wavenumber": [],
+  "normal_modes_cartesian": null,
+  "gibbs_free_energy": null,
+  "scf_dipole_moment": [
+    0.666533296659947,
+    0.493603489438965,
+    -0.348896327730064
+  ],
+  "atomic_charges": [
+    -0.561038320362493,
+    0.28051270923867,
+    0.280525611123821
+  ],
+  "point_charge_gradient": null,
+  "qcdata_version": "0.20.1"
+}

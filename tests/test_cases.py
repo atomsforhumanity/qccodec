@@ -21,7 +21,16 @@ def test_case(case: Case) -> None:
 
 
 # Programs whose models are not ab initio method/basis pairs.
-SEMIEMPIRICAL = {"xtb": "gfn2"}
+SEMIEMPIRICAL = {
+    "xtb": "gfn2",
+    "tblite": "gfn2",
+    "dftbplus": "GFN2-xTB",
+    "aimnet2": "aimnet2",
+    "torchani": "ANI2x",
+    "mace": "mace-off-small",
+    "orb": "orb-v3-conservative-omol",
+    "fairchem": "uma-s-1p2p1",
+}
 
 
 @pytest.mark.parametrize("program", supported_programs())

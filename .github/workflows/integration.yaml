@@ -30,11 +30,11 @@ permissions:
 
 jobs:
   cpu:
-    name: CPU programs (CREST, xtb, Psi4, geomeTRIC)
+    name: CPU programs (CREST, xtb, Psi4, DFTB+, tblite, geomeTRIC)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      QCCODEC_REQUIRE_PROGRAMS: crest,xtb,psi4
+      QCCODEC_REQUIRE_PROGRAMS: crest,xtb,psi4,dftb+,tblite
       # Official static build. conda-forge's crest 3.0.2 crashes in its optimizer
       # (Fortran format error in ancopt.f90). Update the version and checksum together.
       CREST_VERSION: v3.0.2
@@ -44,6 +44,12 @@ jobs:
       GXTB_VERSION: v2.0.1
       GXTB_ARCHIVE: xtb-6.7.1-gxtb-140526-linux-x86_64.tar.xz
       GXTB_SHA256: cdfb81164f8d3300fc451dbbf2414528b533e71f7a30ec824b564cd30d6d9e5c # pragma: allowlist secret
+      # DFTB Slater-Koster parameter sets (CC-BY-SA-4.0) from github.com/dftbparams.
+      # Update a version and its checksum together.
+      SKF_3OB_VERSION: v3.1.0
+      SKF_3OB_SHA256: 8ac194f4e6375961969f9de62ec6ef1bac1ee8323c7fdce4c737968a19c81a27 # pragma: allowlist secret
+      SKF_MIO_VERSION: v1.1.0
+      SKF_MIO_SHA256: 79ebed90176f3896b917ea38acbdf11959bddd2256590d51df2974e717454b83 # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v7
       - name: Install CREST
@@ -79,6 +85,24 @@ jobs:
           printf '#!/bin/sh\nexec "%s" "$@"\n' "$MAMBA_ROOT_PREFIX/envs/psi4/bin/psi4" > "$RUNNER_TEMP/programs/bin/psi4"
           chmod +x "$RUNNER_TEMP/programs/bin/psi4"
           echo "$RUNNER_TEMP/programs/bin" >> "$GITHUB_PATH"
+      # DFTB+ also ships through conda; its own environment keeps it apart from Psi4.
+      - name: Install DFTB+
+        run: |
+          "$MAMBA_EXE" create -y -n dftbplus -c conda-forge "dftbplus=25.1=nompi*"
+          printf '#!/bin/sh\nexec "%s" "$@"\n' "$MAMBA_ROOT_PREFIX/envs/dftbplus/bin/dftb+" > "$RUNNER_TEMP/programs/bin/dftb+"
+          chmod +x "$RUNNER_TEMP/programs/bin/dftb+"
+      - name: Download DFTB parameter sets
+        run: |
+          params="$RUNNER_TEMP/dftb-params"
+          mkdir -p "$params"
+          curl -fsSL -o 3ob.tar.xz "https://github.com/dftbparams/3ob/releases/download/${SKF_3OB_VERSION}/3ob-3-1.tar.xz"
+          echo "${SKF_3OB_SHA256}  3ob.tar.xz" | sha256sum --check
+          curl -fsSL -o mio.tar.xz "https://github.com/dftbparams/mio/releases/download/${SKF_MIO_VERSION}/mio-1-1.tar.xz"
+          echo "${SKF_MIO_SHA256}  mio.tar.xz" | sha256sum --check
+          tar xf 3ob.tar.xz -C "$params"
+          tar xf mio.tar.xz -C "$params"
+          rm 3ob.tar.xz mio.tar.xz
+          echo "QCCODEC_DFTB_PARAMETERS=$params" >> "$GITHUB_ENV"
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -90,6 +114,8 @@ jobs:
           crest --version | grep -i version
           xtb --version | grep -i version
           echo "psi4 $(psi4 --version)"
+          dftb+ --version 2>&1 | grep -m1 -i "DFTB+" || true
+          uv run python -c "import importlib.metadata as m; print('tblite', m.version('tblite'))"
       - name: Run integration tests
         run: uv run pytest -m integration -rs
 

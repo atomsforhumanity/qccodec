@@ -1,0 +1,918 @@
+{
+  "calcinfo_natoms": 3,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": 7,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "terachem",
+    "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+    "qcdata_version": "0.20.1"
+  },
+  "trajectory": [
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "0",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4964413683639421e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.523999999952651,
+              1.6870000000231906,
+              0.4800000000734725
+            ],
+            [
+              1.1460000000313242,
+              -0.4499999999153403,
+              -1.354000000044265
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.96441368363942,
+        "gradient": [
+          [
+            0.0320748111,
+            0.023483712,
+            -0.0169459686
+          ],
+          [
+            -0.0132154495,
+            -0.0210684168,
+            0.0003664586
+          ],
+          [
+            -0.0188593576,
+            -0.0024152994,
+            0.0165795038
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 1.00e+00\n|    1     0.6860423708     -74.6901513622     -74.6901513622     0.00  \n|    2     0.1459751498      -0.2477481323     -74.9378994945     0.00  \n|    3     0.0297582421      -0.0255805851     -74.9634800796     0.00  \n|    4     0.0065912368      -0.0008343613     -74.9643144409     0.00  \n|    5     0.0017796280      -0.0000935819     -74.9644080229     0.00  \n| THRESPDP set to 9.27e-02\n|    6     0.0000328614      -0.0000057324     -74.9644137553     0.00  \n|    7     0.0000012496      +0.0000000716     -74.9644136836     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9644136836 a.u.\nHOMO-LUMO GAP: 26.840 eV\nCENTER OF MASS: {0.049451, 0.036629, -0.025880} ANGS\nDIPOLE MOMENT: {1.269967, 0.940292, -0.664871} (|D| = 1.714357) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n    0.0320748111     0.0234837120    -0.0169459686\n   -0.0132154495    -0.0210684168     0.0003664586\n   -0.0188593576    -0.0024152994     0.0165795038\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "1",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4965657477946010e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              -0.0001312736047884359,
+              -9.62796563888756e-05,
+              6.925732867884468e-05
+            ],
+            [
+              0.6051487666500208,
+              1.739706202490466,
+              0.4332322937042614
+            ],
+            [
+              1.21156901681557,
+              -0.3804281901955813,
+              -1.3761192509620568
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.96565747794601,
+        "gradient": [
+          [
+            -0.0085379087,
+            -0.0152147544,
+            -0.0006943157
+          ],
+          [
+            0.0068193308,
+            0.0119178975,
+            0.0004185052
+          ],
+          [
+            0.0017185746,
+            0.0032968618,
+            0.0002758157
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 9.27e-02\n|    1     0.0705553130     -74.9387105629     -74.9387105629     0.00  \n|    2     0.0097235161      -0.0268018202     -74.9655123831     0.00  \n|    3     0.0033640927      -0.0001169466     -74.9656293297     0.00  \n|    4     0.0004951773      -0.0000279406     -74.9656572704     0.00  \n|    5     0.0000115255      -0.0000002048     -74.9656574751     0.00  \n|    6     0.0000027479      -0.0000000028     -74.9656574779     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9656574779 a.u.\nHOMO-LUMO GAP: 26.413 eV\nCENTER OF MASS: {0.053734, 0.040205, -0.027888} ANGS\nDIPOLE MOMENT: {1.266736, 0.932284, -0.666441} (|D| = 1.708192) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n   -0.0085379087    -0.0152147544    -0.0006943157\n    0.0068193308     0.0119178975     0.0004185052\n    0.0017185746     0.0032968618     0.0002758157\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "2",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4965606313223148e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              -9.317162382959507e-05,
+              -7.283798174221475e-05,
+              4.6246700561503384e-05
+            ],
+            [
+              0.5835063563727028,
+              1.747997867196679,
+              0.4586824112294571
+            ],
+            [
+              1.1994913969319967,
+              -0.4079888173529886,
+              -1.3806074310134209
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.96560631322315,
+        "gradient": [
+          [
+            -0.0049749841,
+            -0.0150683544,
+            -0.0040064953
+          ],
+          [
+            0.0044141278,
+            0.0171936764,
+            0.0057753994
+          ],
+          [
+            0.0005608582,
+            -0.0021253183,
+            -0.001768904
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 9.27e-02\n|    1     0.0067380663     -74.9659724800     -74.9659724800     0.00  \n|    2     0.0021811470      +0.0003740283     -74.9655984516     0.00  \n|    3     0.0007824582      -0.0000060485     -74.9656045002     0.00  \n|    4     0.0000918681      -0.0000019056     -74.9656064058     0.00  \n|    5     0.0000039854      +0.0000000926     -74.9656063132     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9656063132 a.u.\nHOMO-LUMO GAP: 26.240 eV\nCENTER OF MASS: {0.052753, 0.039645, -0.027278} ANGS\nDIPOLE MOMENT: {1.256469, 0.924462, -0.661193} (|D| = 1.694261) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n   -0.0049749841    -0.0150683544    -0.0040064953\n    0.0044141278     0.0171936764     0.0057753994\n    0.0005608582    -0.0021253183    -0.0017689040\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "3",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4965615030186768e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              -3.114684395243725e-05,
+              -4.209856274252322e-05,
+              4.998892520863856e-06
+            ],
+            [
+              0.5903679266135438,
+              1.74822812446697,
+              0.45227413979895853
+            ],
+            [
+              1.2027080845861196,
+              -0.3963202052567642,
+              -1.3768990524950364
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.96561503018677,
+        "gradient": [
+          [
+            -0.0055374948,
+            -0.0172960401,
+            -0.0047637394
+          ],
+          [
+            0.0058077575,
+            0.0172220487,
+            0.0044630873
+          ],
+          [
+            -0.0002702558,
+            7.39951e-05,
+            0.0003006482
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 9.27e-02\n|    1     0.0033245510     -74.9655379246     -74.9655379246     0.00  \n|    2     0.0007439364      -0.0000762938     -74.9656142184     0.00  \n|    3     0.0002657632      -0.0000006685     -74.9656148869     0.00  \n|    4     0.0000389433      -0.0000002192     -74.9656151061     0.00  \n|    5     0.0000044217      +0.0000000759     -74.9656150302     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9656150302 a.u.\nHOMO-LUMO GAP: 26.292 eV\nCENTER OF MASS: {0.053081, 0.040012, -0.027377} ANGS\nDIPOLE MOMENT: {1.259905, 0.926936, -0.663033} (|D| = 1.698878) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n   -0.0055374948    -0.0172960401    -0.0047637394\n    0.0058077575     0.0172220487     0.0044630873\n   -0.0002702558     0.0000739951     0.0003006482\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "4",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4965613353798602e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              -6.446233760696627e-06,
+              -3.739975873045351e-05,
+              -1.5420921077857867e-05
+            ],
+            [
+              0.5889853273907846,
+              1.7484231553525476,
+              0.4537059314273643
+            ],
+            [
+              1.204317802055102,
+              -0.39418337268448167,
+              -1.3771926928803437
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.9656133537986,
+        "gradient": [
+          [
+            -0.0058772207,
+            -0.017237537,
+            -0.0044058492
+          ],
+          [
+            0.0058194571,
+            0.0172377628,
+            0.0044610589
+          ],
+          [
+            5.77613e-05,
+            -2.305e-07,
+            -5.52077e-05
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 9.27e-02\n|    1     0.0005484084     -74.9654139965     -74.9654139965     0.00  \n|    2     0.0001434106      -0.0001994269     -74.9656134234     0.00  \n|    3     0.0000452309      +0.0000000795     -74.9656133439     0.00  \n|    4     0.0000023674      -0.0000000099     -74.9656133538     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9656133538 a.u.\nHOMO-LUMO GAP: 26.288 eV\nCENTER OF MASS: {0.053099, 0.040083, -0.027353} ANGS\nDIPOLE MOMENT: {1.259248, 0.928493, -0.661503} (|D| = 1.698644) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n   -0.0058772207    -0.0172375370    -0.0044058492\n    0.0058194571     0.0172377628     0.0044610589\n    0.0000577613    -0.0000002305    -0.0000552077\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    },
+    {
+      "extras": {},
+      "input_data": {
+        "extras": {},
+        "files": {},
+        "program": "terachem",
+        "cmdline_args": [],
+        "calctype": "gradient",
+        "model": {
+          "extras": {},
+          "method": "hf",
+          "basis": "sto-3g",
+          "qcdata_version": "0.20.1"
+        },
+        "keywords": {
+          "purify": "no",
+          "new_minimizer": "yes",
+          "constraints": {
+            "freeze": [
+              {
+                "type": "xyz",
+                "indices": [
+                  0
+                ]
+              }
+            ],
+            "set": [
+              {
+                "type": "distance",
+                "indices": [
+                  0,
+                  1
+                ],
+                "value": 1.9
+              }
+            ]
+          }
+        },
+        "subprograms": [],
+        "structure": {
+          "extras": {
+            "xyz_comments": [
+              "frame",
+              "5",
+              "SCF",
+              "Energy",
+              "=",
+              "-7.4965613378376034e+01",
+              "Hartree,",
+              "generated",
+              "by",
+              "TeraChem"
+            ]
+          },
+          "symbols": [
+            "O",
+            "H",
+            "H"
+          ],
+          "geometry": [
+            [
+              1.2834452929327884e-05,
+              -4.404365784392009e-05,
+              -3.7215510433177505e-05
+            ],
+            [
+              0.5863585642341267,
+              1.7486238520149964,
+              0.4563272415903133
+            ],
+            [
+              1.2060405846727864,
+              -0.3908907004656445,
+              -1.376922993246353
+            ]
+          ],
+          "charge": 0,
+          "multiplicity": 1,
+          "identifiers": {
+            "extras": {},
+            "name": null,
+            "name_IUPAC": null,
+            "smiles": null,
+            "canonical_smiles": null,
+            "canonical_smiles_program": null,
+            "canonical_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_smiles": null,
+            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+            "inchi": null,
+            "inchikey": null,
+            "pubchem_cid": null,
+            "pubchem_sid": null,
+            "pubchem_conformerid": null,
+            "qcdata_version": "0.20.1"
+          },
+          "connectivity": [],
+          "qcdata_version": "0.20.1"
+        },
+        "structures": {},
+        "qcdata_version": "0.20.1"
+      },
+      "success": true,
+      "results": {
+        "calcinfo_natoms": 3,
+        "calcinfo_nalpha": null,
+        "calcinfo_nbeta": null,
+        "calcinfo_nbasis": null,
+        "calcinfo_nmo": 7,
+        "extras": {},
+        "files": {},
+        "provenance": {
+          "extras": {},
+          "program": "terachem",
+          "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "qcdata_version": "0.20.1"
+        },
+        "energy": -74.96561337837603,
+        "gradient": [
+          [
+            -0.0059273196,
+            -0.0172092347,
+            -0.0043416473
+          ],
+          [
+            0.0057911325,
+            0.0172367549,
+            0.0044874785
+          ],
+          [
+            0.0001361833,
+            -2.75303e-05,
+            -0.0001458304
+          ]
+        ],
+        "hessian": null,
+        "nuclear_repulsion_energy": null,
+        "wavefunction": null,
+        "freqs_wavenumber": [],
+        "normal_modes_cartesian": null,
+        "gibbs_free_energy": null,
+        "scf_dipole_moment": null,
+        "atomic_charges": null,
+        "point_charge_gradient": null,
+        "qcdata_version": "0.20.1"
+      },
+      "logs": "| Startfile from command line: tc.in\n\n\n|       ***********************************************************\n|       *                 TeraChem v1.9-2026.10.12-dev            *\n|       *                   Development Version                   *\n|       *           Chemistry at the Speed of Graphics!           *\n|       ***********************************************************\n|       * This program may only be used in connection with        *\n|       * a valid license from PetaChem, LLC. Use of this program *\n|       * or results thereof indicates acceptance of all terms    *\n|       * and conditions stated in the license and that a valid   *\n|       * license agreement between the user and PetaChem, LLC    *\n|       * exists. PetaChem, LLC does not warrant the correctness  *\n|       * of results or their suitability for any purpose.        *\n|       * Please email bugs, suggestions, and comments to         *\n|       *                  help@petachem.com                      *\n|       *                                                         *\n|       ***********************************************************\n\n\n|       ***********************************************************\n|       *  Compiled by root         2026-10-12T21:40:01+00:00     *\n|       *  Supported architecture SMs: 86 120                     *\n|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *\n|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *\n|       ***********************************************************\n\n\n| Job started   Mon Oct 19 23:41:30 2026\n| On 8fe1b16c98ba (available memory: 2475 MB)\n\n| ######################################### RUNTIME INFO ##########################################\n| terachem  tc.in \n\n|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026\n|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) \n\n|  \tlinux-vdso.so.1 (0x00007e28ba237000)\n|  \tlibcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)\n|  \tlibz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)\n|  \tlibimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)\n|  \tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)\n|  \tlibmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)\n|  \tlibdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)\n|  \tlibfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)\n|  \tlibxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)\n|  \tlibthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)\n|  \tlibthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)\n|  \tlibOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)\n|  \tlibFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)\n|  \tlibs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)\n|  \tlibgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)\n|  \tlibcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)\n|  \tlibtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)\n|  \tlibiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)\n|  \tlibintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)\n|  \tlibatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)\n|  \tlibperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)\n|  \tlibsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)\n|  \tlibgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)\n|  \tlibdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)\n|  \tlibcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)\n|  \tlibccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)\n|  \tlibsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)\n|  \tliboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)\n|  \tlibprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)\n|  \tlibcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)\n|  \tlibssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)\n|  \tlibcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)\n|  \tlibcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)\n|  \tlibcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)\n|  \tlibcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)\n|  \tlibcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)\n|  \tlibcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)\n|  \tlibcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)\n|  \tlibcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)\n|  \tlibnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)\n|  \tlibmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)\n|  \tlibmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)\n|  \tlibmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)\n|  \tlibiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)\n|  \tlibirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)\n|  \tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)\n|  \tlibcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)\n|  \tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)\n|  \tlibintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)\n|  \tlibsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)\n|  \tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)\n|  \t/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)\n|  \tlibnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)\n|  \tlibidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)\n|  \tlibrtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)\n|  \tlibssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)\n|  \tlibpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)\n|  \tlibgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)\n|  \tlibldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)\n|  \tliblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)\n|  \tlibzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)\n|  \tlibbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)\n|  \tlibrt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)\n|  \tlibdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)\n|  \tlibifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)\n|  \tlibifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)\n|  \tlibpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)\n|  \tlibunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)\n|  \tlibgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)\n|  \tlibhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)\n|  \tlibnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)\n|  \tlibgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)\n|  \tlibkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)\n|  \tlibk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)\n|  \tlibcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)\n|  \tlibkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)\n|  \tlibsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)\n|  \tlibbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)\n|  \tlibp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)\n|  \tlibtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)\n|  \tlibkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)\n|  \tlibresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)\n|  \tlibffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)\n| #################################################################################################\n\n| Checking Amazon Cloud instance ID...   Not found\n| Cannot find license.dat file /opt/terachem/license.dat\n\n\n| TRYING THE NETWORK LICENSE...\n| Connecting to license server '54.208.252.40' port '8877'...\n| Connected!\n| Checking your license...\n\n| **************************************************************\n|  Greetings, Martinez Group! You have 1000 licenses in total\n|  IN USE: 16\n|  AVAILABLE: 984\n| **************************************************************\n\n-----------------------------------\nProcessed Input file:\n                      run minimize\n              coordinates geometry.xyz\n                   charge 0\n                 spinmult 1\n                   method hf\n                    basis sto-3g\n                   purify no\n            new_minimizer yes\n-----------------------------------\nJobname: geometry\nScratch data will be generated\nScratch directory: ./scr.geometry\n| Random number seed: 966153915\n\nXYZ coordinates geometry.xyz\nMolden File Output: ./scr.geometry/geometry.molden\nUsing basis set: sto-3g\ndmrgstart not found\nSpin multiplicity: 1\nDIIS will use up to 10 vectors.\nCondition number limit for the DIIS overlap matrix is            0\nWF convergence threshold: 3.00e-05\nUsing DIIS algorithm to converge WF\nMaximum number of SCF iterations: 100\nIncremental fock with rebuild every 8 iterations\nWill switch to conventional Fock if diffuse functions are detected\nX-matrix tolerance: 1.00e-04\nPRECISION: DYNAMIC\nTeraChem will select linear algebra engine\nDensity matrix guess purification turned off\nDFT Functional requested: hf\nMethod: Hartree-Fock \nWavefunction: RESTRICTED\nInitial guess generated by maximum overlap\n\n********************************************\n******* RUNNING GEOMETRY OPTMIZATION *******\n********************************************\n\nGeometry optimization parameters:\nMax number of optimization cycles: 1000\nConvergence threshold (Max grad component): 4.50e-04\nConvergence threshold (energy change): 1.00e-06\nMaximum of RMSD change allowed between steps is 0.500000\nusing L-BFGS method\nOptimization checkpoint file will be dumped every 10 cycles\nAtomic displacement in finite-difference Hessian (Bohr) 0.003000\nEach step will be scaled by 1.00\nMaximum step size in internal coordinates 0.50\nMinimization SCF guess will be regenerated every 10 steps\nJob started from scratch\nSCF:   Initial guess is taken from previous step\nStarting TensorBox...\n| TeraChem will select linear algebra engine\n| Using cuSolver for matrix diagonalization\n\n| using 1 out of 1 CUDA devices\n|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0\n| -------------------------------------------------------------------\n| CPU Memory Available: 7842.25 MegaWords \n| GPU Memory Available: 215.59 MegaWords \n| Maximum recommended basis set size: 5100 basis functions\n|  (limited by GPU memory)\n| -------------------------------------------------------------------\n| Initialize GPUBox with 128 MW of memory\n\n****** QM coordinates ******\nO         0.0000000000         0.0000000000         0.0000000000  \nH         0.2772888583         0.8927219542         0.2540050611  \nH         0.6064370833        -0.2381297447        -0.7165059431  \n\nBasis set:       sto-3g\nTotal atoms:     3\nTotal charge:    0\nTotal electrons: 10 (5-alpha, 5-beta)\nNumber electrons modeled by ECPs: 0\nTotal orbitals:  7\nTotal AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)\nSpin multiplicity: 1\nNuclear repulsion energy (QM atoms): 9.088430294654 a.u.\n\n| Total AOs: 7    Total MOs: 7\n\n                      *** Start SCF Iterations ***\n\n Iter     DIIS Error       Energy change         Energy        Time(s)\n------------------------------------------------------------------------\n| Skip purify step\n| THRESPDP set to 9.27e-02\n|    1     0.0006737683     -74.9655701853     -74.9655701853     0.00  \n|    2     0.0002618886      -0.0000429108     -74.9656130961     0.00  \n|    3     0.0000100308      -0.0000002124     -74.9656133085     0.01  \n|    4     0.0000018320      -0.0000000699     -74.9656133784     0.00  \n------------------------------------------------------------------------\nFINAL ENERGY: -74.9656133784 a.u.\nHOMO-LUMO GAP: 26.287 eV\nCENTER OF MASS: {0.053081, 0.040184, -0.027278} ANGS\nDIPOLE MOMENT: {1.258458, 0.931000, -0.659294} (|D| = 1.698572) DEBYE\n\nRunning Mulliken population analysis...\n\n\nGradient units are Hartree/Bohr\n---------------------------------------------------\n        dE/dX            dE/dY            dE/dZ\n   -0.0059273196    -0.0172092347    -0.0043416473\n    0.0057911325     0.0172367549     0.0044874785\n    0.0001361833    -0.0000275303    -0.0001458304\n",
+      "traceback": null,
+      "qcdata_version": "0.20.1"
+    }
+  ],
+  "qcdata_version": "0.20.1"
+}

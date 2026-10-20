@@ -19,6 +19,8 @@ How the codec talks to xtb (https://xtb-docs.readthedocs.io/):
 - Detailed settings (``$scc``, ``$wall``, ``$constrain``, ...) go in an xcontrol file
   (``man 7 xcontrol``); see the commented example below. Atom indices in it are
   1-based, as xtb expects.
+- ``external_potentials`` (point charges, as for Psi4) is the one keyword that is not
+  an xtb flag: the codec writes it to ``pcharge`` and adds an ``$embedding`` group.
 - g-xTB has no ALPB/GBSA parameters (xtb stops with "No ALPB/GBSA parameters found")
   and xtb 6.7.1 silently ignores ``cpcmx`` with g-xTB, so run g-xTB in the gas phase.
 - xtb's Hessian is numerical (finite differences of analytic gradients) and comes
@@ -63,6 +65,13 @@ prog_input = ProgramInput(
         #
         # Detailed settings from an xcontrol file (pass it in `files` below):
         # "input": "xcontrol",
+        #
+        # Point charges for QM/MM electrostatic embedding (GFN1/GFN2 only; xtb
+        # ignores them for GFN0, GFN-FF, and g-xTB, so the codec refuses those):
+        # [charge, [x, y, z]] in bohr, optionally followed by the atomic number
+        # whose hardness damps the charge at short range. The gradient on the
+        # charges comes back as point_charge_gradient.
+        # "external_potentials": [[-0.834, [0.0, 0.0, 5.5], 8], [0.417, [1.4, 0.0, 6.4], 1]],
     },
     # files={"xcontrol": "$scc\n   temp=500\n$end\n"},
 )
@@ -82,4 +91,6 @@ if results.hessian is not None:
     print("Frequencies (cm^-1):", results.freqs_wavenumber)
     print("Normal modes (modes, atoms, xyz):", results.normal_modes_cartesian.shape)
 print("Partial charges:", results.atomic_charges)
+if results.point_charge_gradient is not None:
+    print("Gradient on point charges:\n", results.point_charge_gradient)
 print("xtb version:", results.provenance.program_version)

@@ -1,0 +1,4 @@
+$embedding
+   input=pcharge
+   gradient=pcgrad
+$end
