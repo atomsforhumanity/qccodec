@@ -308,12 +308,14 @@ def parse_normal_modes(ctx: Context) -> list[list[list[float]]]:
 
     The ``$atoms`` coordinates of the ``.hess`` file are aligned onto the input
     structure; ORCA translates but does not rotate the molecule, so the alignment is a
-    check that leaves the modes unchanged.
+    check that leaves the modes unchanged. Without ``input_data`` the modes are
+    returned as ORCA wrote them.
     """
-    if ctx.input_data is None:
-        raise ParserError("Normal mode parsing requires input_data.")
     contents = ctx.read(_hess_file(ctx))
     _, modes = _vibrations(contents)
+    if ctx.input_data is None:
+        # Nothing to align against; ORCA does not rotate the molecule.
+        return unit_modes(modes.reshape(len(modes), -1, 3))
     atoms = _hess_section(contents, "atoms").splitlines()
     natoms = int(atoms[1])
     coordinates = np.array(
