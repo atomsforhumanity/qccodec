@@ -114,6 +114,10 @@ def rotation_onto(source: np.ndarray, target: np.ndarray) -> np.ndarray:
     """
     p = source - source.mean(axis=0)
     q = target - target.mean(axis=0)
+    if np.sqrt(np.mean(np.sum((p - q) ** 2, axis=1))) < 1e-5:
+        # Only translated (xtb, ORCA), within the printed precision: the exact
+        # identity, so results do not carry SVD round-off that varies by platform.
+        return np.eye(3)
     u, _, vt = np.linalg.svd(p.T @ q)
     d = np.sign(np.linalg.det(vt.T @ u.T))
     rotation = vt.T @ np.diag([1.0, 1.0, d]) @ u.T
