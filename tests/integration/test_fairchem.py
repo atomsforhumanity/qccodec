@@ -18,12 +18,14 @@ pytestmark = [
 ]
 
 
-def _input(structure: Structure, calctype: CalcType) -> ProgramInput:
+def _input(
+    structure: Structure, calctype: CalcType, method: str = "uma-s-1p2p1"
+) -> ProgramInput:
     return ProgramInput(
         program="fairchem",
         structure=structure,
         calctype=calctype,
-        model=Model(method="uma-s-1p2p1"),
+        model=Model(method=method),
         keywords={"device": "cpu"},
     )
 
@@ -60,3 +62,17 @@ def test_charge_reaches_the_omol_head(run: Run) -> None:
     e_anion = run(_input(anion, CalcType.energy)).results.energy
     e_radical = run(_input(radical, CalcType.energy)).results.energy
     assert abs(e_anion - e_radical) > 1e-2
+
+
+# esen-sm-conserving-all-omol on the shared distorted water, fairchem-core 2.23 on a
+# CPU; fairchem's own calculator agrees to 3e-9 Hartree.
+ESEN_ENERGY = -76.43351520193589
+
+
+def test_single_head_checkpoint(run: Run, water: Structure) -> None:
+    """eSEN has one head (omol), which the codec uses without a task keyword."""
+    inp = _input(water, CalcType.gradient, method="esen-sm-conserving-all-omol")
+    results = run(inp).results
+    assert results.extras["fairchem_task"] == "omol"
+    assert results.energy is not None and abs(results.energy - ESEN_ENERGY) < 1e-5
+    finite_difference_check(run, inp, atol=1e-4)
