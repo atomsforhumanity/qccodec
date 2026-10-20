@@ -16,7 +16,10 @@ Inputs map to CREST 3's TOML input as follows:
   with ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
-and normal modes), ``optimization``, and ``conformer_search``. Rotamers are parsed only
+and normal modes), ``optimization``, and ``conformer_search``. CREST writes the normal
+modes to ``g98.out`` as mass-weighted vectors (two decimals) in a reoriented frame; the
+codec converts them to unit-length Cartesian displacements and rotates them back onto
+the input structure, as qcdata defines them. The Hessian is in the input's frame. Rotamers are parsed only
 with the decode option ``{"collect_rotamers": True}``; there can be thousands. CREST
 optimizes with the center of mass at the origin; the codec shifts optimization
 trajectories back into the input's frame. No input field carries atom indices.
@@ -255,7 +258,7 @@ codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hess
     parse_g98_freqs
 )
 codec.parser(
-    file="g98.out", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
+    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
 )(parse_g98_normal_modes)
 
 

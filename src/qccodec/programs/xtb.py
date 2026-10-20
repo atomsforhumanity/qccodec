@@ -19,6 +19,10 @@ an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.
 
+Hessians also fill frequencies and normal modes from ``g98.out``, where xtb writes
+mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
+Cartesian displacements, as qcdata defines them.
+
 One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
 z]], ...]`` in bohr. An optional third entry, ``[charge, [x, y, z], atomic_number]``,
@@ -304,7 +308,7 @@ codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hess
     parse_g98_freqs
 )
 codec.parser(
-    file="g98.out", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
+    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
 )(parse_g98_normal_modes)
 
 

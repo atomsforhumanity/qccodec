@@ -20,6 +20,10 @@ program's quirks for that kind of calculation.
 - **Results describe your structure exactly.** Codecs stop programs from moving,
   reorienting, or symmetrizing the molecule, so gradients, Hessians, and trajectories
   line up with the input.
+- **Normal modes mean the same thing everywhere:** unit-length Cartesian
+  displacements (not mass-weighted) in the input's frame and atom order, one per
+  frequency, whatever form the program writes them in. Their sign is the program's.
+  `qccodec.testing.check_normal_modes` verifies a codec's modes against its Hessian.
 - **Coordinates are in bohr** and energies in Hartree, as everywhere in qcdata.
 - **Errors carry the program's explanation.** When a program fails, the error
   message says why, and any partial results are attached.

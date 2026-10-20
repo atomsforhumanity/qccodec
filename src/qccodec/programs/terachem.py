@@ -53,7 +53,7 @@ from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..utils import re_finditer, re_search
-from ._common import invocation
+from ._common import invocation, unit_modes
 
 codec = Codec(
     "terachem",
@@ -318,7 +318,7 @@ def _frequency_blocks(contents: str) -> tuple[list[float], list[list[list[float]
     TeraChem lists the vibrational modes in blocks of columns: a row of mode numbers,
     a row of frequencies (cm^-1, negative for imaginary modes), a dashed rule, then
     three rows per atom (x, y, z, the first prefixed with the atom number). The modes
-    are un-mass-weighted Cartesian displacements, as qcdata expects.
+    are Cartesian displacements (not mass-weighted).
 
     Returns:
         The frequencies and the modes, (n_modes, n_atoms, 3).
@@ -370,8 +370,12 @@ def parse_frequencies(contents: str) -> list[float]:
     required=False,
 )
 def parse_normal_modes(contents: str) -> list[list[list[float]]]:
-    """Parse normal modes (n_modes, n_atoms, 3) from ``scr.*/Frequencies.dat``."""
-    return _frequency_blocks(contents)[1]
+    """Parse normal modes (n_modes, n_atoms, 3) from ``scr.*/Frequencies.dat``.
+
+    TeraChem prints each mass-weighted eigenvector divided by the square root of the
+    atomic masses; the codec scales each mode to unit length, as qcdata defines them.
+    """
+    return unit_modes(_frequency_blocks(contents)[1])
 
 
 @codec.parser(target=("provenance", "program_version"), required=False)

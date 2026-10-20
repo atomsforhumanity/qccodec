@@ -74,4 +74,6 @@ if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
     print("Hessian (Hartree/bohr^2), shape:", results.hessian.shape)
+    print("Frequencies (cm^-1):", results.freqs_wavenumber)  # imaginary are negative
+    print("Normal modes (modes, atoms, xyz):", results.normal_modes_cartesian.shape)
 print("ORCA version:", results.provenance.program_version)
