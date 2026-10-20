@@ -14,6 +14,7 @@ cases are never overwritten, so delete one first to re-record it.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -25,7 +26,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from qcdata import ProgramInput, ProgramOutput, Structure
+from qcdata import CalcType, ProgramInput, ProgramOutput, Structure
 
 from qccodec import get_codec
 from qccodec.native import SubprocessInput
@@ -52,6 +53,20 @@ def requires(*programs: str) -> pytest.MarkDecorator:
     missing = [p for p in programs if shutil.which(p) is None and p not in required]
     return pytest.mark.skipif(
         bool(missing), reason=f"not on PATH: {', '.join(missing)}"
+    )
+
+
+def requires_modules(program: str, *modules: str) -> pytest.MarkDecorator:
+    """Skip a test unless a library codec's modules import, or ``program`` is required.
+
+    tblite and the machine-learned potentials are Python libraries run in-process, so
+    what matters is whether they import, not what is on ``PATH``.
+    """
+    missing = [m for m in modules if importlib.util.find_spec(m) is None]
+    if program in required_programs():
+        missing = []
+    return pytest.mark.skipif(
+        bool(missing), reason=f"not importable: {', '.join(missing)}"
     )
 
 
@@ -191,3 +206,52 @@ def water() -> Structure:
             [[0.0, 0.0, 0.0], [0.524, 1.687, 0.48], [1.146, -0.45, -1.354]]
         ),
     )
+
+
+def requires_hugging_face(program: str) -> pytest.MarkDecorator:
+    """Skip unless this machine has a Hugging Face login (gated FAIR-Chem weights)."""
+    try:
+        from huggingface_hub import get_token
+    except ImportError:
+        token = None
+    else:
+        token = get_token()
+    return pytest.mark.skipif(
+        not token and program not in required_programs(),
+        reason="gated weights need `hf auth login` or HF_TOKEN",
+    )
+
+
+def finite_difference_check(
+    run: Run,
+    input_data: ProgramInput,
+    *,
+    step: float = 1e-3,
+    atol: float = 1e-5,
+    hessian: bool = False,
+) -> None:
+    """Compare a gradient (or Hessian) with central differences of energies (gradients).
+
+    Catches unit, sign, and frame errors in codecs that convert library results. Only
+    the first atom's coordinates are displaced, which is enough for that and cheap.
+    """
+    calctype = CalcType.hessian if hessian else CalcType.gradient
+    lower = CalcType.gradient if hessian else CalcType.energy
+    analytic = run(input_data.model_copy(update={"calctype": calctype})).results
+    reference = np.asarray(analytic.hessian if hessian else analytic.gradient)
+    geometry = input_data.structure.geometry
+    for k in range(3):
+        values = []
+        for sign in (1.0, -1.0):
+            moved = geometry.copy()
+            moved[0, k] += sign * step
+            structure = input_data.structure.model_copy(update={"geometry": moved})
+            result = run(
+                input_data.model_copy(
+                    update={"calctype": lower, "structure": structure}
+                )
+            ).results
+            values.append(np.ravel(result.gradient) if hessian else result.energy)
+        numeric = (values[0] - values[1]) / (2 * step)
+        expected = reference[k] if hessian else reference[0, k]
+        assert np.allclose(expected, numeric, atol=atol), (k, expected, numeric)

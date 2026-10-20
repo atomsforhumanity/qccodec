@@ -1,0 +1,541 @@
+| Startfile from command line: tc.in
+
+
+|       ***********************************************************
+|       *                 TeraChem v1.9-2026.10.12-dev            *
+|       *                   Development Version                   *
+|       *           Chemistry at the Speed of Graphics!           *
+|       ***********************************************************
+|       * This program may only be used in connection with        *
+|       * a valid license from PetaChem, LLC. Use of this program *
+|       * or results thereof indicates acceptance of all terms    *
+|       * and conditions stated in the license and that a valid   *
+|       * license agreement between the user and PetaChem, LLC    *
+|       * exists. PetaChem, LLC does not warrant the correctness  *
+|       * of results or their suitability for any purpose.        *
+|       * Please email bugs, suggestions, and comments to         *
+|       *                  help@petachem.com                      *
+|       *                                                         *
+|       ***********************************************************
+
+
+|       ***********************************************************
+|       *  Compiled by root         2026-10-12T21:40:01+00:00     *
+|       *  Supported architecture SMs: 86 120                     *
+|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *
+|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *
+|       ***********************************************************
+
+
+| Job started   Mon Oct 19 23:41:30 2026
+| On 8fe1b16c98ba (available memory: 2475 MB)
+
+| ######################################### RUNTIME INFO ##########################################
+| terachem  tc.in 
+
+|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  595.99.02  Release Build  (dvs-builder@U22-I3-AF05-06-2)  Wed Aug 26 05:20:50 UTC 2026
+|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
+
+|  	linux-vdso.so.1 (0x00007e28ba237000)
+|  	libcurl.so.4 => /usr/lib/x86_64-linux-gnu/libcurl.so.4 (0x00007e28ba185000)
+|  	libz.so.1 => /usr/lib/x86_64-linux-gnu/libz.so.1 (0x00007e28ba169000)
+|  	libimf.so => /opt/terachem/lib/libimf.so (0x00007e28b9a00000)
+|  	libm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007e28b9919000)
+|  	libmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x00007e28b8000000)
+|  	libdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x00007e28b7cc8000)
+|  	libfsockets.so => /opt/terachem/lib/libfsockets.so (0x00007e28ba160000)
+|  	libxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x00007e28ba139000)
+|  	libthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x00007e28b6a1a000)
+|  	libthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x00007e28ba09e000)
+|  	libOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007e28b65c1000)
+|  	libFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x00007e28b9906000)
+|  	libs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x00007e28b630e000)
+|  	libgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007e28ba091000)
+|  	libcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007e28b9900000)
+|  	libtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x00007e28b98a7000)
+|  	libiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x00007e28b989d000)
+|  	libintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x00007e284f59e000)
+|  	libatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007e284f4dd000)
+|  	libperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x00007e2835e02000)
+|  	libsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x00007e2835a5c000)
+|  	libgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x00007e2833986000)
+|  	libdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x00007e282a056000)
+|  	libcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x00007e2829bcf000)
+|  	libccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x00007e2829755000)
+|  	libsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x00007e28b9873000)
+|  	liboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x00007e28b983e000)
+|  	libprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007e28292ec000)
+|  	libcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x00007e282928c000)
+|  	libssl.so.3 => /usr/lib/x86_64-linux-gnu/libssl.so.3 (0x00007e28291e8000)
+|  	libcrypto.so.3 => /usr/lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007e2828da4000)
+|  	libcuda.so.1 => /usr/lib/x86_64-linux-gnu/libcuda.so.1 (0x00007e2823400000)
+|  	libcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x00007e2823000000)
+|  	libcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x00007e281c800000)
+|  	libcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x00007e280aa00000)
+|  	libcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x00007e27ed800000)
+|  	libcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x00007e27dc000000)
+|  	libcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007e27a9e00000)
+|  	libnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007e27a4179000)
+|  	libmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007e27a3649000)
+|  	libmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007e279fee7000)
+|  	libmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007e279bb32000)
+|  	libiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007e279b600000)
+|  	libirng.so => /opt/terachem/lib/libirng.so (0x00007e279b200000)
+|  	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007e279afd4000)
+|  	libcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007e279ac00000)
+|  	libgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007e2828d84000)
+|  	libintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007e279a800000)
+|  	libsvml.so => /opt/terachem/lib/libsvml.so (0x00007e2798800000)
+|  	libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007e27985d7000)
+|  	/lib64/ld-linux-x86-64.so.2 (0x00007e28ba239000)
+|  	libnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007e2828cb6000)
+|  	libidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007e2828c95000)
+|  	librtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007e2828c76000)
+|  	libssh.so.4 => /usr/lib/x86_64-linux-gnu/libssh.so.4 (0x00007e2828c08000)
+|  	libpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007e2828bf4000)
+|  	libgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007e28233ac000)
+|  	libldap-2.5.so.0 => /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x00007e282334c000)
+|  	liblber-2.5.so.0 => /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x00007e2828be3000)
+|  	libzstd.so.1 => /usr/lib/x86_64-linux-gnu/libzstd.so.1 (0x00007e2822f31000)
+|  	libbrotlidec.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007e2828bd5000)
+|  	librt.so.1 => /usr/lib/x86_64-linux-gnu/librt.so.1 (0x00007e2828bd0000)
+|  	libdl.so.2 => /usr/lib/x86_64-linux-gnu/libdl.so.2 (0x00007e2828bcb000)
+|  	libifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007e2798200000)
+|  	libifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x00007e281c66a000)
+|  	libpthread.so.0 => /usr/lib/x86_64-linux-gnu/libpthread.so.0 (0x00007e2828bc6000)
+|  	libunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007e2798056000)
+|  	libgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007e2797e6b000)
+|  	libhogweed.so.6 => /usr/lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007e2823304000)
+|  	libnettle.so.8 => /usr/lib/x86_64-linux-gnu/libnettle.so.8 (0x00007e28232be000)
+|  	libgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007e2822eaf000)
+|  	libkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007e280a935000)
+|  	libk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007e2822e80000)
+|  	libcom_err.so.2 => /usr/lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007e2828bc0000)
+|  	libkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007e2828bb2000)
+|  	libsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007e2822e65000)
+|  	libbrotlicommon.so.1 => /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007e281c647000)
+|  	libp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007e27ed6c5000)
+|  	libtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007e280a91d000)
+|  	libkeyutils.so.1 => /usr/lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007e28232b7000)
+|  	libresolv.so.2 => /usr/lib/x86_64-linux-gnu/libresolv.so.2 (0x00007e2822e51000)
+|  	libffi.so.8 => /usr/lib/x86_64-linux-gnu/libffi.so.8 (0x00007e281c63a000)
+| #################################################################################################
+
+| Checking Amazon Cloud instance ID...   Not found
+| Cannot find license.dat file /opt/terachem/license.dat
+
+
+| TRYING THE NETWORK LICENSE...
+| Connecting to license server '54.208.252.40' port '8877'...
+| Connected!
+| Checking your license...
+
+| **************************************************************
+|  Greetings, Martinez Group! You have 1000 licenses in total
+|  IN USE: 16
+|  AVAILABLE: 984
+| **************************************************************
+
+-----------------------------------
+Processed Input file:
+                      run minimize
+              coordinates geometry.xyz
+                   charge 0
+                 spinmult 1
+                   method hf
+                    basis sto-3g
+                   purify no
+            new_minimizer yes
+-----------------------------------
+Jobname: geometry
+Scratch data will be generated
+Scratch directory: ./scr.geometry
+| Random number seed: 966153915
+
+XYZ coordinates geometry.xyz
+Molden File Output: ./scr.geometry/geometry.molden
+Using basis set: sto-3g
+dmrgstart not found
+Spin multiplicity: 1
+DIIS will use up to 10 vectors.
+Condition number limit for the DIIS overlap matrix is            0
+WF convergence threshold: 3.00e-05
+Using DIIS algorithm to converge WF
+Maximum number of SCF iterations: 100
+Incremental fock with rebuild every 8 iterations
+Will switch to conventional Fock if diffuse functions are detected
+X-matrix tolerance: 1.00e-04
+PRECISION: DYNAMIC
+TeraChem will select linear algebra engine
+Density matrix guess purification turned off
+DFT Functional requested: hf
+Method: Hartree-Fock 
+Wavefunction: RESTRICTED
+Initial guess generated by maximum overlap
+
+********************************************
+******* RUNNING GEOMETRY OPTMIZATION *******
+********************************************
+
+Geometry optimization parameters:
+Max number of optimization cycles: 1000
+Convergence threshold (Max grad component): 4.50e-04
+Convergence threshold (energy change): 1.00e-06
+Maximum of RMSD change allowed between steps is 0.500000
+using L-BFGS method
+Optimization checkpoint file will be dumped every 10 cycles
+Atomic displacement in finite-difference Hessian (Bohr) 0.003000
+Each step will be scaled by 1.00
+Maximum step size in internal coordinates 0.50
+Minimization SCF guess will be regenerated every 10 steps
+Job started from scratch
+SCF:   Initial guess is taken from previous step
+Starting TensorBox...
+| TeraChem will select linear algebra engine
+| Using cuSolver for matrix diagonalization
+
+| using 1 out of 1 CUDA devices
+|   Device 0: NVIDIA GeForce RTX 3050 Ti Laptop GPU,  3772MB, CC 8.6 -- CPU THREAD 0
+| -------------------------------------------------------------------
+| CPU Memory Available: 7842.25 MegaWords 
+| GPU Memory Available: 215.59 MegaWords 
+| Maximum recommended basis set size: 5100 basis functions
+|  (limited by GPU memory)
+| -------------------------------------------------------------------
+| Initialize GPUBox with 128 MW of memory
+
+****** QM coordinates ******
+O         0.0000000000         0.0000000000         0.0000000000  
+H         0.2772888583         0.8927219542         0.2540050611  
+H         0.6064370833        -0.2381297447        -0.7165059431  
+
+Basis set:       sto-3g
+Total atoms:     3
+Total charge:    0
+Total electrons: 10 (5-alpha, 5-beta)
+Number electrons modeled by ECPs: 0
+Total orbitals:  7
+Total AO shells: 5 (4 S-shells; 1 P-shells; 0 D-shells; 0 F-shells; 0 G-shells)
+Spin multiplicity: 1
+Nuclear repulsion energy (QM atoms): 9.088430294654 a.u.
+
+-------------------------------------------------------
+0 additional frames found in geometry.xyz
+-------------------------------------------------------
+-=#=-----------------------------------=#=-
+-=#=-   Geometry Optimizer Started    -=#=-
+-=#=-----------------------------------=#=-
+--- Freeze Cartesian-XYZ: 0
+--- Set Bond: 0-1 to 1.005437 (Angstrom)
+-=#=- Using Translation Rotation Internal Coordinates (TRIC)
+-=#=- Building Primitive Internal Coordinates -=#=- 
+-=#=-  Internal Coordinate Summary   -=#=-
+-=#     Total       : 10
+-=#     Constraint  : 4
+-=#     Distance    : 1
+-=#     Angle       : 1
+-=#     OutofPlane  : 0
+-=#     Dihedral    : 0
+-=#     Cartesian-X : 0
+-=#     Cartesian-Y : 0
+-=#     Cartesian-Z : 0
+-=#     Translation-X : 1
+-=#     Translation-Y : 1
+-=#     Translation-Z : 1
+-=#     Rotator     : 1
+-=#  Finished Primitive Internal Coordinates
+-=#  Generating Delocalized Coordinates...
+-=#  Found 9 Delocalized Coordinates
+
+Using WF guess from previous time step during MD.
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 1.00e+00
+|    1     0.6860423708     -74.6901513622     -74.6901513622     0.00  
+|    2     0.1459751498      -0.2477481323     -74.9378994945     0.00  
+|    3     0.0297582421      -0.0255805851     -74.9634800796     0.00  
+|    4     0.0065912368      -0.0008343613     -74.9643144409     0.00  
+|    5     0.0017796280      -0.0000935819     -74.9644080229     0.00  
+| THRESPDP set to 9.27e-02
+|    6     0.0000328614      -0.0000057324     -74.9644137553     0.00  
+|    7     0.0000012496      +0.0000000716     -74.9644136836     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9644136836 a.u.
+HOMO-LUMO GAP: 26.840 eV
+CENTER OF MASS: {0.049451, 0.036629, -0.025880} ANGS
+DIPOLE MOMENT: {1.269967, 0.940292, -0.664871} (|D| = 1.714357) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+    0.0320748111     0.0234837120    -0.0169459686
+   -0.0132154495    -0.0210684168     0.0003664586
+   -0.0188593576    -0.0024152994     0.0165795038
+-=#=-    Now Returning to Optimizer   -=#=-
+Make new history opbject
+Add point to history
+Setup optimizer object
+-=#=-       End of Initialization     -=#=-
+-=#=- Constrained Optimization with Lagrange Multipliers
+-=#  Constraint causes trust radius to increase: 1.645e-02
+-=#  Constraint Remainders:
+-=#    Constraint 3 : -6.944134e-02
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#@    Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#@                       Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#@  ---------------------------------------------------------------------------------------------------
+-=#@      0     -74.9644136836        -     -    2.054e-02 N    1.886e-02 N        -     -        -     -
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Cycle     1    -=#=-
+-=#=-----------------------------------=#=-
+-=#  Finding Optimization Step, Current Trust Radius: 1.0000e-01
+-=#  Cartesian Step Size: 2.6346e-02, Expected Delta-E: -1.6835e-03
+-=#  Updating Cartesian Coordinates
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 9.27e-02
+|    1     0.0705553130     -74.9387105629     -74.9387105629     0.00  
+|    2     0.0097235161      -0.0268018202     -74.9655123831     0.00  
+|    3     0.0033640927      -0.0001169466     -74.9656293297     0.00  
+|    4     0.0004951773      -0.0000279406     -74.9656572704     0.00  
+|    5     0.0000115255      -0.0000002048     -74.9656574751     0.00  
+|    6     0.0000027479      -0.0000000028     -74.9656574779     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9656574779 a.u.
+HOMO-LUMO GAP: 26.413 eV
+CENTER OF MASS: {0.053734, 0.040205, -0.027888} ANGS
+DIPOLE MOMENT: {1.266736, 0.932284, -0.666441} (|D| = 1.708192) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+   -0.0085379087    -0.0152147544    -0.0006943157
+    0.0068193308     0.0119178975     0.0004185052
+    0.0017185746     0.0032968618     0.0002758157
+-=#=-    Now Returning to Optimizer   -=#=-
+-=#  Constraint Remainders:
+-=#    Constraint 3 : -7.671587e-03
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#     Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#                        Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#   ---------------------------------------------------------------------------------------------------
+-=#@      1     -74.9656574779   -1.244e-03 N    3.654e-03 N    3.269e-03 N    2.635e-02 N    3.596e-02 N
+-=#  Adjusting Trust Radius
+|-=#  Step Quality:   0.7388 (Okay)
+-=#  Keeping trust radius at 1.0000e-01
+-=#  Updating Hessian with BFGS
+-=#  Hessian Eigenvalues:  5.0572e-01  4.9053e-01  1.8784e-01 ...  5.0000e-02  5.0000e-02  4.7658e-02
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Cycle     2    -=#=-
+-=#=-----------------------------------=#=-
+-=#  Finding Optimization Step, Current Trust Radius: 1.0000e-01
+-=#  Cartesian Step Size: 1.1683e-02, Expected Delta-E: -2.1065e-05
+-=#  Updating Cartesian Coordinates
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 9.27e-02
+|    1     0.0067380663     -74.9659724800     -74.9659724800     0.00  
+|    2     0.0021811470      +0.0003740283     -74.9655984516     0.00  
+|    3     0.0007824582      -0.0000060485     -74.9656045002     0.00  
+|    4     0.0000918681      -0.0000019056     -74.9656064058     0.00  
+|    5     0.0000039854      +0.0000000926     -74.9656063132     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9656063132 a.u.
+HOMO-LUMO GAP: 26.240 eV
+CENTER OF MASS: {0.052753, 0.039645, -0.027278} ANGS
+DIPOLE MOMENT: {1.256469, 0.924462, -0.661193} (|D| = 1.694261) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+   -0.0049749841    -0.0150683544    -0.0040064953
+    0.0044141278     0.0171936764     0.0057753994
+    0.0005608582    -0.0021253183    -0.0017689040
+-=#=-    Now Returning to Optimizer   -=#=-
+-=#  All Constraints Satisfied to within 1.0e-3
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#     Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#                        Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#   ---------------------------------------------------------------------------------------------------
+-=#@      2     -74.9656063132    5.116e-05 N    2.156e-03 N    2.157e-03 N    1.168e-02 N    1.353e-02 N
+-=#  Adjusting Trust Radius
+|-=#  Step Quality:  -2.4289 (Reject)
+-=#  Decreasing trust radius 1.0000e-01 -> 5.8413e-03
+-=#  Updating Hessian with BFGS
+-=#  Hessian Eigenvalues:  5.8505e-01  4.8840e-01  2.6339e-01 ...  5.0000e-02  4.9941e-02  4.6166e-02
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Cycle     3    -=#=-
+-=#=-----------------------------------=#=-
+-=#  Finding Optimization Step, Current Trust Radius: 5.8413e-03
+-=#  Cartesian Step Size: 3.9114e-03, Expected Delta-E: -9.1484e-06
+-=#  Updating Cartesian Coordinates
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 9.27e-02
+|    1     0.0033245510     -74.9655379246     -74.9655379246     0.00  
+|    2     0.0007439364      -0.0000762938     -74.9656142184     0.00  
+|    3     0.0002657632      -0.0000006685     -74.9656148869     0.00  
+|    4     0.0000389433      -0.0000002192     -74.9656151061     0.00  
+|    5     0.0000044217      +0.0000000759     -74.9656150302     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9656150302 a.u.
+HOMO-LUMO GAP: 26.292 eV
+CENTER OF MASS: {0.053081, 0.040012, -0.027377} ANGS
+DIPOLE MOMENT: {1.259905, 0.926936, -0.663033} (|D| = 1.698878) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+   -0.0055374948    -0.0172960401    -0.0047637394
+    0.0058077575     0.0172220487     0.0044630873
+   -0.0002702558     0.0000739951     0.0003006482
+-=#=-    Now Returning to Optimizer   -=#=-
+-=#  All Constraints Satisfied to within 1.0e-3
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#     Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#                        Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#   ---------------------------------------------------------------------------------------------------
+-=#@      3     -74.9656150302   -8.717e-06 N    3.132e-04 N    3.108e-04 Y    3.911e-03 N    4.650e-03 N
+-=#  Adjusting Trust Radius
+|-=#  Step Quality:   0.9528 (Good)
+-=#  Increasing trust radius 5.8413e-03 -> 8.2609e-03
+-=#  Updating Hessian with BFGS
+-=#  Hessian Eigenvalues:  5.9204e-01  5.2434e-01  2.5036e-01 ...  4.9994e-02  4.9644e-02  4.6029e-02
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Cycle     4    -=#=-
+-=#=-----------------------------------=#=-
+-=#  Finding Optimization Step, Current Trust Radius: 8.2609e-03
+-=#  Cartesian Step Size: 1.7048e-04, Expected Delta-E: 1.5097e-06
+-=#  Updating Cartesian Coordinates
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 9.27e-02
+|    1     0.0005484084     -74.9654139965     -74.9654139965     0.00  
+|    2     0.0001434106      -0.0001994269     -74.9656134234     0.00  
+|    3     0.0000452309      +0.0000000795     -74.9656133439     0.00  
+|    4     0.0000023674      -0.0000000099     -74.9656133538     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9656133538 a.u.
+HOMO-LUMO GAP: 26.288 eV
+CENTER OF MASS: {0.053099, 0.040083, -0.027353} ANGS
+DIPOLE MOMENT: {1.259248, 0.928493, -0.661503} (|D| = 1.698644) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+   -0.0058772207    -0.0172375370    -0.0044058492
+    0.0058194571     0.0172377628     0.0044610589
+    0.0000577613    -0.0000002305    -0.0000552077
+-=#=-    Now Returning to Optimizer   -=#=-
+-=#  All Constraints Satisfied to within 1.0e-3
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#     Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#                        Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#   ---------------------------------------------------------------------------------------------------
+-=#@      4     -74.9656133538    1.676e-06 N    5.443e-05 Y    4.448e-05 Y    1.705e-04 Y    2.154e-04 Y
+-=#  Adjusting Trust Radius
+|-=#  Step Quality:   1.1104 (Good)
+-=#  Increasing trust radius 8.2609e-03 -> 1.1683e-02
+-=#  Updating Hessian with BFGS
+-=#  Hessian Eigenvalues:  7.6478e-01  5.5402e-01  2.6731e-01 ...  4.9893e-02  4.6515e-02  2.6451e-02
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Cycle     5    -=#=-
+-=#=-----------------------------------=#=-
+-=#  Finding Optimization Step, Current Trust Radius: 1.1683e-02
+-=#  Cartesian Step Size: 4.3309e-05, Expected Delta-E: 2.4054e-07
+-=#  Updating Cartesian Coordinates
+-=#=-   Getting Energy and Gradient   -=#=-
+-=#=-      (We'll Be Right Back)      -=#=-
+| Total AOs: 7    Total MOs: 7
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change         Energy        Time(s)
+------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 9.27e-02
+|    1     0.0006737683     -74.9655701853     -74.9655701853     0.00  
+|    2     0.0002618886      -0.0000429108     -74.9656130961     0.00  
+|    3     0.0000100308      -0.0000002124     -74.9656133085     0.01  
+|    4     0.0000018320      -0.0000000699     -74.9656133784     0.00  
+------------------------------------------------------------------------
+FINAL ENERGY: -74.9656133784 a.u.
+HOMO-LUMO GAP: 26.287 eV
+CENTER OF MASS: {0.053081, 0.040184, -0.027278} ANGS
+DIPOLE MOMENT: {1.258458, 0.931000, -0.659294} (|D| = 1.698572) DEBYE
+
+Running Mulliken population analysis...
+
+
+Gradient units are Hartree/Bohr
+---------------------------------------------------
+        dE/dX            dE/dY            dE/dZ
+   -0.0059273196    -0.0172092347    -0.0043416473
+    0.0057911325     0.0172367549     0.0044874785
+    0.0001361833    -0.0000275303    -0.0001458304
+-=#=-    Now Returning to Optimizer   -=#=-
+-=#  All Constraints Satisfied to within 1.0e-3
+-=#=-  Checking Convergence Criteria  -=#=-
+-=#     Cycle       Energy          Delta-E   Gradient-RMS   Gradient-Max   Displace-RMS   Displace-Max
+-=#                        Crit:  1.000e-06      3.000e-04      4.500e-04      1.200e-03      1.800e-03 
+-=#   ---------------------------------------------------------------------------------------------------
+-=#@      5     -74.9656133784   -2.458e-08 Y    1.339e-04 Y    1.339e-04 Y    4.331e-05 Y    5.863e-05 Y
+-=#=-----------------------------------=#=-
+-=#=-     Optimization Converged.     -=#=-
+-=#=-----------------------------------=#=-
+-=#=- Optimized Energy:     -74.9656133784 a.u.
+Writing out molden info
+| Total processing time: 0.56 sec 
+
+| Job finished: Mon Oct 19 23:41:32 2026
+

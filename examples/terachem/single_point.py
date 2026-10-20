@@ -20,8 +20,8 @@ or the PDF manual shipped in the TeraChem ``doc`` directory):
 - Unrestricted methods are spelled in the method name: "uhf", "ub3lyp", ...;
   restricted open shell is "rohf", "rob3lyp".
 - Hessians (``run frequencies``) come from finite differences of analytic
-  gradients, so they take 6N gradients; the gradient at the input geometry is
-  returned as well. TeraChem stops with "Maximum component of gradient is too large"
+  gradients, so they take 6N gradients; the gradient at the input geometry, the
+  harmonic frequencies, and the normal modes are returned as well. TeraChem stops with "Maximum component of gradient is too large"
   unless the structure is a stationary point; ``mincheck false`` turns that check
   off (set below because this example water is not at a minimum; energy and
   gradient runs list it as an unnecessary keyword, which is harmless).
@@ -84,6 +84,7 @@ if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
     print("Hessian (Hartree/bohr^2), shape:", results.hessian.shape)
+    print("Frequencies (cm^-1):", results.freqs_wavenumber)
 print("Number of orbitals:", results.calcinfo_nmo)
 if results.extras.get("excited_states"):
     print("Excited states:", results.extras["excited_states"])

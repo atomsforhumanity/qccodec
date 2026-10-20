@@ -1,9 +1,11 @@
 """xtb runs through qccompute: GFN-xTB, GFN-FF, and g-xTB."""
 
+import copy
 import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -131,3 +133,27 @@ def test_unknown_option_fails(run: Run, water: Structure) -> None:
     """xtb only warns about unknown flags; the codec turns that into a failure."""
     with pytest.raises(Exception, match="unknown options"):
         run(_input(water, CalcType.energy, gfn2_typo=True))
+
+
+def test_point_charges(run: Run, water: Structure) -> None:
+    """GFN2-xTB with point charges: the gradient on them matches finite differences."""
+    charges: list[list[Any]] = [[-0.8, [0.0, 0.0, 5.0], 8], [0.4, [1.0, 1.0, 6.0], 1]]
+    output = run(
+        _input(water, CalcType.gradient, external_potentials=charges),
+        case="water_point_charges_gradient",
+    )
+    results = output.results
+    assert not np.isclose(results.energy, ENERGY, atol=1e-4)
+    pc_gradient = np.asarray(results.point_charge_gradient)
+    assert pc_gradient.shape == (2, 3)
+    step = 1e-3
+    for i in range(2):
+        for k in range(3):
+            energies = []
+            for sign in (1.0, -1.0):
+                moved = copy.deepcopy(charges)
+                moved[i][1][k] += sign * step
+                inp = _input(water, CalcType.energy, external_potentials=moved)
+                energies.append(run(inp).results.energy)
+            numeric = (energies[0] - energies[1]) / (2 * step)
+            assert np.isclose(pc_gradient[i, k], numeric, atol=1e-6)

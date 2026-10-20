@@ -91,12 +91,20 @@ nav:
   - Programs:
       - Overview: programs/index.md
       - CREST: programs/crest.md
+      - DFTB+: programs/dftbplus.md
       - geomeTRIC: programs/geometric.md
       - ORCA: programs/orca.md
       - Psi4: programs/psi4.md
+      - tblite: programs/tblite.md
       - TeraChem: programs/terachem.md
       - TeraChem servers: programs/terachem-servers.md
       - xtb: programs/xtb.md
+      - "Machine-learned potentials":
+          - AIMNet2: programs/aimnet2.md
+          - FAIR-Chem: programs/fairchem.md
+          - MACE: programs/mace.md
+          - Orb: programs/orb.md
+          - TorchANI: programs/torchani.md
   - Guides:
       - Decoding program output: guides/decoding.md
       - Writing a codec: guides/writing-a-codec.md

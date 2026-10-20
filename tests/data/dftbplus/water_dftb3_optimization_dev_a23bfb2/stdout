@@ -1,0 +1,224 @@
+|===============================================================================
+|
+|  DFTB+ development version (commit: a23bfb2)
+|
+|  Copyright (C) 2006 - 2025  DFTB+ developers group
+|
+|===============================================================================
+|
+|  When publishing results obtained with DFTB+, please cite the following
+|  reference:
+|
+|    Recent Developments in DFTB+, a Software Package for Efficient Atomistic
+|    Quantum Mechanical Simulations, J. Phys. Chem. A 129, 5373−5390 (2025).
+|    [https://doi.org/10.1021/acs.jpca.5c01146]
+|
+|  You should also cite additional publications crediting the parametrization
+|  data you use. Please consult the documentation of the SK-files for the
+|  references.
+|
+|===============================================================================
+
+Reading input file 'dftb_in.hsd'
+Parser version: 14
+
+--------------------------------------------------------------------------------
+Reading SK-files:
+/opt/dftb-params/3ob-3-1/O-O.skf
+/opt/dftb-params/3ob-3-1/O-H.skf
+/opt/dftb-params/3ob-3-1/H-H.skf
+Done.
+
+
+Processed input in HSD format written to 'dftb_pin.hsd'
+
+Starting initialization...
+--------------------------------------------------------------------------------
+OpenMP threads:              1
+Chosen random seed:          100268513
+Current stacksize:           8 [Mb] (recommended: unlimited)
+WARNING!
+-> Current stacksize not set to unlimited or hard limit, which might cause
+   random crashes (e.g. segmentation faults). It is advised to unlimit the
+   stacksize by issuing 'ulimit -s unlimited' (Linux) or setting it to the 
+   hard limit by 'ulimit -s hard' (Mac) in advance.
+Mode:                        Geometry optimisation relaxation
+Self consistent charges:     Yes
+SCC-tolerance:                 0.100000E-04
+Max. scc iterations:                    100
+Shell resolved Hubbard:      No
+Spin polarisation:           No
+Nr. of up electrons:             4.000000
+Nr. of down electrons:           4.000000
+Periodic boundaries:         No
+Electronic solver:           Relatively robust
+Mixer:                       Broyden mixer
+Mixing parameter:                  0.200000
+Nr. of chrg. vec. in memory:            100
+Max. SCC-cycles:                        100
+Max. nr. of geometry steps:             200
+Electronic temperature:              0.100000E-07 H      0.272114E-06 eV
+Initial charges:             Set automatically (system chrg:   0.000E+00)
+Included shells:             O:  s, p
+                             H:  s
+Full 3rd order correction    Yes
+Damped SCC                   Yes
+Damped species(s):           H                                                 
+Extra options:
+                             Mulliken analysis
+                             Force calculation
+Force type                   original
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 0
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41241189E+01    0.00000000E+00    0.78913550E+00
+    2   -0.41247977E+01   -0.41241189E+01    0.60509603E+00
+    3   -0.41253878E+01   -0.67880183E-03    0.31466102E-01
+    4   -0.41253883E+01   -0.59006711E-03    0.22184431E-02
+    5   -0.41253883E+01   -0.49271840E-06    0.22981230E-04
+    6   -0.41253883E+01   -0.22449633E-08    0.34748179E-04
+    7   -0.41253883E+01   -0.23288038E-11    0.16085266E-07
+
+Total Energy:                       -4.0706729102 H         -110.7686 eV
+Extrapolated to 0K:                 -4.0706729102 H         -110.7686 eV
+Total Mermin free energy:           -4.0706729102 H         -110.7686 eV
+Force related energy:               -4.0706729102 H         -110.7686 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0706729E+00 H       energy change -4.0706729E+00 H
+gradient norm  2.7358908E-02 H/a0    max. gradient  1.6358789E-02 H/a0
+step length    0.0000000E+00 a0      max. step      0.0000000E+00 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 1
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41328206E+01    0.00000000E+00    0.48918409E-02
+    2   -0.41328206E+01   -0.74323011E-02    0.38719746E-02
+    3   -0.41328206E+01   -0.27608085E-08    0.38441125E-05
+
+Total Energy:                       -4.0711590982 H         -110.7819 eV
+Extrapolated to 0K:                 -4.0711590982 H         -110.7819 eV
+Total Mermin free energy:           -4.0711590982 H         -110.7819 eV
+Force related energy:               -4.0711590982 H         -110.7819 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0711591E+00 H       energy change -4.8618801E-04 H
+gradient norm  1.1027154E-02 H/a0    max. gradient  5.4508056E-03 H/a0
+step length    2.7358908E-02 a0      max. step      1.6358789E-02 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 2
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41354884E+01    0.00000000E+00    0.33407390E-02
+    2   -0.41354884E+01   -0.26677531E-02    0.26481470E-02
+    3   -0.41354884E+01   -0.96778852E-09    0.91572195E-06
+
+Total Energy:                       -4.0713112039 H         -110.7860 eV
+Extrapolated to 0K:                 -4.0713112039 H         -110.7860 eV
+Total Mermin free energy:           -4.0713112039 H         -110.7860 eV
+Force related energy:               -4.0713112039 H         -110.7860 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0713112E+00 H       energy change -1.5210570E-04 H
+gradient norm  9.1827213E-03 H/a0    max. gradient  5.0475598E-03 H/a0
+step length    1.8897267E-02 a0      max. step      1.0213824E-02 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 3
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41363853E+01    0.00000000E+00    0.46708808E-02
+    2   -0.41363853E+01   -0.89689660E-03    0.37079249E-02
+    3   -0.41363853E+01   -0.13447634E-08    0.15485916E-05
+
+Total Energy:                       -4.0714768603 H         -110.7905 eV
+Extrapolated to 0K:                 -4.0714768603 H         -110.7905 eV
+Total Mermin free energy:           -4.0714768603 H         -110.7905 eV
+Force related energy:               -4.0714768603 H         -110.7905 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0714769E+00 H       energy change -1.6565642E-04 H
+gradient norm  8.9061115E-03 H/a0    max. gradient  5.0909450E-03 H/a0
+step length    3.0365337E-02 a0      max. step      1.6294764E-02 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 4
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41348522E+01    0.00000000E+00    0.41374015E-02
+    2   -0.41348522E+01    0.15330771E-02    0.32875955E-02
+    3   -0.41348522E+01   -0.80970519E-09    0.12354976E-05
+
+Total Energy:                       -4.0715771105 H         -110.7933 eV
+Extrapolated to 0K:                 -4.0715771105 H         -110.7933 eV
+Total Mermin free energy:           -4.0715771105 H         -110.7933 eV
+Force related energy:               -4.0715771105 H         -110.7933 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0715771E+00 H       energy change -1.0025015E-04 H
+gradient norm  4.7888259E-03 H/a0    max. gradient  2.5164540E-03 H/a0
+step length    3.1181210E-02 a0      max. step      1.7656788E-02 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 5
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41335274E+01    0.00000000E+00    0.52809114E-03
+    2   -0.41335274E+01    0.13248035E-02    0.41966861E-03
+    3   -0.41335274E+01   -0.12880363E-10    0.59870214E-07
+
+Total Energy:                       -4.0715911265 H         -110.7936 eV
+Extrapolated to 0K:                 -4.0715911265 H         -110.7936 eV
+Total Mermin free energy:           -4.0715911265 H         -110.7936 eV
+Force related energy:               -4.0715911265 H         -110.7936 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0715911E+00 H       energy change -1.4015997E-05 H
+gradient norm  1.3715609E-03 H/a0    max. gradient  7.2431627E-04 H/a0
+step length    7.9562596E-03 a0      max. step      4.3198083E-03 a0
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 6
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1   -0.41331064E+01    0.00000000E+00    0.31787248E-03
+    2   -0.41331064E+01    0.42097152E-03    0.25258272E-03
+    3   -0.41331064E+01   -0.48290261E-11    0.92087792E-07
+
+Total Energy:                       -4.0715923387 H         -110.7937 eV
+Extrapolated to 0K:                 -4.0715923387 H         -110.7937 eV
+Total Mermin free energy:           -4.0715923387 H         -110.7937 eV
+Force related energy:               -4.0715923387 H         -110.7937 eV
+
+>> Charges saved for restart in charges.bin
+
+total energy  -4.0715923E+00 H       energy change -1.2122246E-06 H
+gradient norm  1.5916752E-04 H/a0    max. gradient  9.5651934E-05 H/a0
+step length    1.6888072E-03 a0      max. step      1.0114431E-03 a0
+
+Geometry converged
+
+--------------------------------------------------------------------------------
+DFTB+ running times                          cpu [s]             wall clock [s]
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Missing                                +       0.00 (100.0%)       0.00 (100.0%)
+Total                                  =       0.00 (100.0%)       0.00 (100.0%)
+--------------------------------------------------------------------------------

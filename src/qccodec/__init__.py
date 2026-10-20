@@ -5,6 +5,7 @@ from importlib import metadata
 __version__ = metadata.version(__name__)
 
 from .codec import Codec, Context, ParserSpec
+from .model_cache import clear_model_cache
 from .native import (
     NativeInput,
     NativeOutput,
@@ -33,6 +34,7 @@ __all__ = [
     "PythonOutput",
     "SubprocessInput",
     "SubprocessOutput",
+    "clear_model_cache",
     "decode",
     "encode",
     "get_codec",

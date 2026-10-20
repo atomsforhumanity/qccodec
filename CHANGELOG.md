@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- Codecs for programs that are Python libraries, run inside the calling process (install the library next to qccompute; nothing goes on `PATH`):
+  - `tblite`: GFN2-xTB, GFN1-xTB, and IPEA1-xTB energies and gradients, with partial charges and the dipole. Keywords are tblite's own calculator settings (`accuracy`, `max-iter`, `temperature` in Hartree, ...) and interactions (`alpb-solvation`, `gbsa-solvation`, `ddX-solvation`, `electric-field`, `spin-polarization`, ...).
+  - `aimnet2`: AIMNet2 energies, gradients, and Hessians (automatic differentiation) with partial charges; `aimnet2-nse` takes open shells, and the closed-shell models refuse them.
+  - `torchani`: ANI-2x, ANI-1ccx, and the other `torchani.models` energies, gradients, and Hessians, in float64 by default; neutral closed-shell molecules only.
+  - `mace`: MACE-OFF, MACE-MP, MACE-OMOL (the one family that reads charge and spin), and `.model` files; energies, gradients, and Hessians.
+  - `orb`: Orb v3 and OrbMol energies and gradients; OMol25 models read charge and spin.
+  - `fairchem`: UMA, eSEN, and AllScAIP energies, gradients, and Hessians. The task head is the checkpoint's only one, or `omol` for UMA, unless `task` says otherwise; it is recorded in `extras["fairchem_task"]`. Models run uncompiled by default, so any molecule is ready in seconds; `inference_settings` takes a fairchem preset or `InferenceSettings` fields. The weights are gated on Hugging Face.
+
+  MACE, Orb, and FAIR-Chem are called below their ASE calculators (MACE's raw model, Orb's model on its adapter's graph, FAIR-Chem's predict unit), so no calculator state carries over between calculations and the models can later take batches; AIMNet2 and TorchANI are called directly too. `device` picks the hardware (a GPU when PyTorch sees one, by default), unknown keywords are rejected, and results are converted to Hartree and bohr. Library errors raise `CalculationError` naming the exception. Run them under `geometric` for optimizations and transition states.
+- `qccodec.clear_model_cache()` and the `qccodec.model_cache` module: loaded models stay in memory for later calculations in the same process, up to `QCCODEC_MAX_MODELS` of them (2 by default; 0 turns caching off), least recently used unloaded first, with GPU memory handed back to the driver.
+- A `dftbplus` codec for DFTB+: energies, gradients, Hessians (`SecondDerivatives`; no energy or gradient at the input geometry, and `SCCTolerance` tightened to 1e-8), and optimizations (LBFGS, every step's structure and energy) with `DFTB3`, `SCC-DFTB`, `DFTB`, and DFTB+'s `GFN2-xTB`, `GFN1-xTB`, and `IPEA1-xTB`. `model.basis` names the Slater-Koster parameter set (`3ob-3-1`, `mio-1-1`), whose per-element settings (angular momenta, DFTB3 Hubbard derivatives, H-bond damping) come from `qcref.dftb_parameter_sets`; the files are found under the `slater_koster_dir` keyword or `QCCODEC_DFTB_PARAMETERS`. Keywords are DFTB+'s HSD input as nested dictionaries, merged into the generated input. DFTB+ errors, including the input it did not recognize, raise `CalculationError`.
+- `xtb` takes point charges for QM/MM electrostatic embedding in the `external_potentials` keyword, in the Psi4 codec's `[charge, [x, y, z]]` form (bohr), optionally with the atomic number whose hardness damps each charge. Gradients fill `point_charge_gradient` from xtb's `pcgrad`. The codec rejects point charges with GFN0, GFN-FF, and g-xTB, which xtb 6.7.1 silently ignores them for.
+- `terachem` optimizations take a `constraints` keyword: the geomeTRIC codec's constraint dictionary (`freeze` and `set`; `xyz`, `distance`, `angle`, `dihedral`; 0-based atoms; distances in bohr), written as TeraChem's `$constraint_freeze` and `$constraint_set` groups with 1-based atoms and distances in angstrom.
+- `terachem` Hessians fill `freqs_wavenumber` and `normal_modes_cartesian` from `scr.*/Frequencies.dat`.
+- Example scripts and documentation pages for the new codecs, and integration tests that check every library codec's gradient (and Hessian) against finite differences.
+
+### Changed
+
+- Require `qcref>=0.4.0` for `dftb_parameter_sets`.
+
 ## [0.14.0] - 2026-10-15
 
 ### Added

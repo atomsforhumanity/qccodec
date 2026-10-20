@@ -1,0 +1,16 @@
+Geometry = xyzFormat {
+  <<< "geometry.xyz"
+}
+Hamiltonian = xTB {
+  Method = "GFN2-xTB"
+  Charge = 0
+}
+Options {
+  WriteResultsTag = Yes
+}
+ParserOptions {
+  ParserVersion = 14
+}
+Analysis {
+  PrintForces = Yes
+}

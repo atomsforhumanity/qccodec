@@ -1,0 +1,16 @@
+run                  minimize
+coordinates          geometry.xyz
+charge               0
+spinmult             1
+method               hf
+basis                sto-3g
+purify               no
+new_minimizer        yes
+end
+
+$constraint_freeze
+xyz 1
+$end
+$constraint_set
+bond 1.0054367 1_2
+$end

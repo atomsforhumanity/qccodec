@@ -15,6 +15,10 @@ Notes for TeraChem optimizations (manual: https://mtzweb.stanford.edu/terachem/)
 - Every step in ``results.trajectory`` carries its structure, energy, and gradient,
   read from TeraChem's ``optim.xyz``/``optim_trajectory.xyz`` and its output.
 - The first step is your input structure: TeraChem does not move or reorient it.
+- ``constraints`` is not a tc.in keyword: it is the same dictionary the geomeTRIC
+  codec takes, with 0-based atom indices and ``set`` distances in bohr. The codec
+  writes TeraChem's ``$constraint_freeze``/``$constraint_set`` groups (1-based atoms,
+  angstrom) for you. Scans are not supported.
 - Transition-state searches are not supported by this codec; use geomeTRIC with
   TeraChem gradients (``program="geometric"``) instead.
 """
@@ -48,6 +52,13 @@ prog_input = ProgramInput(
         # Implicit solvent (COSMO):
         # "pcm": "cosmo",
         # "epsilon": 78.39,
+        #
+        # Constraints: freeze atoms or internal coordinates, or set them to a value.
+        # Types are "xyz", "distance", "angle", and "dihedral"; indices are 0-based.
+        # "constraints": {
+        #     "freeze": [{"type": "xyz", "indices": [0]}],
+        #     "set": [{"type": "distance", "indices": [0, 1], "value": 1.85}],  # bohr
+        # },
     },
 )
 

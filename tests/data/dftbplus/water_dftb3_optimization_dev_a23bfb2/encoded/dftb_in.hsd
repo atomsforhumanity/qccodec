@@ -1,0 +1,43 @@
+Geometry = xyzFormat {
+  <<< "geometry.xyz"
+}
+Hamiltonian = DFTB {
+  Scc = Yes
+  Charge = 0
+  ThirdOrderFull = Yes
+  HubbardDerivs {
+    O = -0.1575
+    H = -0.1857
+  }
+  HCorrection = Damping {
+    Exponent = 4.0
+  }
+  MaxAngularMomentum {
+    O = "p"
+    H = "s"
+  }
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/opt/dftb-params/3ob-3-1/"
+    Separator = "-"
+    Suffix = ".skf"
+  }
+}
+Options {
+  WriteResultsTag = Yes
+}
+ParserOptions {
+  ParserVersion = 14
+}
+Driver = GeometryOptimisation {
+  Optimiser = Lbfgs {}
+  MovedAtoms = 1:-1
+  MaxSteps = 200
+  Convergence {
+    GradElem = 0.0001
+  }
+  AppendGeometries = Yes
+  OutputPrefix = "geo_end"
+}
+Analysis {
+  PrintForces = Yes
+}

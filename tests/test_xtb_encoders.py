@@ -109,3 +109,57 @@ def test_unknown_method() -> None:
     """Unknown methods list the supported ones."""
     with pytest.raises(EncoderError, match="gfn2"):
         _command(method="b3lyp")
+
+
+POINT_CHARGES = [[-0.8, [0.0, 0.0, 5.0], 8], [0.4, [1.0, 1.0, 6.0]]]
+
+
+def _native(method: str = "gfn2", **kwargs: object) -> SubprocessInput:
+    inp = ProgramInput(
+        program="xtb",
+        structure=WATER,
+        calctype=CalcType.gradient,
+        model=Model(method=method),
+        **kwargs,  # type: ignore[arg-type]
+    )
+    native = get_codec("xtb").encode(inp)
+    assert isinstance(native, SubprocessInput)
+    return native
+
+
+def test_point_charges_write_pcharge_and_embedding() -> None:
+    """external_potentials become a pcharge file and an $embedding group."""
+    native = _native(keywords={"external_potentials": POINT_CHARGES})
+    assert native.files["pcharge"] == (
+        "2\n"
+        "-0.8000000000 0.0000000000 0.0000000000 5.0000000000 8\n"
+        "0.4000000000 1.0000000000 1.0000000000 6.0000000000\n"
+    )
+    assert "input=pcharge" in str(native.files["xcontrol"])
+    assert "gradient=pcgrad" in str(native.files["xcontrol"])
+    assert native.command[-2:] == ("--input", "xcontrol")
+
+
+def test_point_charges_extend_a_supplied_xcontrol() -> None:
+    """A user's xcontrol keeps its groups and gains the $embedding group."""
+    constrain = "$constrain\n  distance: 1, 2, auto\n$end\n"
+    native = _native(
+        keywords={"input": "detailed.inp", "external_potentials": POINT_CHARGES},
+        files={"detailed.inp": constrain},
+    )
+    text = str(native.files["detailed.inp"])
+    assert text.startswith(constrain) and "$embedding" in text
+    assert "xcontrol" not in native.files
+
+
+@pytest.mark.parametrize("method", ["gfn0", "gfnff", "gxtb"])
+def test_point_charges_rejected_where_xtb_ignores_them(method: str) -> None:
+    """GFN0, GFN-FF, and g-xTB silently ignore $embedding, so the codec refuses."""
+    with pytest.raises(EncoderError, match="ignores them"):
+        _native(method=method, keywords={"external_potentials": POINT_CHARGES})
+
+
+def test_malformed_point_charges() -> None:
+    """Entries must be [charge, [x, y, z]] with an optional element."""
+    with pytest.raises(EncoderError, match="external_potentials"):
+        _native(keywords={"external_potentials": [[1.0, [0.0, 0.0]]]})

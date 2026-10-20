@@ -2,7 +2,14 @@
 
 import numpy as np
 import pytest
-from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramInput,
+    SinglePointData,
+    Structure,
+)
 
 from .conftest import Run, requires
 
@@ -69,6 +76,35 @@ def test_hessian(run: Run) -> None:
     assert np.allclose(hessian, hessian.T, atol=1e-6)
     # Builds from 2023 and 2026 differ by up to 2e-4 in this row.
     assert np.allclose(hessian[0], REFERENCE_HESSIAN_ROW_0, atol=1e-3)
+    _check_normal_modes(output.results, WATER_NEAR_MINIMUM)
+
+
+# sqrt(Hartree / (bohr^2 amu)) in cm^-1.
+WAVENUMBER_PER_ROOT_AU = 5140.4871
+
+
+def _check_normal_modes(results: SinglePointData, structure: Structure) -> None:
+    """Frequencies and modes are eigenpairs of the mass-weighted Hessian.
+
+    Mass-weighting a mode's un-mass-weighted displacements must give an eigenvector
+    of the mass-weighted Hessian whose eigenvalue is the frequency squared.
+    """
+    masses = np.repeat(
+        [{"H": 1.00782503, "O": 15.99491462}[s] for s in structure.symbols], 3
+    )
+    weights = 1 / np.sqrt(masses)
+    weighted = np.asarray(results.hessian) * np.outer(weights, weights)
+    freqs = np.asarray(results.freqs_wavenumber)
+    modes = np.asarray(results.normal_modes_cartesian)
+    assert freqs.shape == (3,) and modes.shape == (3, 3, 3)
+    assert np.all(freqs > 1000)
+    for freq, mode in zip(freqs, modes, strict=True):
+        vector = mode.ravel() / weights
+        vector /= np.linalg.norm(vector)
+        eigenvalue = vector @ weighted @ vector
+        assert np.isclose(np.sqrt(eigenvalue) * WAVENUMBER_PER_ROOT_AU, freq, rtol=2e-3)
+        residual = weighted @ vector - eigenvalue * vector
+        assert np.linalg.norm(residual) < 1e-2 * abs(eigenvalue)
 
 
 def test_optimization(run: Run, water: Structure) -> None:
@@ -78,6 +114,24 @@ def test_optimization(run: Run, water: Structure) -> None:
     assert isinstance(output.results, OptimizationData)
     assert len(output.results.trajectory) > 1
     assert output.results.energies[0] > output.results.energies[-1]
+
+
+def test_constrained_optimization(run: Run, water: Structure) -> None:
+    """Frozen atoms stay put and a set distance is reached ($constraint_freeze/_set)."""
+    target = 1.9  # bohr
+    inp = _input(
+        water,
+        CalcType.optimization,
+        new_minimizer="yes",
+        constraints={  # type: ignore[arg-type]
+            "freeze": [{"type": "xyz", "indices": [0]}],
+            "set": [{"type": "distance", "indices": [0, 1], "value": target}],
+        },
+    )
+    output = run(inp, case="water_constrained_optimization")
+    final = output.results.trajectory[-1].input_data.structure.geometry
+    assert np.allclose(final[0], water.geometry[0], atol=1e-4)
+    assert np.isclose(np.linalg.norm(final[1] - final[0]), target, atol=1e-3)
 
 
 REFERENCE_HESSIAN_ROW_0 = [

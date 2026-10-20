@@ -18,6 +18,16 @@ optimization level. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) go
 an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.
+
+One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
+electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
+z]], ...]`` in bohr. An optional third entry, ``[charge, [x, y, z], atomic_number]``,
+names the element whose chemical hardness xtb uses to damp that charge's interaction
+at short range. The codec writes them to ``pcharge`` and adds an ``$embedding`` group to
+the ``xcontrol`` file (appending to yours if you supply one); gradients then also fill
+``point_charge_gradient`` from xtb's ``pcgrad``. Only GFN1- and GFN2-xTB apply point
+charges: GFN0, GFN-FF, and g-xTB ignore them without a warning, so the codec rejects
+them there.
 """
 
 from __future__ import annotations
@@ -44,6 +54,15 @@ from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
 
 STRUCTURE_FILE = "structure.xyz"
 ENGRAD_FILE = "structure.engrad"
+XCONTROL_FILE = "xcontrol"
+POINT_CHARGE_FILE = "pcharge"
+POINT_CHARGE_GRADIENT_FILE = "pcgrad"
+# xtb 6.7.1 reads $embedding for these Hamiltonians and silently ignores it otherwise.
+EMBEDDING_METHODS = {"gfn1", "gfn2"}
+EMBEDDING_GROUP = (
+    f"$embedding\n   input={POINT_CHARGE_FILE}\n"
+    f"   gradient={POINT_CHARGE_GRADIENT_FILE}\n$end\n"
+)
 
 codec = Codec(
     "xtb",
@@ -115,6 +134,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             f"Unknown xtb method {inp.model.method!r}; use one of {sorted(METHODS)}."
         )
     keywords = dict(inp.keywords)
+    point_charges = keywords.pop("external_potentials", None)
     reserved = sorted(RESERVED & {k.lower() for k in keywords})
     if reserved:
         raise EncoderError(
@@ -129,6 +149,23 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             raise EncoderError("The 'opt' keyword sets the optimization level only.")
         runtype.append(str(level))
 
+    generated: dict[str, str | bytes] = {STRUCTURE_FILE: inp.structure.to_xyz()}
+    files = dict(inp.files)
+    if point_charges:
+        if method not in EMBEDDING_METHODS:
+            raise EncoderError(
+                f"xtb applies point charges only with {sorted(EMBEDDING_METHODS)}; "
+                f"with {method} it ignores them without a warning."
+            )
+        xcontrol = str(keywords.get("input", XCONTROL_FILE))
+        keywords["input"] = xcontrol
+        generated[POINT_CHARGE_FILE] = point_charge_file(point_charges)
+        user_xcontrol = files.pop(xcontrol, "")
+        if isinstance(user_xcontrol, bytes):
+            user_xcontrol = user_xcontrol.decode()
+        generated[xcontrol] = user_xcontrol + EMBEDDING_GROUP
+    inp = inp.model_copy(update={"files": files})
+
     arguments = (
         *runtype,
         "--chrg",
@@ -140,11 +177,37 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     )
     return invocation(
         inp,
-        {STRUCTURE_FILE: inp.structure.to_xyz()},
+        generated,
         STRUCTURE_FILE,
         arguments=arguments,
         environment={"OMP_NUM_THREADS": "1"},
     )
+
+
+def point_charge_file(point_charges: Sequence[Sequence[Any]]) -> str:
+    """Write ``external_potentials`` in xtb's point-charge file format.
+
+    Args:
+        point_charges: ``[charge, [x, y, z]]`` in bohr, or ``[charge, [x, y, z],
+            atomic_number]``; xtb damps a charge's interaction at short range with
+            the chemical hardness of that element.
+
+    Raises:
+        EncoderError: An entry does not have that shape.
+    """
+    lines = [str(len(point_charges))]
+    for entry in point_charges:
+        if len(entry) not in (2, 3) or len(entry[1]) != 3:
+            raise EncoderError(
+                "external_potentials entries are [charge, [x, y, z]] or [charge, "
+                f"[x, y, z], atomic_number], not {entry!r}."
+            )
+        charge, (x, y, z) = float(entry[0]), (float(v) for v in entry[1])
+        line = f"{charge:.10f} {x:.10f} {y:.10f} {z:.10f}"
+        if len(entry) == 3:
+            line += f" {int(entry[2])}"
+        lines.append(line)
+    return "\n".join(lines) + "\n"
 
 
 def _flags(keywords: dict[str, Any]) -> list[str]:
@@ -243,6 +306,20 @@ codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hess
 codec.parser(
     file="g98.out", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
 )(parse_g98_normal_modes)
+
+
+@codec.parser(
+    file=POINT_CHARGE_GRADIENT_FILE,
+    target="point_charge_gradient",
+    calctypes=[CalcType.gradient],
+    required=False,
+)
+def parse_point_charge_gradient(contents: str) -> list[list[float]]:
+    """Parse the gradient on the point charges (Hartree/bohr) from ``pcgrad``."""
+    values = [float(v) for v in contents.split()]
+    if len(values) % 3:
+        raise ParserError(f"pcgrad holds {len(values)} values, not a multiple of 3.")
+    return [values[i : i + 3] for i in range(0, len(values), 3)]
 
 
 def _charges_file(ctx: Context) -> str:

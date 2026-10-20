@@ -10,7 +10,7 @@ dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
     "qcdata>=0.20.1",
-    "qcref>=0.3.0",
+    "qcref>=0.4.0",
 ]
 
 classifiers = [
@@ -68,6 +68,7 @@ docs = [
 ]
 integration = [
     "qccompute>=0.15.0",
+    "tblite>=0.4",
 ]
 
 [project.scripts]
@@ -136,3 +137,5 @@ files.extend-exclude = ["tests/data/**"]
 
 [tool.typos.default.extend-words]
 runtyp = "runtyp"
+# DFTB+ keyword: SpinPolarisation = Colinear
+Colinear = "Colinear"

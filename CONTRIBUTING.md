@@ -145,7 +145,7 @@ Pull requests that touch the docs, examples, or codecs build the site in CI.
 Hey there 👋! Look at you wanting to contribute! Every program is one file,
 `src/qccodec/programs/<name>.py`, that builds a single `Codec`. This page walks through
 the whole thing; the built-in `terachem.py`, `orca.py`, and `crest.py` are complete
-examples of file-based programs, and `xtb.py` of a Python API.
+examples of file-based programs, and `tblite.py` of a Python API.
 
 ### 1. The codec
 
@@ -280,7 +280,11 @@ codec = Codec("mylib", calctypes={CalcType.energy}, encode=encode, decode=decode
 ```
 
 Import the library inside `invoke` so encoding and decoding work (and are testable)
-without it installed. Set `PythonInput.environment` for settings the library reads at
+without it installed. Single-point codecs for Python libraries (tblite and the
+machine-learned potentials) share `programs/_python.py`: `invoke` returns a
+`SinglePoint` snapshot in atomic units (`from_ev` converts eV-based results),
+`qccodec.model_cache.cached_model` keeps loaded weights for later calculations, and `single_point_decoder(program)` is
+the decoder. Set `PythonInput.environment` for settings the library reads at
 import time, and `loggers` for Python loggers whose output should be captured.
 
 ### 6. Options, wavefunction propagation, registration
