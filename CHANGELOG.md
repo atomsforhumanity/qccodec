@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.15.0] - 2026-10-20
+
 ### Added
 
 - Codecs for programs that are Python libraries, run inside the calling process (install the library next to qccompute; nothing goes on `PATH`):
@@ -405,7 +407,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.14.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.15.0
 [0.14.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.14.0
 [0.13.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.1
 [0.13.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.0
