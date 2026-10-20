@@ -41,6 +41,7 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel
 from qcdata import CalcType, ProgramInput, StructuredData, get_data_type
+from qcref import periodic_table, phys
 
 from . import exceptions
 from .codec import DIRECTORY, STDOUT, VERSION_TARGET, Codec, Context, ParserSpec
@@ -495,3 +496,74 @@ def _check_spec(spec: ParserSpec, types: list[CalcType]) -> list[str]:
                 f"{get_data_type(calctype).__name__} ({calctype.value})"
             )
     return problems
+
+
+def check_normal_modes(
+    data: Any,
+    symbols: list[str],
+    *,
+    min_overlap: float = 0.97,
+    rtol: float = 0.01,
+) -> None:
+    """Verify normal modes follow qcdata's definition and match the Hessian.
+
+    Each mode must have unit length, there must be one per frequency, and, when the
+    data has a Hessian, each mode weighted by the square root of the atomic masses
+    must be (nearly) an eigenvector of the mass-weighted Hessian whose eigenvalue
+    gives the reported frequency. This catches modes in the wrong frame, the wrong
+    atom order, or a mass-weighted convention.
+
+    Args:
+        data: A ``SinglePointData`` with ``normal_modes_cartesian``.
+        symbols: The input structure's element symbols.
+        min_overlap: Smallest acceptable overlap with the Hessian's eigenvector;
+            below 1 for programs that print modes with few digits.
+        rtol: Relative tolerance between reported and Hessian frequencies.
+
+    Raises:
+        AssertionError: Listing every problem found.
+    """
+    modes = np.asarray(data.normal_modes_cartesian, dtype=float)
+    freqs = np.asarray(data.freqs_wavenumber, dtype=float)
+    problems: list[str] = []
+    if len(modes) != len(freqs):
+        problems.append(f"{len(modes)} modes for {len(freqs)} frequencies")
+    vectors = modes.reshape(len(modes), -1)
+    norms = np.linalg.norm(vectors, axis=1)
+    if not np.allclose(norms, 1.0, atol=1e-6):
+        problems.append(f"modes are not unit length: norms {np.round(norms, 6)}")
+    if data.hessian is not None and not problems:
+        masses = np.repeat(
+            [float(periodic_table[symbol].mass) for symbol in symbols], 3
+        )
+        hessian = np.asarray(data.hessian, dtype=float)
+        weighted = hessian / np.sqrt(np.outer(masses, masses))
+        eigenvalues, eigenvectors = np.linalg.eigh((weighted + weighted.T) / 2)
+        for i, (freq, vector) in enumerate(zip(freqs, vectors, strict=True)):
+            q = np.sqrt(masses) * vector
+            q /= np.linalg.norm(q)
+            overlaps = np.abs(eigenvectors.T @ q)
+            best = int(np.argmax(overlaps))
+            value = eigenvalues[best]
+            # sqrt(Hartree / (bohr^2 amu)) as a wavenumber in cm^-1.
+            omega = math.sqrt(
+                abs(value)
+                * phys.HARTREE_ENERGY
+                / (phys.BOHR_RADIUS**2 * phys.ATOMIC_MASS_CONSTANT)
+            )
+            expected = (
+                np.sign(value)
+                * omega
+                / (2 * math.pi * phys.SPEED_OF_LIGHT_IN_VACUUM * 100)
+            )
+            if overlaps[best] < min_overlap:
+                problems.append(
+                    f"mode {i}: overlap {overlaps[best]:.3f} with the Hessian's "
+                    "eigenvector (wrong frame, atom order, or mass weighting?)"
+                )
+            elif not math.isclose(expected, freq, rel_tol=rtol):
+                problems.append(
+                    f"mode {i}: reported {freq:.1f} cm^-1, Hessian gives {expected:.1f}"
+                )
+    if problems:
+        raise AssertionError("; ".join(problems))

@@ -70,7 +70,7 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
-from ._common import invocation
+from ._common import invocation, unit_modes
 
 codec = Codec(
     "psi4",
@@ -236,7 +236,9 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
         "scf_dipole_moment": results.get("dipole"),
         "atomic_charges": results.get("mulliken_charges"),
         "point_charge_gradient": results.get("point_charge_gradient"),
-        "normal_modes_cartesian": results.get("normal_modes"),
+        "normal_modes_cartesian": (
+            unit_modes(results["normal_modes"]) if results.get("normal_modes") else None
+        ),
     }
     if results.get("frequencies") is not None:
         fields["freqs_wavenumber"] = results["frequencies"]

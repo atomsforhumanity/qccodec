@@ -1,0 +1,8 @@
+threads = 1
+input = "structure.xyz"
+runtype = "numhess"
+
+[calculation]
+level = [
+    { method = "gfn2", charge = 0, uhf = 0 },
+]

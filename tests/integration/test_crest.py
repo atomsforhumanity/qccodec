@@ -12,6 +12,8 @@ from qcdata import (
     Structure,
 )
 
+from qccodec.testing import check_normal_modes
+
 from .conftest import Run, requires
 
 pytestmark = [pytest.mark.integration, requires("crest")]
@@ -61,6 +63,8 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert np.allclose(
         output.results.freqs_wavenumber, [1588.38, 3520.98, 3527.24], atol=1.0
     )
+    # CREST writes its modes in a reoriented frame; the codec rotates them back.
+    check_normal_modes(output.results, list(water.symbols))
 
 
 def test_optimization(run: Run, water: Structure) -> None:

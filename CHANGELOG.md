@@ -26,7 +26,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-- Require `qcref>=0.4.0` for `dftb_parameter_sets`.
+- Require `qcref>=0.4.0` for `dftb_parameter_sets`, and `qcdata>=0.20.2` for its definition of normal modes.
+- Normal modes follow qcdata's definition in every codec: unit-length Cartesian displacements in the input's frame and atom order. Psi4's already did; TeraChem's are now scaled to unit length.
+
+### Fixed
+
+- xtb and CREST normal modes were wrong. Both read `g98.out`, where xtb writes mass-weighted vectors, but the codecs treated them as Cartesian displacements in angstrom (scaling by 1.89) and returned vectors that were not the normal modes (overlap 0.84 to 0.89). CREST's were also in its own reoriented frame. They are now converted with the atomic masses, rotated onto the input structure, and scaled to unit length. The hand-assembled CREST Hessian fixtures, whose `g98.out` files did not belong to their inputs, are replaced by recorded runs.
+- `qccodec.testing.check_normal_modes(data, symbols)` checks that modes have unit length and are eigenvectors of the mass-weighted Hessian at the reported frequencies; every recorded case with modes runs it.
 
 ## [0.14.0] - 2026-10-15
 

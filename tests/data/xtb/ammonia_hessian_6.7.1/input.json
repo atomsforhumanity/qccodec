@@ -1,48 +1,52 @@
 {
   "extras": {},
   "files": {},
-  "program": "crest",
+  "program": "xtb",
   "cmdline_args": [],
   "calctype": "hessian",
   "model": {
     "extras": {},
     "method": "gfn2",
     "basis": null,
-    "qcdata_version": "0.19.0"
+    "qcdata_version": "0.20.1"
   },
-  "keywords": {
-    "threads": 1
-  },
+  "keywords": {},
   "subprograms": [],
   "structure": {
     "extras": {},
     "symbols": [
-      "O",
+      "N",
+      "H",
       "H",
       "H"
     ],
     "geometry": [
       [
-        0.0253397,
-        0.01939466,
-        -0.00696322
+        0.0,
+        0.0,
+        0.2
       ],
       [
-        0.22889176,
-        1.84438441,
-        0.16251426
+        1.77,
+        0.0,
+        -0.45
       ],
       [
-        1.41760224,
-        -0.62610794,
-        -1.02954938
+        -0.885,
+        1.533,
+        -0.45
+      ],
+      [
+        -0.885,
+        -1.533,
+        -0.45
       ]
     ],
     "charge": 0,
     "multiplicity": 1,
     "identifiers": {
       "extras": {},
-      "name": "water",
+      "name": null,
       "name_IUPAC": null,
       "smiles": null,
       "canonical_smiles": null,
@@ -56,22 +60,11 @@
       "pubchem_cid": null,
       "pubchem_sid": null,
       "pubchem_conformerid": null,
-      "qcdata_version": "0.19.0"
+      "qcdata_version": "0.20.1"
     },
-    "connectivity": [
-      [
-        0.0,
-        1.0,
-        1.0
-      ],
-      [
-        0.0,
-        2.0,
-        1.0
-      ]
-    ],
-    "qcdata_version": "0.19.0"
+    "connectivity": [],
+    "qcdata_version": "0.20.1"
   },
   "structures": {},
-  "qcdata_version": "0.19.0"
+  "qcdata_version": "0.20.1"
 }
