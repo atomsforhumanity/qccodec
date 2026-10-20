@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
 
+from qccodec.testing import check_normal_modes
+
 from .conftest import Run, required_programs
 
 
@@ -57,12 +59,35 @@ def test_gradient(run: Run, water: Structure) -> None:
 
 
 def test_hessian(run: Run, water: Structure) -> None:
-    """The analytic HF Hessian is symmetric."""
+    """The analytic HF Hessian, harmonic frequencies, and normal modes."""
     output = run(_input(water, CalcType.hessian), case="water_hessian")
-    hessian = np.asarray(output.results.hessian)
+    results = output.results
+    hessian = np.asarray(results.hessian)
     assert hessian.shape == (9, 9)
     assert np.allclose(hessian, hessian.T, atol=1e-6)
-    assert np.isclose(output.results.energy, ENERGY, atol=1e-6)
+    assert np.isclose(results.energy, ENERGY, atol=1e-6)
+    # Translations and rotations are left out; the distorted water is not a
+    # minimum, but HF/STO-3G still gives three real modes here.
+    assert len(results.freqs_wavenumber) == 3
+    check_normal_modes(results, list(water.symbols))
+
+
+def test_hessian_modes_across_blocks(run: Run) -> None:
+    """Ammonia's six modes span two column blocks of the .hess file."""
+    ammonia = Structure(
+        symbols=["N", "H", "H", "H"],
+        geometry=np.array(
+            [
+                [0.0, 0.0, 0.2],
+                [1.77, 0.0, -0.45],
+                [-0.885, 1.533, -0.45],
+                [-0.885, -1.533, -0.45],
+            ]
+        ),
+    )
+    output = run(_input(ammonia, CalcType.hessian), case="ammonia_hessian")
+    assert len(output.results.freqs_wavenumber) == 6
+    check_normal_modes(output.results, list(ammonia.symbols))
 
 
 def test_optimization(run: Run, water: Structure) -> None:

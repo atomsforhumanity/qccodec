@@ -1,0 +1,70 @@
+{
+  "extras": {},
+  "files": {},
+  "program": "orca",
+  "cmdline_args": [],
+  "calctype": "hessian",
+  "model": {
+    "extras": {},
+    "method": "hf",
+    "basis": "sto-3g",
+    "qcdata_version": "0.20.2"
+  },
+  "keywords": {},
+  "subprograms": [],
+  "structure": {
+    "extras": {},
+    "symbols": [
+      "N",
+      "H",
+      "H",
+      "H"
+    ],
+    "geometry": [
+      [
+        0.0,
+        0.0,
+        0.2
+      ],
+      [
+        1.77,
+        0.0,
+        -0.45
+      ],
+      [
+        -0.885,
+        1.533,
+        -0.45
+      ],
+      [
+        -0.885,
+        -1.533,
+        -0.45
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "identifiers": {
+      "extras": {},
+      "name": null,
+      "name_IUPAC": null,
+      "smiles": null,
+      "canonical_smiles": null,
+      "canonical_smiles_program": null,
+      "canonical_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_smiles": null,
+      "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+      "inchi": null,
+      "inchikey": null,
+      "pubchem_cid": null,
+      "pubchem_sid": null,
+      "pubchem_conformerid": null,
+      "qcdata_version": "0.20.2"
+    },
+    "connectivity": [],
+    "qcdata_version": "0.20.2"
+  },
+  "structures": {},
+  "qcdata_version": "0.20.2"
+}

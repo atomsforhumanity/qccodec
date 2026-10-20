@@ -27,7 +27,7 @@ WITH_MODES = [
 def test_some_cases_have_modes() -> None:
     """Every codec that reports modes has a recorded case for this test."""
     programs = {case.input_data.program for case in WITH_MODES}
-    assert {"psi4", "xtb", "crest", "terachem"} <= programs, programs
+    assert {"orca", "psi4", "xtb", "crest", "terachem"} <= programs, programs
 
 
 @pytest.mark.parametrize("case", WITH_MODES, ids=str)

@@ -19,7 +19,9 @@ Inputs map to ORCA as follows:
 - ``cmdline_args`` are appended to the ``orca`` command.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (also the gradient when ORCA
-writes it), ``optimization``, and ``transition_state`` (``OptTS``; give ORCA a
+writes it, and the harmonic frequencies and normal modes from ``<basename>.hess``:
+unit-length Cartesian displacements without translations and rotations, imaginary
+frequencies negative), ``optimization``, and ``transition_state`` (``OptTS``; give ORCA a
 starting Hessian, e.g. ``{"geom": {"calc_hess": True}}``). ORCA keeps the input's
 coordinates and atom order. No input field carries atom indices.
 
@@ -36,6 +38,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
@@ -49,7 +52,7 @@ from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..utils import re_search
-from ._common import invocation
+from ._common import invocation, rotation_onto, unit_modes
 
 codec = Codec(
     "orca",
@@ -211,34 +214,113 @@ def parse_gradient_hessian(stdout: str) -> list[list[float]]:
     return parse_gradient(stdout)
 
 
-@codec.parser(
-    file=lambda ctx: f"{parse_basename(ctx.stdout or '')}.hess",
-    target="hessian",
-    calctypes=[CalcType.hessian],
-)
-def parse_hessian(contents: str) -> list[list[float]]:
-    """Parse the Hessian from ORCA's ``<basename>.hess`` file."""
-    entry = next((b for b in contents.split("$") if b.startswith("hess")), None)
-    if entry is None:
-        raise ParserError("Failed to find hessian block in Hessian file.")
-    dim = int(entry.splitlines()[1])
+def _hess_file(ctx: Context) -> str:
+    """ORCA writes Hessians and vibrations to ``<basename>.hess``."""
+    return f"{parse_basename(ctx.stdout or '')}.hess"
 
+
+def _hess_section(contents: str, name: str) -> str:
+    """Return one ``$name`` section of a ``.hess`` file.
+
+    Raises:
+        MatchNotFoundError: The file has no such section.
+    """
+    for section in contents.split("$"):
+        if section.split("\n", 1)[0].strip() == name:
+            # Comment lines ("# The atoms: label mass x y z") precede some sections.
+            lines = [line for line in section.splitlines() if not line.startswith("#")]
+            return "\n".join(lines).rstrip() + "\n"
+    raise MatchNotFoundError(f"${name}", contents)
+
+
+def _hess_matrix(section: str) -> list[list[float]]:
+    """Read a matrix section written in column blocks, such as ``$hessian``.
+
+    Raises:
+        ParserError: The blocks do not form a matrix of the declared size.
+    """
+    rows_declared = int(section.splitlines()[1].split()[0])
     # Blocks are separated by column-index lines such as '  0  1  2  3 ...'; the
     # final block may list a single column.
-    parts = re.split(r"^\s*\d+(?:\s+\d+)*\s*$", entry, flags=re.MULTILINE)
+    parts = re.split(r"^\s*\d+(?:\s+\d+)*\s*$", section, flags=re.MULTILINE)
     if not len(parts) > 1:
-        raise ParserError(f"Failed to parse blocks in hessian entry: {entry}")
-
-    hessian: list[list[float]] = [[] for _ in range(dim)]
+        raise ParserError(f"Failed to parse blocks in section: {section}")
+    matrix: list[list[float]] = [[] for _ in range(rows_declared)]
     for block in (part.strip() for part in parts[1:]):
         lines = block.splitlines()
-        if len(lines) != dim:
+        if len(lines) != rows_declared:
             raise ParserError(
-                f"Block line count {len(lines)} does not match dimension {dim}: {block}"
+                f"Block line count {len(lines)} does not match dimension "
+                f"{rows_declared}: {block}"
             )
         for i, line in enumerate(lines):
-            hessian[i].extend(map(float, line.split()[1:]))
-    return hessian
+            matrix[i].extend(map(float, line.split()[1:]))
+    return matrix
+
+
+@codec.parser(file=_hess_file, target="hessian", calctypes=[CalcType.hessian])
+def parse_hessian(contents: str) -> list[list[float]]:
+    """Parse the Hessian from ORCA's ``<basename>.hess`` file."""
+    try:
+        section = _hess_section(contents, "hessian")
+    except MatchNotFoundError:
+        raise ParserError("Failed to find hessian block in Hessian file.") from None
+    return _hess_matrix(section)
+
+
+def _vibrations(contents: str) -> tuple[list[float], np.ndarray]:
+    """Read the vibrational frequencies and modes, without translations and rotations.
+
+    ``$normal_modes`` holds one mode per column, unit-length Cartesian displacements;
+    ORCA zeroes the translation and rotation columns and lists their frequencies as 0.
+    """
+    lines = _hess_section(contents, "vibrational_frequencies").splitlines()
+    count = int(lines[1])
+    freqs = [float(line.split()[1]) for line in lines[2 : 2 + count]]
+    modes = np.array(_hess_matrix(_hess_section(contents, "normal_modes"))).T
+    if len(modes) != len(freqs):
+        raise ParserError(f"{len(modes)} normal modes for {len(freqs)} frequencies.")
+    vibrational = np.linalg.norm(modes, axis=1) > 0
+    return [f for f, keep in zip(freqs, vibrational, strict=True) if keep], modes[
+        vibrational
+    ]
+
+
+@codec.parser(
+    file=_hess_file,
+    target="freqs_wavenumber",
+    calctypes=[CalcType.hessian],
+    required=False,
+)
+def parse_frequencies(contents: str) -> list[float]:
+    """Parse vibrational frequencies (cm^-1, negative for imaginary modes)."""
+    return _vibrations(contents)[0]
+
+
+@codec.parser(
+    file="directory",
+    target="normal_modes_cartesian",
+    calctypes=[CalcType.hessian],
+    required=False,
+)
+def parse_normal_modes(ctx: Context) -> list[list[list[float]]]:
+    """Parse normal modes as unit-length Cartesian displacements in the input frame.
+
+    The ``$atoms`` coordinates of the ``.hess`` file are aligned onto the input
+    structure; ORCA translates but does not rotate the molecule, so the alignment is a
+    check that leaves the modes unchanged.
+    """
+    if ctx.input_data is None:
+        raise ParserError("Normal mode parsing requires input_data.")
+    contents = ctx.read(_hess_file(ctx))
+    _, modes = _vibrations(contents)
+    atoms = _hess_section(contents, "atoms").splitlines()
+    natoms = int(atoms[1])
+    coordinates = np.array(
+        [line.split()[2:5] for line in atoms[2 : 2 + natoms]], dtype=float
+    )
+    rotation = rotation_onto(coordinates, ctx.input_data.structure.geometry)
+    return unit_modes(modes.reshape(len(modes), natoms, 3) @ rotation.T)
 
 
 @codec.parser(
