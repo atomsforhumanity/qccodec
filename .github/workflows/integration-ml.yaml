@@ -59,6 +59,7 @@ jobs:
       matrix:
         include:
           - name: FAIR-Chem, AIMNet2, TorchANI
+            environment: fairchem
             packages: fairchem-core aimnet torchani
             programs: aimnet2,torchani
             tests: >-
@@ -67,6 +68,7 @@ jobs:
               tests/integration/test_torchani.py
             examples: fairchem or aimnet2 or torchani
           - name: MACE, Orb
+            environment: mace
             packages: mace-torch orb-models
             programs: mace,orb
             tests: tests/integration/test_mace.py tests/integration/test_orb.py
@@ -103,7 +105,7 @@ jobs:
             ~/.cache/mace
             ~/.cache/cached_path
             ~/.local/share/Torchani
-          key: ml-weights-${{ matrix.programs }}-v1
+          key: ml-weights-${{ matrix.environment }}-v1
       - name: Library versions
         run: |
           uv pip list 2>/dev/null | grep -iE "^(torch|fairchem-core|aimnet|torchani|mace-torch|orb-models|e3nn) "
