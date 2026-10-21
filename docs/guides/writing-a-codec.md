@@ -24,6 +24,11 @@ def parse_energy(stdout: str) -> float:
     return float(re_search(r"Total energy:\s+(-?\d+\.\d+)", stdout).group(1))
 ```
 
+If the program uses several CPU threads or a GPU, say so in the native input:
+`SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute runs
+lists of calculations side by side and uses these to keep within the machine's cores
+and give each GPU calculation its own device.
+
 Then run it with qccompute, either explicitly or by name after registering it:
 
 ```python

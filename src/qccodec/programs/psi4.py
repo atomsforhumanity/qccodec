@@ -158,7 +158,19 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         arguments=("-k", "-o", "stdout"),
         # Keep Psi4's scratch files in the calculation directory.
         environment={"PSI_SCRATCH": "."},
+        threads=_threads(inp.cmdline_args),
     )
+
+
+def _threads(cmdline_args: list[str]) -> int:
+    """Return the thread count given with ``-n``/``--nthread``, 1 by default."""
+    args = list(cmdline_args)
+    for i, arg in enumerate(args):
+        if arg in ("-n", "--nthread") and i + 1 < len(args):
+            return int(args[i + 1])
+        if arg.startswith("--nthread="):
+            return int(arg.split("=", 1)[1])
+    return 1
 
 
 def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:

@@ -19,12 +19,17 @@ class SubprocessInput:
         files: Files written to the calculation directory before running.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the program.
+        threads: CPU threads the calculation uses, so a runner computing several
+            at once can keep their total within the available cores.
+        gpus: GPUs the calculation uses; a runner gives each calculation its own.
     """
 
     command: tuple[str, ...]
     files: Mapping[str, str | bytes] = field(default_factory=dict)
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
+    threads: int = 1
+    gpus: int = 0
 
 
 @dataclass(frozen=True)
@@ -42,6 +47,9 @@ class PythonInput:
         loggers: Python logger names whose output should be captured.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the library.
+        threads: CPU threads the calculation uses, so a runner computing several
+            at once can keep their total within the available cores.
+        gpus: GPUs the calculation uses; a runner gives each calculation its own.
     """
 
     function: Callable[..., Any]
@@ -52,6 +60,8 @@ class PythonInput:
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
+    threads: int = 1
+    gpus: int = 0
 
 
 @dataclass

@@ -178,6 +178,12 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 or a `PythonInput(function=..., kwargs=...)` for programs with a Python API.
 Raise `EncoderError` for anything the program cannot run. Never execute here.
 
+Declare what the calculation uses: `invocation(..., threads=4)` when the input asks
+the program for several CPU threads (ORCA `pal`, Psi4 `-n`, CREST `threads`), and
+`gpus=1` (or more) for GPU programs. qccompute uses these to run lists of
+calculations side by side without oversubscribing cores or sharing a GPU. The
+defaults, one thread and no GPU, fit most single-threaded programs.
+
 Keep the input's frame. Many programs move the molecule to its center of mass, rotate
 it to a standard orientation, or symmetrize it, which leaves gradients, Hessians, and
 geometries in a frame the caller never gave. Turn every such transformation off in the

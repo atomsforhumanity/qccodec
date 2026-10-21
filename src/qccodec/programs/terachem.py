@@ -152,7 +152,15 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         {"tc.in": "\n".join(lines) + "\n", XYZ_FILENAME: inp.structure.to_xyz()},
         "tc.in",
         wavefunction_files=("scr*/c0", "scr*/ca0", "scr*/cb0"),
+        gpus=_gpu_count(keywords.get("gpus")),
     )
+
+
+def _gpu_count(value: object) -> int:
+    """Return how many GPUs ``gpus`` asks for (``2`` or ``"2 0 1"``); 1 by default."""
+    if value is None:
+        return 1
+    return int(str(value).split()[0])
 
 
 # geomeTRIC constraint type -> (TeraChem name, number of atoms or None for any).
