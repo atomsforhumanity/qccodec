@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Operating System :: OS Independent",
 ]
 
@@ -67,7 +68,8 @@ docs = [
 ]
 integration = [
     "qccompute>=0.15.0",
-    "tblite>=0.4",
+    # No Python 3.15 wheels yet; the integration workflow runs on 3.12.
+    "tblite>=0.4; python_version < '3.15'",
 ]
 
 [project.scripts]

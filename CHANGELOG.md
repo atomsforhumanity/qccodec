@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- Supports Python 3.15; CI tests the oldest (3.11) and newest (3.15) supported versions.
+
 ## [0.16.0] - 2026-10-21
 
 ### Changed
