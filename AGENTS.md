@@ -37,7 +37,7 @@ Use `uv add` / `uv remove` for dependencies; never edit `uv.lock` by hand.
 - Annotate class and instance attributes, including dataclass and pydantic fields. Annotate local variables only when inference is insufficient.
 - Prefer precise types; avoid `Any` unless genuinely necessary.
 - Write Google-style docstrings for all public modules, classes, functions, and methods (ruff enforces this). Start with a one-line summary ending in a period; add Args, Returns, Yields, and Raises sections where applicable; describe meaning and units without repeating types already in annotations.
-- Use `X | None`, not `Optional[X]`. Target Python 3.10.
+- Use `X | None`, not `Optional[X]`. Target Python 3.11.
 - Keep changes focused. Do not reformat or refactor unrelated code.
 
 ## Before you finish

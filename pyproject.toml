@@ -4,7 +4,7 @@ version = "0.15.0"
 description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
@@ -19,7 +19,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -87,7 +86,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 extend-exclude = ["*.ipynb", "*.md"]
 
 [tool.ruff.lint]
@@ -115,7 +114,7 @@ source = ["qccodec"]
 show_missing = true
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 files = ["src", "tests", "scripts"]
 # Fixture cases hold recorded program inputs, such as copies of the Psi4 driver script.
 exclude = ["^tests/data/"]

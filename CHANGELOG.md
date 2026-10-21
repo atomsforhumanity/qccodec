@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Changed
+
+- 🚨 Requires Python 3.11 or newer. Python 3.10 reached end of life in October 2026.
+
 ## [0.15.0] - 2026-10-20
 
 ### Added
