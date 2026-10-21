@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.16.0] - 2026-10-21
+
 ### Changed
 
 - 🚨 Requires Python 3.11 or newer. Python 3.10 reached end of life in October 2026.
@@ -411,7 +413,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.15.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.16.0...HEAD
+[0.16.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.0
 [0.15.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.15.0
 [0.14.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.14.0
 [0.13.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.13.1
