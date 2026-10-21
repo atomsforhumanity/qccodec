@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.17.0] - 2026-10-21
+
 ### Added
 
 - `SubprocessInput` and `PythonInput` declare the resources a calculation uses: `threads` (CPU threads, default 1) and `gpus` (default 0). The codecs fill them from what they encode: CREST's `threads` (including its default of all cores, at most 16), ORCA's `pal`, Psi4's `-n`/`--nthread`, xtb's `parallel`, and TeraChem's `gpus` (1 by default). qccompute uses them to run lists of calculations without oversubscribing cores or sharing a GPU. `invocation()` takes `threads` and `gpus`.
@@ -423,7 +425,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.16.1...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.17.0...HEAD
+[0.17.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.17.0
 [0.16.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.1
 [0.16.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.0
 [0.15.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.15.0
