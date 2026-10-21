@@ -23,8 +23,13 @@ def invocation(
     wavefunction_files: tuple[str, ...] = (),
     environment: dict[str, str] | None = None,
     arguments: tuple[str, ...] = (),
+    threads: int = 1,
+    gpus: int = 0,
 ) -> SubprocessInput:
     """Build ``<program> <filename> <arguments> <cmdline_args>`` and the input files.
+
+    ``threads`` and ``gpus`` declare what the calculation uses, so runners computing
+    several at once do not oversubscribe the machine.
 
     Raises:
         EncoderError: A supplied file would overwrite a generated input file.
@@ -39,6 +44,8 @@ def invocation(
         files={**inp.files, **generated},
         wavefunction_files=wavefunction_files,
         environment=environment or {},
+        threads=threads,
+        gpus=gpus,
     )
 
 

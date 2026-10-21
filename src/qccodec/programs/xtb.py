@@ -185,6 +185,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         STRUCTURE_FILE,
         arguments=arguments,
         environment={"OMP_NUM_THREADS": "1"},
+        threads=int(inp.keywords.get("parallel", 1) or 1),
     )
 
 

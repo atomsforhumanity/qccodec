@@ -76,14 +76,16 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write ``input.toml`` and the structure file for a CREST calculation."""
     validate_input(inp)
     struct_filename = "structure.xyz"
+    toml_dict = _to_toml_dict(inp, struct_filename)
     return invocation(
         inp,
         {
-            "input.toml": tomli_w.dumps(_to_toml_dict(inp, struct_filename)),
+            "input.toml": tomli_w.dumps(toml_dict),
             struct_filename: inp.structure.to_xyz(),
         },
         "input.toml",
         environment={"OMP_NUM_THREADS": "1"},
+        threads=int(toml_dict["threads"]),
     )
 
 

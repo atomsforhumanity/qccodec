@@ -179,6 +179,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         inp,
         {"orca.inp": "\n".join(lines) + "\n", XYZ_FILENAME: inp.structure.to_xyz()},
         "orca.inp",
+        threads=int(kw.get("pal", 1)),
     )
 
 

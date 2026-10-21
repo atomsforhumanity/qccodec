@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- `SubprocessInput` and `PythonInput` declare the resources a calculation uses: `threads` (CPU threads, default 1) and `gpus` (default 0). The codecs fill them from what they encode: CREST's `threads` (including its default of all cores, at most 16), ORCA's `pal`, Psi4's `-n`/`--nthread`, xtb's `parallel`, and TeraChem's `gpus` (1 by default). qccompute uses them to run lists of calculations without oversubscribing cores or sharing a GPU. `invocation()` takes `threads` and `gpus`.
+
 ## [0.16.1] - 2026-10-21
 
 ### Added
