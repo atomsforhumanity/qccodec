@@ -105,6 +105,27 @@ def test_reserved_keywords_are_rejected(keyword: str) -> None:
         _command(keywords={keyword: 1})
 
 
+@pytest.mark.parametrize("keyword", ["cpcmx", "CPCMX"])
+def test_cpcmx_rejected_with_gxtb(keyword: str) -> None:
+    """xtb ignores CPCM-X with g-xTB and returns the gas-phase energy, so it is refused."""
+    with pytest.raises(EncoderError, match="gas-phase energy"):
+        _command(method="gxtb", keywords={keyword: "water"})
+
+
+@pytest.mark.parametrize("method", ["gfn1", "gfn2"])
+def test_cpcmx_accepted_with_gfn(method: str) -> None:
+    """CPCM-X with GFN-xTB passes through as --cpcmx."""
+    assert _command(method=method, keywords={"cpcmx": "water"})[-2:] == [
+        "--cpcmx",
+        "water",
+    ]
+
+
+def test_dropped_cpcmx_accepted_with_gxtb() -> None:
+    """A cpcmx keyword set to None or False adds no flag, so g-xTB runs it."""
+    assert "--cpcmx" not in _command(method="gxtb", keywords={"cpcmx": None})
+
+
 def test_unknown_method() -> None:
     """Unknown methods list the supported ones."""
     with pytest.raises(EncoderError, match="gfn2"):

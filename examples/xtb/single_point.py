@@ -22,7 +22,8 @@ How the codec talks to xtb (https://xtb-docs.readthedocs.io/):
 - ``external_potentials`` (point charges, as for Psi4) is the one keyword that is not
   an xtb flag: the codec writes it to ``pcharge`` and adds an ``$embedding`` group.
 - g-xTB has no ALPB/GBSA parameters (xtb stops with "No ALPB/GBSA parameters found")
-  and xtb 6.7.1 silently ignores ``cpcmx`` with g-xTB, so run g-xTB in the gas phase.
+  and xtb 6.7.1 silently ignores ``cpcmx`` with g-xTB (the codec rejects it), so run
+  g-xTB in the gas phase.
 - xtb's Hessian is numerical (finite differences of analytic gradients) and comes
   with harmonic frequencies and normal modes. Do not pass ``cma``: it moves the
   molecule to its principal axes, so results would not match ``structure``.
