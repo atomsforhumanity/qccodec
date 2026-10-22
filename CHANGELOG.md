@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Fixed
+
+- xtb: g-xTB Hessians use `--acc 0.001` when `acc` is not set. xtb's Hessian is numerical and g-xTB's is not converged at looser SCC accuracy (ethanol's lowest frequencies came out ~140 cm^-1 too high at `acc` 1.0); an `acc` looser than 0.001 for a g-xTB Hessian is kept but logs a warning. GFN-xTB and GFN-FF are unchanged.
+
 ## [0.17.0] - 2026-10-21
 
 ### Added

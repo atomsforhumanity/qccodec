@@ -23,6 +23,13 @@ Hessians also fill frequencies and normal modes from ``g98.out``, where xtb writ
 mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
 Cartesian displacements, as qcdata defines them.
 
+xtb's Hessian is numerical, and g-xTB Hessians need a tight SCC: with xtb's
+``--acc 1.0`` the lowest frequencies of ethanol come out about 140 cm^-1 too high
+and xtb warns that the Hessian is not symmetric. For g-xTB Hessians the codec
+therefore passes ``--acc 0.001`` unless you set ``acc`` yourself (as a keyword or in
+``cmdline_args``), and logs a warning when the ``acc`` you set is looser than that.
+GFN-xTB Hessians are insensitive to ``acc`` and keep xtb's default.
+
 One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
 z]], ...]`` in bohr. An optional third entry, ``[charge, [x, y, z], atomic_number]``,
@@ -36,6 +43,7 @@ them there.
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Sequence
 from typing import Any
@@ -55,6 +63,8 @@ from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..utils import re_search
 from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
+
+logger = logging.getLogger(__name__)
 
 STRUCTURE_FILE = "structure.xyz"
 ENGRAD_FILE = "structure.engrad"
@@ -117,6 +127,8 @@ RESERVED = {
     "vfukui",
     "scc",
 }
+# g-xTB's numerical Hessian needs a tighter SCC than xtb's default.
+GXTB_HESSIAN_ACC = 0.001
 
 
 # ------------------------------------------------------------------ encoding
@@ -169,6 +181,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             user_xcontrol = user_xcontrol.decode()
         generated[xcontrol] = user_xcontrol + EMBEDDING_GROUP
     inp = inp.model_copy(update={"files": files})
+    if method == "gxtb" and inp.calctype == CalcType.hessian:
+        _gxtb_hessian_accuracy(keywords, inp.cmdline_args)
 
     arguments = (
         *runtype,
@@ -187,6 +201,38 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         environment={"OMP_NUM_THREADS": "1"},
         threads=int(inp.keywords.get("parallel", 1) or 1),
     )
+
+
+def _gxtb_hessian_accuracy(keywords: dict[str, Any], cmdline_args: list[str]) -> None:
+    """Default ``acc`` for a g-xTB Hessian, or warn when the one given is too loose.
+
+    Args:
+        keywords: Keywords that become flags; ``acc`` is added when neither they nor
+            ``cmdline_args`` set it.
+        cmdline_args: Extra command-line arguments, which may also set ``--acc``.
+    """
+    given = [value for name, value in keywords.items() if name.lower() == "acc"]
+    given += [
+        cmdline_args[i + 1] if i + 1 < len(cmdline_args) else None
+        for i, arg in enumerate(cmdline_args)
+        if arg == "--acc"
+    ]
+    if not given:
+        keywords["acc"] = GXTB_HESSIAN_ACC
+        return
+    for value in given:
+        try:
+            loose = float(value) > GXTB_HESSIAN_ACC
+        except (TypeError, ValueError):
+            continue
+        if loose:
+            logger.warning(
+                "xtb acc %s is looser than %s, which g-xTB Hessians need: xtb's "
+                "numerical g-xTB Hessian is not converged at loose SCC accuracy and "
+                "low frequencies can be off by 100 cm^-1 or more.",
+                value,
+                GXTB_HESSIAN_ACC,
+            )
 
 
 def point_charge_file(point_charges: Sequence[Sequence[Any]]) -> str:
