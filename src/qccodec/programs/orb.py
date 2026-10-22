@@ -18,7 +18,9 @@ Inputs map to Orb as follows:
   neutral closed-shell systems only, so the codec raises for anything else.
 - ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default)
   and ``precision`` (``"float32-high"`` by default, ``"float32-highest"``, or
-  ``"float64"``). Nothing else is accepted.
+  ``"float64"``). Nothing else is accepted. A model on a GPU declares one for
+  qccompute, which gives each calculation of a list its own; an explicit index such
+  as ``"cuda:1"`` opts out of that.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy`` and ``gradient``. Orb provides no Hessian; use
@@ -42,6 +44,7 @@ from ._python import (
     SinglePoint,
     cached_model,
     from_ev,
+    gpu_count,
     package_version,
     pop_device,
     positions_angstrom,
@@ -73,6 +76,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             f"precision must be one of {list(PRECISIONS)}, not {precision!r}."
         )
     return PythonInput(
+        gpus=gpu_count(device),
         function=invoke_orb,
         kwargs={
             "model": model,

@@ -15,7 +15,9 @@ Inputs map to TorchANI as follows:
 - ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default),
   ``dtype`` (``"float64"`` by default, for smooth gradients and Hessians; or
   ``"float32"``, faster), and ``model_index`` (one member of the ensemble instead of
-  its average). Nothing else is accepted.
+  its average). Nothing else is accepted. A model on a GPU declares one for
+  qccompute, which gives each calculation of a list its own; an explicit index such
+  as ``"cuda:1"`` opts out of that.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -38,6 +40,7 @@ from ..native import PythonInput
 from ._python import (
     SinglePoint,
     cached_model,
+    gpu_count,
     package_version,
     pop_device,
     positions_angstrom,
@@ -94,6 +97,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     if model_index is not None and not isinstance(model_index, int):
         raise EncoderError(f"model_index must be an integer, not {model_index!r}.")
     return PythonInput(
+        gpus=gpu_count(device),
         function=invoke_torchani,
         kwargs={
             "model": model,

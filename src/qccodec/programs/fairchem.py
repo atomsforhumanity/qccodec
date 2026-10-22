@@ -24,7 +24,9 @@ Inputs map to FAIR-Chem as follows:
     (molecules, the default), ``omat``, ``oc20``, ``odac``, and ``omc``. eSEN and
     AllScAIP checkpoints are trained on one dataset, which is used unless ``task``
     says otherwise. The head used is recorded in ``extras["fairchem_task"]``.
-  - ``device``: ``"cpu"`` or ``"cuda"`` (CUDA when available by default).
+  - ``device``: ``"cpu"`` or ``"cuda"`` (CUDA when available by default). A model on
+    a GPU declares one for qccompute, which gives each calculation of a list its
+    own; an explicit index such as ``"cuda:1"`` opts out of that.
   - ``inference_settings``: one of fairchem's presets by name (``"default"``,
     ``"turbo"``, ``"batch"``, ...) or a dictionary of ``InferenceSettings`` fields. The
     codec's default is ``{"compile": False, "merge_mole": False,
@@ -58,6 +60,7 @@ from ._python import (
     SinglePoint,
     cached_model,
     from_ev,
+    gpu_count,
     package_version,
     pop_device,
     positions_angstrom,
@@ -96,6 +99,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             f"InferenceSettings fields, not {settings!r}."
         )
     return PythonInput(
+        gpus=gpu_count(device),
         function=invoke_fairchem,
         kwargs={
             "model": model,

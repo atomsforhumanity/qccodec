@@ -67,3 +67,53 @@ def test_defaults() -> None:
     """Without a declaration, a calculation uses one thread and no GPU."""
     assert (SubprocessInput(("x",)).threads, SubprocessInput(("x",)).gpus) == (1, 0)
     assert (PythonInput(print).threads, PythonInput(print).gpus) == (1, 0)
+
+
+@pytest.mark.parametrize("program", ["aimnet2", "torchani", "mace", "orb", "fairchem"])
+@pytest.mark.parametrize(
+    ("device", "gpus"), [(None, 1), ("cuda", 1), ("cpu", 0), ("cuda:1", 0)]
+)
+def test_ml_codecs_declare_a_gpu_unless_on_cpu(
+    program: str, device: str | None, gpus: int
+) -> None:
+    """A model on a GPU declares one, so runners can pin it; explicit indexes opt out."""
+    methods = {
+        "aimnet2": "aimnet2",
+        "torchani": "ANI2x",
+        "mace": "mace-off-small",
+        "orb": "orb-v3-conservative-omol",
+        "fairchem": "uma-s-1p2p1",
+    }
+    keywords = {} if device is None else {"device": device}
+    native = _native(program, methods[program], keywords=keywords)
+    assert isinstance(native, PythonInput) and native.gpus == gpus
+
+
+def test_geometric_declares_the_resources_of_its_child() -> None:
+    """An optimization occupies what its gradient child declares."""
+    from qcdata import ProgramSpec
+
+    def optimization(child: ProgramSpec) -> PythonInput:
+        inp = ProgramInput(
+            program="geometric",
+            calctype=CalcType.optimization,
+            structure=WATER,
+            subprograms=[child],
+        )
+        native = get_codec("geometric").encode(inp)
+        assert isinstance(native, PythonInput)
+        return native
+
+    orca = ProgramSpec(
+        program="orca",
+        calctype=CalcType.gradient,
+        model=Model(method="hf", basis="sto-3g"),
+        keywords={"pal": 4},
+    )
+    terachem = ProgramSpec(
+        program="terachem",
+        calctype=CalcType.gradient,
+        model=Model(method="hf", basis="sto-3g"),
+    )
+    assert (optimization(orca).threads, optimization(orca).gpus) == (4, 0)
+    assert (optimization(terachem).threads, optimization(terachem).gpus) == (1, 1)

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- The machine-learned-potential codecs declare one GPU (`gpus=1`) unless `device` is `"cpu"`, so qccompute gives each calculation of a list its own GPU instead of loading a model per worker onto one; an explicit index such as `"cuda:1"` declares none and opts out of pinning.
+- geomeTRIC declares the threads and GPUs of its gradient child, so lists of optimizations share the machine correctly.
+
 ## [0.17.0] - 2026-10-21
 
 ### Added

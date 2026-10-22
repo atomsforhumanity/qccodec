@@ -28,7 +28,9 @@ transition states, and also the last frame for ``"first+last"`` or ``"last"``.
 Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
 With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem).
+step's orbitals when the child codec supports it (TeraChem). The optimization declares
+the threads and GPUs its child does, so lists of optimizations share the machine
+correctly.
 """
 
 from __future__ import annotations
@@ -103,6 +105,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(
             "Constraint scans are not supported by this geomeTRIC integration."
         )
+    threads, gpus = _child_resources(gradient_spec, inp)
     filename = "initial_geometry.xyz"
     if filename in inp.files:
         raise EncoderError(f"Supplied files conflict with generated input {filename}.")
@@ -120,7 +123,22 @@ def encode(inp: ProgramInput) -> PythonInput:
         files={**inp.files, filename: inp.structure.to_xyz()},
         child_callback="compute_child",
         loggers=("geometric",),
+        # Each step runs the child, so the optimization occupies what it declares.
+        threads=threads,
+        gpus=gpus,
     )
+
+
+def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int, int]:
+    """Return the threads and GPUs the gradient child declares; defaults if unknown."""
+    from ..registry import get_codec
+
+    try:
+        child = ProgramInput.from_spec(spec, inp.structure, structures=inp.structures)
+        native = get_codec(child).encode(child)
+    except Exception:  # noqa: BLE001 - computing the child reports any problem
+        return 1, 0
+    return native.threads, native.gpus
 
 
 def make_engine(
