@@ -92,6 +92,19 @@ def pop_device(keywords: dict[str, Any]) -> str | None:
     return device
 
 
+def gpu_count(device: str | None) -> int:
+    """Return the GPUs a calculation on ``device`` declares for scheduling.
+
+    ``"cpu"`` uses none. ``"cuda"`` or no device (a GPU when one is present) uses
+    one, which a runner may pin with ``CUDA_VISIBLE_DEVICES``. An explicit index such
+    as ``"cuda:1"`` declares none: pinning would renumber the devices, so callers
+    who choose devices themselves also manage sharing them.
+    """
+    if device is None or device == "cuda":
+        return 1
+    return 0
+
+
 def resolve_device(device: str | None) -> str:
     """Return ``device``, or CUDA when PyTorch sees a GPU and CPU otherwise."""
     if device:

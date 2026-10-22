@@ -26,7 +26,8 @@ Inputs map to MACE as follows:
 - ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default)
   and ``default_dtype`` (``"float64"`` or ``"float32"``; MACE's default for the model
   otherwise: float64 for MACE-OFF and MACE-OMOL, float32 for MACE-MP). Nothing else is
-  accepted.
+  accepted. A model on a GPU declares one for qccompute, which gives each calculation
+  of a list its own; an explicit index such as ``"cuda:1"`` opts out of that.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -51,6 +52,7 @@ from ._python import (
     SinglePoint,
     cached_model,
     from_ev,
+    gpu_count,
     package_version,
     pop_device,
     positions_angstrom,
@@ -121,6 +123,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             f"default_dtype must be one of {list(DTYPES)}, not {dtype!r}."
         )
     return PythonInput(
+        gpus=gpu_count(device),
         function=invoke_mace,
         kwargs={
             "loader": FAMILIES[family] if family else None,

@@ -17,7 +17,9 @@ Inputs map to AIMNet2 as follows:
   so the codec raises for a multiplicity other than 1.
 - ``keywords``: ``device`` (``"cpu"``, ``"cuda"``, ``"cuda:1"``; CUDA when available
   by default) and ``validate_species`` (``True`` by default: aimnet refuses elements
-  or charges a model was not trained on). Nothing else is accepted.
+  or charges a model was not trained on). Nothing else is accepted. A model on a GPU
+  declares one for qccompute, which gives each calculation of a list its own; an
+  explicit index such as ``"cuda:1"`` opts out of that.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -42,6 +44,7 @@ from ._python import (
     SinglePoint,
     cached_model,
     from_ev,
+    gpu_count,
     package_version,
     pop_device,
     positions_angstrom,
@@ -66,6 +69,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     device = pop_device(keywords)
     reject_unknown("aimnet2", keywords, frozenset({"validate_species"}))
     return PythonInput(
+        gpus=gpu_count(device),
         function=invoke_aimnet2,
         kwargs={
             "model": model,
