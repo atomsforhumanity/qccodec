@@ -32,6 +32,10 @@ the ``xcontrol`` file (appending to yours if you supply one); gradients then als
 ``point_charge_gradient`` from xtb's ``pcgrad``. Only GFN1- and GFN2-xTB apply point
 charges: GFN0, GFN-FF, and g-xTB ignore them without a warning, so the codec rejects
 them there.
+
+g-xTB has no implicit-solvent parameters. With ``alpb`` or ``gbsa`` xtb stops with "No
+ALPB/GBSA parameters found", but xtb 6.7.1 ignores ``cpcmx`` with g-xTB without a
+warning and returns the gas-phase energy, so the codec rejects ``cpcmx`` with ``gxtb``.
 """
 
 from __future__ import annotations
@@ -85,6 +89,8 @@ METHODS: dict[str, tuple[str, ...]] = {
     "gfnff": ("--gfnff",),
     "gxtb": ("--gxtb",),
 }
+# Keywords xtb 6.7.1 silently ignores with a method, returning gas-phase results.
+IGNORED_SOLVATION: dict[str, set[str]] = {"gxtb": {"cpcmx"}}
 RUNTYPES: dict[CalcType, str] = {
     CalcType.energy: "--sp",
     CalcType.gradient: "--grad",
@@ -127,8 +133,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write the structure and build the xtb command line.
 
     Raises:
-        EncoderError: The model is missing or unknown, or a keyword names a flag the
-            codec sets itself.
+        EncoderError: The model is missing or unknown, a keyword names a flag the
+            codec sets itself, or a keyword asks for something xtb would ignore
+            without a warning.
     """
     if inp.model is None:
         raise EncoderError("xtb requires a model, e.g. {'method': 'gfn2'}.")
@@ -144,6 +151,16 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         raise EncoderError(
             f"Keywords {reserved} are set from the input's calctype, model, and "
             "structure; remove them."
+        )
+    ignored = sorted(
+        IGNORED_SOLVATION.get(method, set())
+        & {k.lower() for k, v in keywords.items() if v is not None and v is not False}
+    )
+    if ignored:
+        raise EncoderError(
+            f"xtb ignores {ignored} with {method} without a warning and returns the "
+            "gas-phase energy; add a solvation correction from a GFN2 calculation "
+            "or run in the gas phase."
         )
 
     runtype: list[str] = [RUNTYPES[inp.calctype]]

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Fixed
+
+- `xtb` rejects the `cpcmx` keyword with `gxtb`. xtb 6.7.1 ignores CPCM-X with g-xTB without a warning and returns the gas-phase energy, so the run looked solvated but was not. Use a solvation correction from a GFN2 calculation or run g-xTB in the gas phase. (ALPB and GBSA with g-xTB already fail in xtb itself.)
+
 ## [0.17.0] - 2026-10-21
 
 ### Added
