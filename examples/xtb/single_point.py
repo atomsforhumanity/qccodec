@@ -49,7 +49,9 @@ prog_input = ProgramInput(
     keywords={
         # Any xtb command-line flag, without the leading dashes:
         "parallel": 1,  # threads
-        "acc": 1.0,  # SCC accuracy; lower is tighter (0.0001 to 1000)
+        # SCC accuracy; lower is tighter (0.0001 to 1000). g-xTB Hessians need 0.001,
+        # which the codec passes for them when acc is not set.
+        # "acc": 1.0,
         "iterations": 250,  # maximum SCC iterations
         # "etemp": 300,  # electronic temperature (K); raise it for difficult SCCs
         #

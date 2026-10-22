@@ -95,7 +95,7 @@
    C. Plett, P. Pracht, F. Pultar, J. Seibert, P. Shushkov, S. Spicher,
    M. Stahn, M. Steiner, T. Strunk, J. Stückrath, T. Rose, and J. Unsleber
    
- * started run on 2026/10/15 at 11:19:08.628     
+ * started run on 2026/10/22 at 10:45:57.449     
    ID    Z sym.   atoms
     1    8 O      1
     2    1 H      2, 3
@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gxtb
+          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gxtb --acc 0.001
           coordinate file            : structure.xyz
           omp threads                :                     1
 
@@ -115,8 +115,8 @@ number of electrons            7.9999999999502E+00 e
 number of unpaired electrons   0.0000000000000E+00 e
 wavefunction                   unrestricted
 integral cutoff                2.6907767250513E+01 bohr
-energy convergence             2.0000000000000E-07 Eh
-density convergence            4.0000000000000E-06 e
+energy convergence             1.0000000000000E-09 Eh
+density convergence            2.0000000000000E-08 e
 
 ------------------------------------------------------------
   cycle        total energy    energy error   density error
@@ -130,6 +130,8 @@ density convergence            4.0000000000000E-06 e
       7     -76.43742419410  -1.6156949E-07   1.0043605E-04
       8     -76.43742419796  -3.8658134E-09   3.0788988E-05
       9     -76.43742419796  -1.2878587E-13   2.7737975E-07
+     10     -76.43742419796  -6.2172489E-15   5.5229195E-08
+     11     -76.43742419796  -8.8817842E-16   8.2993121E-10
 ------------------------------------------------------------
 
 electronic energy             -7.0100072811724E+00 Eh
@@ -142,30 +144,30 @@ Post processing:
  total:                                   0.002 sec
  - increment                              0.000 sec (  0%)
  - repulsion                              0.000 sec (  0%)
- - dispersion                             0.000 sec (  2%)
+ - dispersion                             0.000 sec (  1%)
  - coulomb                                0.000 sec (  1%)
  - exchange                               0.000 sec (  0%)
- - hamiltonian                            0.000 sec ( 14%)
- - acp                                    0.000 sec (  5%)
+ - hamiltonian                            0.000 sec ( 11%)
+ - acp                                    0.000 sec (  4%)
  - post processing                        0.000 sec (  1%)
- - scc                                    0.001 sec ( 38%)
+ - scc                                    0.001 sec ( 39%)
  - coulomb gradient                       0.000 sec (  1%)
  - dispersion gradient                    0.000 sec (  0%)
  - exchange gradient                      0.000 sec (  0%)
  - repulsion gradient                     0.000 sec (  0%)
  - acp gradient                           0.000 sec ( 15%)
  - hamiltonian gradient                   0.000 sec ( 13%)
- - gradient                               0.001 sec ( 32%)
+ - gradient                               0.001 sec ( 31%)
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                     SUMMARY                     ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          :: total energy             -76.437424197961 Eh    ::
-         :: gradient norm              0.015282155929 Eh/a0 ::
-         :: HOMO-LUMO gap             19.649612694795 eV    ::
+         :: gradient norm              0.015282178299 Eh/a0 ::
+         :: HOMO-LUMO gap             19.649610677773 eV    ::
          ::.................................................::
          :: add. restraining           0.000000000000 Eh    ::
-         :: total charge              -0.000000000000 e     ::
+         :: total charge               0.000000000000 e     ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
 
            ------------------------------------------------- 
@@ -183,7 +185,7 @@ writing file <hessian>, containing the non-mass-weighted Hessian matrix in atomi
 
  projected vibrational frequencies (cm⁻¹)
 eigval :       -0.00    -0.00    -0.00     0.00     0.00     0.00
-eigval :     1638.67  3553.33  3592.22
+eigval :     1638.58  3553.17  3592.20
            -------------------------------------------------
           |                Property Printout                |
            -------------------------------------------------
@@ -199,7 +201,7 @@ alpha #    Occupation            Energy/Eh            Energy/eV
       5                          0.2962857               8.0623 (LUMO)
       6                          0.3239403               8.8149
 ------------------------------------------------------------------
-               HL-Gap            0.7221098 Eh           19.6496 eV
+               HL-Gap            0.7221099 Eh           19.6496 eV
 ------------------------------------------------------------------
 
 ------------------------------------------------------------------
@@ -212,7 +214,7 @@ alpha #    Occupation            Energy/Eh            Energy/eV
       5                          0.2962857               8.0623 (LUMO)
       6                          0.3239403               8.8149
 ------------------------------------------------------------------
-               HL-Gap            0.7221098 Eh           19.6496 eV
+               HL-Gap            0.7221099 Eh           19.6496 eV
 ------------------------------------------------------------------
 
 Atomic charges and shell populations (in atomic units):
@@ -254,20 +256,20 @@ Atomic dipole moments (in atomic units):
 ---------------------------------------------------------
            total     0.660069     0.488832    -0.345504
 ---------------------------------------------------------
-         |total|     0.891079     2.264897 Debye
+         |total|     0.891079     2.264896 Debye
 
            -------------------------------------------------
           |               Frequency Printout                |
            -------------------------------------------------
  projected vibrational frequencies (cm⁻¹)
 eigval :       -0.00    -0.00    -0.00     0.00     0.00     0.00
-eigval :     1638.67  3553.33  3592.22
+eigval :     1638.58  3553.17  3592.20
  reduced masses (amu)
-    1:      1.33    2:      8.12    3:      3.25    4:      4.04    5:      1.05    6:      1.05
+    1:      1.10    2:      4.76    3:      4.24    4:      2.74    5:      1.41    6:      1.11
     7:      1.08    8:      1.05    9:      1.08
  IR intensities (km·mol⁻¹)
-    1:    127.70    2:     12.35    3:     17.34    4:      3.66    5:    168.14    6:    130.57
-    7:     98.01    8:     18.78    9:     28.10
+    1:    106.54    2:      9.08    3:      0.20    4:     38.30    5:     92.14    6:    213.70
+    7:     97.83    8:     18.99    9:     28.07
  Raman intensities (Ä⁴*amu⁻¹)
     1:      0.00    2:      0.00    3:      0.00    4:      0.00    5:      0.00    6:      0.00
     7:      0.00    8:      0.00    9:      0.00
@@ -302,33 +304,33 @@ c2v symmetry found (for desy threshold:  0.10E+00) used in thermo
 
    temp. (K)  partition function   enthalpy   heat capacity  entropy
                                    cal/mol     cal/K/mol   cal/K/mol   J/K/mol
- 298.15  VIB   1.00                    1.725      0.046      0.007
+ 298.15  VIB   1.00                    1.726      0.046      0.007
          ROT   44.4                  888.727      2.981     10.521
-         INT   44.5                  890.452      3.027     10.527
+         INT   44.5                  890.453      3.027     10.527
          TR   0.234E+25             1481.212      4.968     34.609
-         TOT                        2371.6647     7.9946    45.1364   188.8507
+         TOT                        2371.6654     7.9946    45.1364   188.8507
 
        T/K    H(0)-H(T)+PV         H(T)/Eh          T*S/Eh         G(T)/Eh
    ------------------------------------------------------------------------
-    298.15    0.377949E-02    0.237914E-01    0.214458E-01    0.234568E-02
+    298.15    0.377949E-02    0.237908E-01    0.214458E-01    0.234505E-02
    ------------------------------------------------------------------------
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                  THERMODYNAMIC                  ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
-         :: total free energy         -76.435078515962 Eh   ::
+         :: total free energy         -76.435079148888 Eh   ::
          ::.................................................::
          :: total energy              -76.437424197961 Eh   ::
-         :: zero point energy           0.020011948463 Eh   ::
-         :: G(RRHO) w/o ZPVE           -0.017666266465 Eh   ::
-         :: G(RRHO) contrib.            0.002345681999 Eh   ::
+         :: zero point energy           0.020011315697 Eh   ::
+         :: G(RRHO) w/o ZPVE           -0.017666266623 Eh   ::
+         :: G(RRHO) contrib.            0.002345049074 Eh   ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
 
            -------------------------------------------------
           | TOTAL ENERGY              -76.437424197961 Eh   |
-          | TOTAL ENTHALPY            -76.413632761152 Eh   |
-          | TOTAL FREE ENERGY         -76.435078515962 Eh   |
-          | GRADIENT NORM               0.015282174995 Eh/α |
+          | TOTAL ENTHALPY            -76.413633392826 Eh   |
+          | TOTAL FREE ENERGY         -76.435079148888 Eh   |
+          | GRADIENT NORM               0.015282178212 Eh/α |
            -------------------------------------------------
 ########################################################################
 [WARNING] Runtime exception occurred
@@ -336,19 +338,19 @@ c2v symmetry found (for desy threshold:  0.10E+00) used in thermo
 ########################################################################
 
 ------------------------------------------------------------------------
- * finished run on 2026/10/15 at 11:19:08.654     
+ * finished run on 2026/10/22 at 10:45:57.478     
 ------------------------------------------------------------------------
  total:
- * wall-time:     0 d,  0 h,  0 min,  0.026 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.025 sec
- * ratio c/w:     0.957 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.028 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.027 sec
+ * ratio c/w:     0.960 speedup
  SCF:
  * wall-time:     0 d,  0 h,  0 min,  0.002 sec
  *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
- * ratio c/w:     0.997 speedup
+ * ratio c/w:     1.000 speedup
  analytical hessian:
- * wall-time:     0 d,  0 h,  0 min,  0.021 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.021 sec
+ * wall-time:     0 d,  0 h,  0 min,  0.022 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.022 sec
  * ratio c/w:     0.997 speedup
 
 normal termination of xtb

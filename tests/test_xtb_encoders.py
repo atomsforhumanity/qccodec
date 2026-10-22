@@ -1,5 +1,8 @@
 """xtb command-line encoding: methods, keyword flags, and rejected inputs."""
 
+import logging
+from typing import Any
+
 import numpy as np
 import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
@@ -45,6 +48,63 @@ def _command(
 def test_methods(method: str, flags: list[str]) -> None:
     """Each method maps to its xtb flags, case- and hyphen-insensitively."""
     assert _command(method=method)[-len(flags) :] == flags
+
+
+@pytest.mark.parametrize(
+    ("calctype", "method", "added"),
+    [
+        (CalcType.hessian, "gxtb", True),
+        (CalcType.hessian, "g-xTB", True),
+        (CalcType.hessian, "gfn2", False),
+        (CalcType.energy, "gxtb", False),
+        (CalcType.gradient, "gxtb", False),
+        (CalcType.optimization, "gxtb", False),
+    ],
+)
+def test_gxtb_hessian_defaults_to_tight_accuracy(
+    calctype: CalcType, method: str, added: bool
+) -> None:
+    """Only g-xTB Hessians get --acc 0.001 when acc is not set."""
+    command = _command(calctype, method)
+    assert (command[-2:] == ["--acc", "0.001"]) is added
+    assert ("--acc" in command) is added
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "acc", "warns"),
+    [
+        ({"keywords": {"acc": 1.0}}, "1.0", True),
+        ({"keywords": {"ACC": 0.01}}, "0.01", True),
+        ({"keywords": {"acc": 0.001}}, "0.001", False),
+        ({"keywords": {"acc": 0.0001}}, "0.0001", False),
+        ({"cmdline_args": ["--acc", "0.2"]}, "0.2", True),
+        ({"cmdline_args": ["--acc", "0.0005"]}, "0.0005", False),
+    ],
+)
+def test_gxtb_hessian_keeps_given_accuracy(
+    kwargs: dict[str, Any],
+    acc: str,
+    warns: bool,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A given acc is kept, with a warning when it is looser than 0.001."""
+    with caplog.at_level(logging.WARNING, logger="qccodec.programs.xtb"):
+        command = _command(CalcType.hessian, "gxtb", **kwargs)
+    assert command.count("--acc") + command.count("--ACC") == 1
+    assert command[-1] == acc
+    assert bool(caplog.records) is warns
+    if warns:
+        assert "g-xTB Hessians" in caplog.text
+
+
+def test_loose_accuracy_warns_only_for_gxtb_hessians(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """GFN2 Hessians and g-xTB gradients do not depend on acc this way."""
+    with caplog.at_level(logging.WARNING, logger="qccodec.programs.xtb"):
+        _command(CalcType.hessian, "gfn2", keywords={"acc": 1.0})
+        _command(CalcType.gradient, "gxtb", keywords={"acc": 1.0})
+    assert not caplog.records
 
 
 def test_charge_and_unpaired_electrons() -> None:

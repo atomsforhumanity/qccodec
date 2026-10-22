@@ -6,3 +6,5 @@ structure.xyz
 --uhf
 0
 --gxtb
+--acc
+0.001
