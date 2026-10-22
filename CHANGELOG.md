@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.18.0] - 2026-10-22
+
 ### Added
 
 - The machine-learned-potential codecs declare one GPU (`gpus=1`) unless `device` is `"cpu"`, so qccompute gives each calculation of a list its own GPU instead of loading a model per worker onto one; an explicit index such as `"cuda:1"` declares none and opts out of pinning.
@@ -430,7 +432,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.17.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.18.0...HEAD
+[0.18.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.18.0
 [0.17.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.17.0
 [0.16.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.1
 [0.16.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.0
