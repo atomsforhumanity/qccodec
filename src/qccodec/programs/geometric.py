@@ -39,13 +39,14 @@ import traceback
 from copy import deepcopy
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
 from qcdata import (
     CalcType,
     Data,
+    Frame,
     OptimizationData,
     ProgramInput,
     ProgramOutput,
@@ -67,7 +68,7 @@ if TYPE_CHECKING:
 class GeometricOutcome(TypedDict):
     """Optimizer completion state plus the independently recorded child outputs."""
 
-    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]]
+    trajectory: list[Frame]
     version: str | None
     error: str | None
 
@@ -112,7 +113,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     return PythonInput(
         function=invoke_geometric,
         kwargs={
-            "structure": inp.structure.model_copy(deep=True),
+            "structure": inp.require_structure().model_copy(deep=True),
             "structures": deepcopy(inp.structures),
             "gradient_spec": gradient_spec.model_copy(deep=True),
             "coordsys": coordsys,
@@ -120,7 +121,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             "keywords": keywords,
             "geometry_file": filename,
         },
-        files={**inp.files, filename: inp.structure.to_xyz()},
+        files={**inp.files, filename: inp.require_structure().to_xyz()},
         child_callback="compute_child",
         loggers=("geometric",),
         # Each step runs the child, so the optimization occupies what it declares.
@@ -145,13 +146,15 @@ def make_engine(
     geometric: ModuleType,
     molecule: Molecule,
     structure: Structure,
-    structures: dict[str, Structure],
+    structures: dict[str, Structure | list[Structure]],
     gradient_spec: ProgramSpec,
     compute_child: ComputeChild,
-    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]],
+    trajectory: list[Frame],
 ) -> NativeEngine:
     """Bind geomeTRIC's native engine interface to independent child calculations."""
     base_engine: Any = geometric.engine.Engine
+    # The last step's full output, to restart the next child from its wavefunction.
+    last_step: list[ProgramOutput[ProgramInput, Data]] = []
 
     class Engine(base_engine):
         def calc_new(
@@ -171,16 +174,10 @@ def make_engine(
             child = ProgramInput.from_spec(
                 gradient_spec, updated, structures=structures
             )
-            output = compute_child(
-                child,
-                previous=cast(ProgramOutput[ProgramInput, Data], trajectory[-1])
-                if trajectory
-                else None,
-            )
+            output = compute_child(child, previous=last_step[-1] if last_step else None)
             if not displacement or not output.success:
-                trajectory.append(
-                    cast(ProgramOutput[ProgramInput, SinglePointData], output)
-                )
+                trajectory.append(Frame.from_output(output))
+                last_step[:] = [output]
             if not output.success:
                 raise RuntimeError(
                     "A child calculation failed during geomeTRIC optimization."
@@ -200,7 +197,7 @@ def make_engine(
 def invoke_geometric(
     *,
     structure: Structure,
-    structures: dict[str, Structure],
+    structures: dict[str, Structure | list[Structure]],
     gradient_spec: ProgramSpec,
     coordsys: str,
     constraints: dict[str, Any] | None,
@@ -211,7 +208,7 @@ def invoke_geometric(
     """Run the optimizer, retaining its trajectory even when a child or optimizer fails."""
     import geometric
 
-    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]] = []
+    trajectory: list[Frame] = []
     hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]] = []
     compute_hessian = None
     outcome: GeometricOutcome = {
@@ -278,7 +275,7 @@ def invoke_geometric(
 
 
 def _attach_hessians(
-    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]],
+    trajectory: list[Frame],
     hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]],
 ) -> None:
     """Put each Hessian on the trajectory frame computed at the same geometry.
@@ -289,7 +286,7 @@ def _attach_hessians(
     for coords, hessian in hessians:
         for i in range(len(trajectory) - 1, -1, -1):
             frame = trajectory[i]
-            geometry = frame.input_data.structure.geometry.flatten()
+            geometry = frame.structure.geometry.flatten()
             if geometry.shape == coords.shape and np.allclose(geometry, coords):
                 results = frame.results.model_copy(update={"hessian": hessian})
                 trajectory[i] = frame.model_copy(update={"results": results})
@@ -302,7 +299,7 @@ def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData:
     native = out.value or {"trajectory": [], "version": None, "error": None}
     data = OptimizationData(
         provenance=Provenance(program="geometric", program_version=native["version"]),
-        trajectory=native["trajectory"],
+        frames=native["trajectory"],
     )
     if native["error"]:
         raise CalculationError(native["error"], data=data)

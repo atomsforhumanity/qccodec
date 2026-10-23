@@ -10,7 +10,7 @@ Notes for xtb optimizations (https://xtb-docs.readthedocs.io/en/latest/optimizat
   "normal" (default), "tight", "verytight", or "extreme". ``cycles`` caps the steps.
 - xtb exits normally when it runs out of cycles; the codec reports that as a failure
   ("failed to converge geometry optimization").
-- Each step in ``results.trajectory`` has its structure and energy but no gradient:
+- Each step in ``results.frames`` has its structure and energy but no gradient:
   xtb's log records only those.
 - Constraints go in an xcontrol file (``$fix``, ``$constrain``, ``$wall``; see
   https://xtb-docs.readthedocs.io/en/latest/xcontrol.html). Its atom indices are
@@ -71,7 +71,7 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

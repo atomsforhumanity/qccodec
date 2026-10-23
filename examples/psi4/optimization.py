@@ -8,7 +8,7 @@ Notes for Psi4 optimizations:
 - optking options are ordinary Psi4 options: ``g_convergence``, ``geom_maxiter``,
   ``step_type``, ``opt_coordinates``, ``full_hess_every``, ... (Psi4 manual, "Geometry
   Optimization").
-- Every step in ``results.trajectory`` carries its structure, energy, and gradient;
+- Every step in ``results.frames`` carries its structure, energy, and gradient;
   the last step also carries the final charges, orbitals, and Psi4 variables.
 - The first step is exactly your input structure: Psi4 does not move or reorient it.
 - Point charges (``external_potentials``) do not work in Psi4 1.11 optimizations
@@ -52,7 +52,7 @@ prog_input = ProgramInput(
 output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

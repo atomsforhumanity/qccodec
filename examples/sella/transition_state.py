@@ -7,7 +7,7 @@ Notes for Sella transition-state searches (https://github.com/zadorlab/sella):
 
 - ``CalcType.transition_state`` runs Sella's saddle-point search (``order=1``).
 - Without a Hessian program, Sella estimates the curvature from extra gradients at
-  displaced geometries; those are not steps and stay out of ``results.trajectory``.
+  displaced geometries; those are not steps and stay out of ``results.frames``.
 - With a second ``ProgramSpec`` of ``calctype="hessian"`` in ``subprograms`` (here
   xtb's Hessian), Sella starts from that program's Hessian instead, which usually
   takes fewer steps. ``"diag_every_n": N`` recomputes it every N steps. Each Hessian
@@ -47,7 +47,7 @@ prog_input = ProgramInput(
 
 output = compute(prog_input)
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Transition state (bohr):\n", results.final_structure.geometry)
 

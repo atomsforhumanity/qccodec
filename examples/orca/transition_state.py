@@ -52,6 +52,6 @@ prog_input = ProgramInput(
 output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Transition-state energy (Hartree):", results.energies[-1])
 print("Transition-state structure (bohr):\n", results.final_structure.geometry)

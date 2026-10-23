@@ -94,10 +94,8 @@ def test_optimization(run: Run, water: Structure) -> None:
     """LBFGS goes downhill from the input structure and ends with a small gradient."""
     output = run(_input(water, CalcType.optimization), case="water_dftb3_optimization")
     assert isinstance(output.results, OptimizationData)
-    trajectory = output.results.trajectory
-    assert np.allclose(
-        trajectory[0].input_data.structure.geometry, water.geometry, atol=1e-6
-    )
+    trajectory = output.results.frames
+    assert np.allclose(trajectory[0].structure.geometry, water.geometry, atol=1e-6)
     first_energy = trajectory[0].results.energy
     assert first_energy is not None
     assert np.isclose(first_energy, DFTB3_ENERGY, atol=1e-8)

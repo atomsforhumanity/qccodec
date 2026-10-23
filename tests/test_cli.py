@@ -34,4 +34,4 @@ def test_cli_failed_without_artifacts():
     assert process.returncode == 0, process.stderr
     data = OptimizationData.model_validate_json(process.stdout)
     assert data.provenance.program == "crest"
-    assert data.trajectory == []
+    assert data.frames == []

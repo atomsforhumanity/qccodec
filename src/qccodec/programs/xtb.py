@@ -43,8 +43,8 @@ from typing import Any
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
-    ProgramOutput,
     Provenance,
     SinglePointData,
     Structure,
@@ -153,7 +153,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             raise EncoderError("The 'opt' keyword sets the optimization level only.")
         runtype.append(str(level))
 
-    generated: dict[str, str | bytes] = {STRUCTURE_FILE: inp.structure.to_xyz()}
+    generated: dict[str, str | bytes] = {
+        STRUCTURE_FILE: inp.require_structure().to_xyz()
+    }
     files = dict(inp.files)
     if point_charges:
         if method not in EMBEDDING_METHODS:
@@ -173,9 +175,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     arguments = (
         *runtype,
         "--chrg",
-        str(inp.structure.charge),
+        str(inp.require_structure().charge),
         "--uhf",
-        str(inp.structure.multiplicity - 1),
+        str(inp.require_structure().multiplicity - 1),
         *METHODS[method],
         *_flags(keywords),
     )
@@ -346,12 +348,12 @@ def parse_charges(contents: str) -> list[float]:
     return [float(v) for v in contents.split()]
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+@codec.parser(file="directory", target="frames", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build an optimization trajectory from ``xtbopt.log``.
 
-    xtb records the structure and energy of each step but not its gradient, so steps
-    are energy calculations.
+    xtb records the structure and energy of each step but not its gradient, so each
+    frame holds an energy only.
     """
     if ctx.input_data is None:
         raise ParserError("Optimization trajectory parsing requires input_data.")
@@ -363,8 +365,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         raise
     structures = Structure.from_xyz_multi(
         log,
-        charge=ctx.input_data.structure.charge,
-        multiplicity=ctx.input_data.structure.multiplicity,
+        charge=ctx.input_data.require_structure().charge,
+        multiplicity=ctx.input_data.require_structure().multiplicity,
     )
     version = _version(ctx.stdout or "")
     provenance = Provenance(program="xtb", program_version=version)
@@ -373,14 +375,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         comment = structure.extras[Structure._xyz_comment_key]
         energy = float(comment[comment.index("energy:") + 1])
         trajectory.append(
-            ProgramOutput(
-                input_data=ProgramInput.model_validate(
-                    {
-                        **ctx.input_data.model_dump(),
-                        "calctype": CalcType.energy,
-                        "structure": structure,
-                    }
-                ),
+            Frame(
+                structure=structure,
                 success=True,
                 results=SinglePointData(provenance=provenance, energy=energy),
                 execution=ExecutionInfo(scratch_dir=ctx.directory),

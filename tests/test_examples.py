@@ -18,6 +18,8 @@ GROUPS = {
     CalcType.optimization: "optimization",
     CalcType.transition_state: "transition_state",
     CalcType.conformer_search: "conformer_search",
+    CalcType.irc: "irc",
+    CalcType.path_optimization: "path_optimization",
 }
 
 

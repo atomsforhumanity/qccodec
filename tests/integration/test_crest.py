@@ -72,9 +72,9 @@ def test_optimization(run: Run, water: Structure) -> None:
     output = run(_input(water, CalcType.optimization), case="water_optimization")
     assert isinstance(output.results, OptimizationData)
     energies = output.results.energies
-    assert len(output.results.trajectory) > 1
+    assert len(output.results.frames) > 1
     # CREST optimizes at the center of mass; results must be in the input's frame.
-    first = output.results.trajectory[0].input_data.structure.geometry
+    first = output.results.frames[0].structure.geometry
     assert np.allclose(first, water.geometry, atol=1e-6)
     assert np.isclose(energies[0], ENERGY, atol=1e-6)
     assert np.isclose(energies[-1], -5.0705443538, atol=1e-6)

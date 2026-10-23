@@ -109,7 +109,7 @@ def test_failed_decode_without_artifacts(program, tmp_path, prog_input_factory):
         program, "optimization", failed=True, directory=tmp_path, input_data=input_data
     )
     assert isinstance(data, OptimizationData)
-    assert data.trajectory == []
+    assert data.frames == []
     assert data.provenance.program == program
     assert data.provenance.program_version is None
     output = ProgramOutput(
@@ -167,9 +167,8 @@ def test_crest_trajectory_without_gradient_records_available_energy(
         failed=partial_artifact,
     )
     assert isinstance(data, OptimizationData)
-    entry = data.trajectory[-1]
+    entry = data.frames[-1]
     assert entry.success
-    assert entry.input_data.calctype == "energy"
     assert entry.results.energy == -1.0
     assert entry.results.gradient is None
 

@@ -42,6 +42,7 @@ from typing import Any
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
     ProgramOutput,
     SinglePointData,
@@ -119,8 +120,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     lines = [
         f"{'run':<{PADDING}} {run}",
         f"{'coordinates':<{PADDING}} {XYZ_FILENAME}",
-        f"{'charge':<{PADDING}} {inp.structure.charge}",
-        f"{'spinmult':<{PADDING}} {inp.structure.multiplicity}",
+        f"{'charge':<{PADDING}} {inp.require_structure().charge}",
+        f"{'spinmult':<{PADDING}} {inp.require_structure().multiplicity}",
         f"{'method':<{PADDING}} {inp.model.method}",
         f"{'basis':<{PADDING}} {inp.model.basis}",
     ]
@@ -149,7 +150,10 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 
     return invocation(
         inp,
-        {"tc.in": "\n".join(lines) + "\n", XYZ_FILENAME: inp.structure.to_xyz()},
+        {
+            "tc.in": "\n".join(lines) + "\n",
+            XYZ_FILENAME: inp.require_structure().to_xyz(),
+        },
         "tc.in",
         wavefunction_files=("scr*/c0", "scr*/ca0", "scr*/cb0"),
         gpus=_gpu_count(keywords.get("gpus")),
@@ -436,8 +440,8 @@ def parse_excited_states(stdout: str) -> list[dict]:
     return excited_states
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+@codec.parser(file="directory", target="frames", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build an optimization trajectory from the scratch trajectory file and stdout.
 
     Each step's stdout is decoded as a gradient calculation with this codec. Builds
@@ -457,8 +461,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         trajectory_file = ctx.path("scr*/optim.xyz")
     structures = Structure.open_multi(
         trajectory_file,
-        charge=ctx.input_data.structure.charge,
-        multiplicity=ctx.input_data.structure.multiplicity,
+        charge=ctx.input_data.require_structure().charge,
+        multiplicity=ctx.input_data.require_structure().multiplicity,
     )
 
     # Everything before the "0 additional frames" banner is shared initialization.
@@ -482,7 +486,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     if not per_step:
         raise MatchNotFoundError(regex, stdout)
 
-    trajectory: list[ProgramOutput] = []
+    trajectory: list[Frame] = []
     for structure, step_stdout in zip(structures, per_step, strict=False):
         step_logs = initialization + step_stdout
         parsed = ctx.decode(CalcType.gradient, stdout=step_logs)
@@ -490,18 +494,9 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         values = parsed.model_dump()
         values["energy"] = _comment_energy(structure)
         results = SinglePointData(**values)
-        step_input = ProgramInput.model_validate(
-            {
-                **ctx.input_data.model_dump(),
-                "calctype": CalcType.gradient
-                if results.gradient is not None
-                else CalcType.energy,
-                "structure": structure,
-            }
-        )
         trajectory.append(
-            ProgramOutput(
-                input_data=step_input,
+            Frame(
+                structure=structure,
                 success=True,
                 results=results,
                 execution=ExecutionInfo(scratch_dir=ctx.directory),

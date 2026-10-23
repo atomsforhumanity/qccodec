@@ -10,6 +10,7 @@ import pytest
 from qcdata import (
     ConformerSearchData,
     Data,
+    Frame,
     OptimizationData,
     ProgramInput,
     ProgramOutput,
@@ -183,7 +184,7 @@ def test_geometric_binding_and_failure_trajectory(
             pass
 
     seen: list[ProgramInput] = []
-    trajectory: list[ProgramOutput[ProgramInput, SinglePointData]] = []
+    trajectory: list[Frame] = []
 
     def child(
         input_data: ProgramInput,
@@ -203,20 +204,21 @@ def test_geometric_binding_and_failure_trajectory(
             }
         )
 
+    structure = inp.require_structure()
     engine = make_engine(
         cast(ModuleType, SimpleNamespace(engine=SimpleNamespace(Engine=Engine))),
         object(),
-        inp.structure,
-        {"reference": inp.structure},
+        structure,
+        {"reference": structure},
         inp,
         child,
         trajectory,
     )
-    coords = inp.structure.geometry + 0.1
+    coords = structure.geometry + 0.1
     with pytest.raises(RuntimeError, match="child calculation"):
         engine.calc_new(coords)
-    np.testing.assert_allclose(seen[0].structure.geometry, coords)
-    assert seen[0].structures["reference"] == inp.structure
+    np.testing.assert_allclose(seen[0].require_structure().geometry, coords)
+    assert seen[0].structures["reference"] == structure
     assert seen[0].keywords == inp.keywords
     assert len(trajectory) == 1 and (not trajectory[0].success)
     outer = get_codec("geometric")
@@ -228,7 +230,7 @@ def test_geometric_binding_and_failure_trajectory(
             ),
         )
     assert isinstance(raised.value.data, OptimizationData)
-    assert raised.value.data.trajectory == trajectory
+    assert raised.value.data.frames == trajectory
 
 
 def test_propagate_wfn_moves_orbitals_onto_next_input(
@@ -284,18 +286,16 @@ def test_geometric_coordinate_systems_match_geometric() -> None:
 def test_geometric_hessians_attach_to_the_frame_at_their_geometry() -> None:
     """Each recorded Hessian goes on the last frame computed at the same geometry."""
     import numpy as np
-    from qcdata import CalcType, ProgramOutput, SinglePointData, Structure
+    from qcdata import Frame, SinglePointData, Structure
 
     from qccodec.programs.geometric import _attach_hessians
 
-    def frame(z: float) -> ProgramOutput:
+    def frame(z: float) -> Frame:
         structure = Structure(
             symbols=["H", "H"], geometry=np.array([[0.0, 0, 0], [0, 0, z]])
         )
-        return ProgramOutput(
-            input_data=ProgramInput(
-                program="test", calctype=CalcType.gradient, structure=structure
-            ),
+        return Frame(
+            structure=structure,
             success=True,
             results=SinglePointData.model_validate(
                 {
@@ -316,6 +316,7 @@ def test_geometric_hessians_attach_to_the_frame_at_their_geometry() -> None:
             (np.array([0, 0, 0, 0, 0, 9.9]), 3 * np.eye(6)),  # no such frame
         ],
     )
-    assert np.array_equal(trajectory[0].results.hessian, first)
-    assert trajectory[1].results.hessian is None
-    assert np.array_equal(trajectory[2].results.hessian, last)
+    hessians = [frame.results.hessian for frame in trajectory]
+    assert hessians[0] is not None and np.array_equal(hessians[0], first)
+    assert hessians[1] is None
+    assert hessians[2] is not None and np.array_equal(hessians[2], last)

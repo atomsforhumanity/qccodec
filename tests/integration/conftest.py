@@ -239,13 +239,15 @@ def finite_difference_check(
     lower = CalcType.gradient if hessian else CalcType.energy
     analytic = run(input_data.model_copy(update={"calctype": calctype})).results
     reference = np.asarray(analytic.hessian if hessian else analytic.gradient)
-    geometry = input_data.structure.geometry
+    geometry = input_data.require_structure().geometry
     for k in range(3):
         values = []
         for sign in (1.0, -1.0):
             moved = geometry.copy()
             moved[0, k] += sign * step
-            structure = input_data.structure.model_copy(update={"geometry": moved})
+            structure = input_data.require_structure().model_copy(
+                update={"geometry": moved}
+            )
             result = run(
                 input_data.model_copy(
                     update={"calctype": lower, "structure": structure}

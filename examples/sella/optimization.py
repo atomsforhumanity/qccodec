@@ -19,7 +19,9 @@ How it works (https://github.com/zadorlab/sella):
   indices; targets in angstrom and degrees.
 - For minimizations Sella estimates curvature from gradients. A Hessian program in
   ``subprograms`` is used only with ``"eig": True`` (see transition_state.py).
-- Every step in ``results.trajectory`` is the child's full output.
+- Each step in ``results.frames`` is a frame: its structure and the child's results
+  (energy, gradient, ...). The child's program, model, and keywords are in
+  ``output.input_data.subprograms``.
 """
 
 from qccompute import compute
@@ -66,8 +68,8 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
-print("Final gradient (Hartree/bohr):\n", results.trajectory[-1].results.gradient)
+print("Final gradient (Hartree/bohr):\n", results.frames[-1].results.gradient)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 print("Sella version:", results.provenance.program_version)

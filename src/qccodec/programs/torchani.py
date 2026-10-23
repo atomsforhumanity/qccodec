@@ -90,10 +90,10 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(
             "TorchANI runs in Python; cmdline_args and files are unused."
         )
-    if inp.structure.charge != 0 or inp.structure.multiplicity != 1:
+    if inp.require_structure().charge != 0 or inp.require_structure().multiplicity != 1:
         raise EncoderError(
             "ANI models describe neutral closed-shell molecules only; got charge "
-            f"{inp.structure.charge} and multiplicity {inp.structure.multiplicity}."
+            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}."
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
@@ -112,8 +112,8 @@ def encode(inp: ProgramInput) -> PythonInput:
             "model_index": model_index,
             "device": device,
             "dtype": dtype,
-            "numbers": inp.structure.atomic_numbers,
-            "positions": positions_angstrom(inp.structure),
+            "numbers": inp.require_structure().atomic_numbers,
+            "positions": positions_angstrom(inp.require_structure()),
             "forces": inp.calctype != CalcType.energy,
             "hessian": inp.calctype == CalcType.hessian,
         },

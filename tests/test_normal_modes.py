@@ -40,7 +40,7 @@ def test_recorded_modes_follow_qcdata(case: Case) -> None:
         input_data=case.input_data,
         failed=case.failed,
     )
-    check_normal_modes(data, list(case.input_data.structure.symbols))
+    check_normal_modes(data, list(case.input_data.require_structure().symbols))
 
 
 def test_rotation_onto_recovers_a_rotation() -> None:

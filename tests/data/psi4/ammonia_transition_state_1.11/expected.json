@@ -10,84 +10,65 @@
     "extras": {},
     "program": "psi4",
     "program_version": "1.11",
-    "qcdata_version": "0.20.1"
+    "qcdata_version": "0.23.0"
   },
-  "trajectory": [
+  "frames": [
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              0.0,
-              0.0,
-              0.25
-            ],
-            [
-              1.77,
-              0.0,
-              -0.1
-            ],
-            [
-              -0.885,
-              1.533,
-              -0.1
-            ],
-            [
-              -0.885,
-              -1.533,
-              -0.1
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            0.0,
+            0.0,
+            0.25
+          ],
+          [
+            1.77,
+            0.0,
+            -0.1
+          ],
+          [
+            -0.885,
+            1.533,
+            -0.1
+          ],
+          [
+            -0.885,
+            -1.533,
+            -0.1
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -100,7 +81,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.43261388917962,
         "gradient": [
@@ -134,87 +115,68 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     },
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              3.0435508422671522e-06,
-              0.0,
-              0.223815186543418
-            ],
-            [
-              1.8616176388370718,
-              0.0,
-              -0.09127135181874478
-            ],
-            [
-              -0.930810341193957,
-              1.6122404877032095,
-              -0.09127191736233661
-            ],
-            [
-              -0.930810341193957,
-              -1.6122404877032095,
-              -0.09127191736233661
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            3.0435508422671522e-06,
+            0.0,
+            0.223815186543418
+          ],
+          [
+            1.8616176388370718,
+            0.0,
+            -0.09127135181874478
+          ],
+          [
+            -0.930810341193957,
+            1.6122404877032095,
+            -0.09127191736233661
+          ],
+          [
+            -0.930810341193957,
+            -1.6122404877032095,
+            -0.09127191736233661
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -227,7 +189,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.442378223914396,
         "gradient": [
@@ -261,87 +223,68 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     },
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              -3.120416623601419e-05,
-              0.0,
-              0.060055198652041716
-            ],
-            [
-              1.8943557480207196,
-              0.0,
-              -0.03668829310810894
-            ],
-            [
-              -0.9471622719272417,
-              1.640613821386666,
-              -0.036683452771966385
-            ],
-            [
-              -0.9471622719272417,
-              -1.640613821386666,
-              -0.036683452771966385
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            -3.120416623601419e-05,
+            0.0,
+            0.060055198652041716
+          ],
+          [
+            1.8943557480207196,
+            0.0,
+            -0.03668829310810894
+          ],
+          [
+            -0.9471622719272417,
+            1.640613821386666,
+            -0.036683452771966385
+          ],
+          [
+            -0.9471622719272417,
+            -1.640613821386666,
+            -0.036683452771966385
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -354,7 +297,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.43816254766089,
         "gradient": [
@@ -388,87 +331,68 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     },
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              6.592786364366669e-06,
-              0.0,
-              -0.051315512207135754
-            ],
-            [
-              1.8949496997849238,
-              0.0,
-              0.00043495886793196555
-            ],
-            [
-              -0.947478146285644,
-              1.6410514433541254,
-              0.00044027666960188964
-            ],
-            [
-              -0.947478146285644,
-              -1.6410514433541254,
-              0.00044027666960188964
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            6.592786364366669e-06,
+            0.0,
+            -0.051315512207135754
+          ],
+          [
+            1.8949496997849238,
+            0.0,
+            0.00043495886793196555
+          ],
+          [
+            -0.947478146285644,
+            1.6410514433541254,
+            0.00044027666960188964
+          ],
+          [
+            -0.947478146285644,
+            -1.6410514433541254,
+            0.00044027666960188964
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -481,7 +405,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.43779246946124,
         "gradient": [
@@ -515,87 +439,68 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     },
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              9.400181904137284e-07,
-              0.0,
-              -0.013363925926090965
-            ],
-            [
-              1.8999281792178522,
-              0.0,
-              -0.012215593548518698
-            ],
-            [
-              -0.9499645596180213,
-              1.6453827045650697,
-              -0.012210240262695174
-            ],
-            [
-              -0.9499645596180213,
-              -1.6453827045650697,
-              -0.012210240262695174
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            9.400181904137284e-07,
+            0.0,
+            -0.013363925926090965
+          ],
+          [
+            1.8999281792178522,
+            0.0,
+            -0.012215593548518698
+          ],
+          [
+            -0.9499645596180213,
+            1.6453827045650697,
+            -0.012210240262695174
+          ],
+          [
+            -0.9499645596180213,
+            -1.6453827045650697,
+            -0.012210240262695174
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -608,7 +513,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.437665352922345,
         "gradient": [
@@ -642,87 +547,68 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     },
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "psi4",
-        "cmdline_args": [],
-        "calctype": "gradient",
-        "model": {
-          "extras": {},
-          "method": "hf",
-          "basis": "sto-3g",
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "scf_type": "pk"
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {},
-          "symbols": [
-            "N",
-            "H",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              -5.551663808321124e-07,
-              0.0,
-              -0.012355041054936237
-            ],
-            [
-              1.9000858289562093,
-              0.0,
-              -0.012551888640134038
-            ],
-            [
-              -0.9500426368949142,
-              1.6455233757252463,
-              -0.012546535152464868
-            ],
-            [
-              -0.9500426368949142,
-              -1.6455233757252463,
-              -0.012546535152464868
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {},
+        "symbols": [
+          "N",
+          "H",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            -5.551663808321124e-07,
+            0.0,
+            -0.012355041054936237
+          ],
+          [
+            1.9000858289562093,
+            0.0,
+            -0.012551888640134038
+          ],
+          [
+            -0.9500426368949142,
+            1.6455233757252463,
+            -0.012546535152464868
+          ],
+          [
+            -0.9500426368949142,
+            -1.6455233757252463,
+            -0.012546535152464868
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": 5,
@@ -754,7 +640,7 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -55.437665303909206,
         "gradient": [
@@ -823,7 +709,7 @@
             0.0,
             0.0
           ],
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "freqs_wavenumber": [],
         "normal_modes_cartesian": null,
@@ -840,12 +726,12 @@
           0.17497803502086984
         ],
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     }
   ],
-  "qcdata_version": "0.20.1"
+  "qcdata_version": "0.23.0"
 }

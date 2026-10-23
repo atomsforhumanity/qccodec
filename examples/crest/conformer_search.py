@@ -17,8 +17,9 @@ Notes for CREST conformer searches (https://crest-lab.github.io/crest-docs/):
 - ``cregen`` settings control how structures are sorted and deduplicated: ``ewin``
   (energy window, kcal/mol), ``ethr`` (energy threshold, kcal/mol), ``rthr`` (RMSD
   threshold, angstrom), ``bthr`` (rotational-constant threshold).
-- ``results.conformers`` are sorted by energy, lowest first; ``conformer_energies``
-  are in Hartree. Rotamers (often thousands) are read only when asked for, with
+- ``results.conformers`` are frames sorted by energy, lowest first: each holds a
+  ``structure`` and its ``results.energy``. ``conformer_energies`` lists those
+  energies in Hartree; ``results.structures`` lists the structures. Rotamers (often thousands) are read only when asked for, with
   ``options={"collect_rotamers": True}``.
 - Water has a single conformer; replace it with your molecule (Structure.open reads
   an xyz file in angstrom) and expect a longer run.
@@ -74,7 +75,7 @@ print("Conformers:", len(results.conformers))
 lowest = results.conformer_energies[0]
 for i, energy in enumerate(results.conformer_energies):
     print(f"  {i}: {energy:.8f} Hartree, {(energy - lowest) * 627.5095:.2f} kcal/mol")
-print("Lowest conformer (bohr):\n", results.conformers[0].geometry)
+print("Lowest conformer (bohr):\n", results.conformers[0].structure.geometry)
 # Save the ensemble, e.g. one xyz file per conformer:
 # for i, conformer in enumerate(results.conformers):
-#     conformer.save(f"conformer_{i}.xyz")
+#     conformer.structure.save(f"conformer_{i}.xyz")

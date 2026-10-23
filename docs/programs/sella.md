@@ -28,3 +28,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/sella/transition_state.py!}
 ```
+
+### IRC
+
+[`examples/sella/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/irc.py)
+
+```python
+{!examples/sella/irc.py!}
+```

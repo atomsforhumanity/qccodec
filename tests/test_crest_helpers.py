@@ -25,13 +25,13 @@ def test_parse_conformers_charge_multiplicity_updates(
 ):
     data = parse_conformers(_context(test_data_dir, prog_input_factory, -2, 3))
     for struct in data["conformers"]:
-        assert struct.charge == -2 and struct.multiplicity == 3
+        assert struct.structure.charge == -2 and struct.structure.multiplicity == 3
 
 
 def test_parse_rotamers_charge_multiplicity_updates(test_data_dir, prog_input_factory):
     data = parse_rotamers(_context(test_data_dir, prog_input_factory, 3, 5))
     for struct in data["rotamers"]:
-        assert struct.charge == 3 and struct.multiplicity == 5
+        assert struct.structure.charge == 3 and struct.structure.multiplicity == 5
 
 
 def test_trajectory_frames_return_to_the_input_frame() -> None:

@@ -42,8 +42,8 @@ import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
-    ProgramOutput,
     SinglePointData,
     Structure,
 )
@@ -173,11 +173,14 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         lines.append("")
 
     lines.append(
-        f"* xyzfile {inp.structure.charge} {inp.structure.multiplicity} {XYZ_FILENAME}"
+        f"* xyzfile {inp.require_structure().charge} {inp.require_structure().multiplicity} {XYZ_FILENAME}"
     )
     return invocation(
         inp,
-        {"orca.inp": "\n".join(lines) + "\n", XYZ_FILENAME: inp.structure.to_xyz()},
+        {
+            "orca.inp": "\n".join(lines) + "\n",
+            XYZ_FILENAME: inp.require_structure().to_xyz(),
+        },
         "orca.inp",
         threads=int(kw.get("pal", 1)),
     )
@@ -322,16 +325,16 @@ def parse_normal_modes(ctx: Context) -> list[list[list[float]]]:
     coordinates = np.array(
         [line.split()[2:5] for line in atoms[2 : 2 + natoms]], dtype=float
     )
-    rotation = rotation_onto(coordinates, ctx.input_data.structure.geometry)
+    rotation = rotation_onto(coordinates, ctx.input_data.require_structure().geometry)
     return unit_modes(modes.reshape(len(modes), natoms, 3) @ rotation.T)
 
 
 @codec.parser(
     file="directory",
-    target="trajectory",
+    target="frames",
     calctypes=[CalcType.optimization, CalcType.transition_state],
 )
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build an optimization trajectory from ``<basename>_trj.xyz`` and stdout."""
     if ctx.input_data is None:
         raise ParserError("Optimization trajectory parsing requires input_data.")
@@ -351,8 +354,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     # The trajectory file carries no charge/multiplicity; take them from the input.
     structures = Structure.open_multi(
         file,
-        charge=ctx.input_data.structure.charge,
-        multiplicity=ctx.input_data.structure.multiplicity,
+        charge=ctx.input_data.require_structure().charge,
+        multiplicity=ctx.input_data.require_structure().multiplicity,
     )
 
     initialization = re_search(
@@ -370,25 +373,16 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     if not per_step:
         raise MatchNotFoundError(regex, stdout)
 
-    trajectory: list[ProgramOutput] = []
+    trajectory: list[Frame] = []
     for structure, step_stdout in zip(structures, per_step, strict=False):
         parsed = ctx.decode(CalcType.gradient, stdout=initialization + step_stdout)
         assert isinstance(parsed, SinglePointData)  # for mypy
         values = parsed.model_dump()
         values["energy"] = structure.extras[Structure._xyz_comment_key][-1]
         results = SinglePointData(**values)
-        step_input = ProgramInput.model_validate(
-            {
-                **ctx.input_data.model_dump(),
-                "calctype": CalcType.gradient
-                if results.gradient is not None
-                else CalcType.energy,
-                "structure": structure,
-            }
-        )
         trajectory.append(
-            ProgramOutput(
-                input_data=step_input,
+            Frame(
+                structure=structure,
                 success=True,
                 results=results,
                 execution=ExecutionInfo(scratch_dir=ctx.directory),

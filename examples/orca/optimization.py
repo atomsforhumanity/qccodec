@@ -12,7 +12,7 @@ Notes for ORCA optimizations (manual: https://www.faccts.de/docs/orca/6.0/manual
 - Optimizer settings go in the ``geom`` block: ``{"geom": {"maxiter": 100}}``.
   Constraints and scans also live there, with ORCA's 0-based atom indices, which
   match ``structure``.
-- Every step in ``results.trajectory`` carries its structure, energy, and gradient,
+- Every step in ``results.frames`` carries its structure, energy, and gradient,
   read from ORCA's ``orca_trj.xyz`` and its output.
 - The first step is your input structure: ORCA does not move or reorient it.
 - For transition states use ``CalcType.transition_state`` (transition_state.py).
@@ -50,7 +50,7 @@ prog_input = ProgramInput(
 output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:
