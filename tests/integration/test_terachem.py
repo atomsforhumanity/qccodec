@@ -129,7 +129,7 @@ def test_constrained_optimization(run: Run, water: Structure) -> None:
         },
     )
     output = run(inp, case="water_constrained_optimization")
-    final = output.results.frames[-1].input_data.structure.geometry
+    final = output.results.frames[-1].structure.geometry
     assert np.allclose(final[0], water.geometry[0], atol=1e-4)
     assert np.isclose(np.linalg.norm(final[1] - final[0]), target, atol=1e-3)
 
