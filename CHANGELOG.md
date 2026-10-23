@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.21.0] - 2026-10-23
+
 ### Added
 
 - `sella` codec: `CalcType.irc` (qcdata 0.23). Both directions run from the transition state in `structure` with one Sella `IRC`; the result is a `PathData` from the reverse end through the transition state (`ts_index`) to the forward end, with the optional `hessian` subprogram's Hessian on the transition-state frame. The codec removes Sella's rigid drift (mass-weighted alignment of each frame onto the previous) and ends a branch on the vibrations' curvature, so Sella no longer spins a molecule at its minimum until `steps` runs out. New example `examples/sella/irc.py`. On HCN ⇌ HNC with GFN2-xTB it gives barriers of 53.2 and 73.2 kcal/mol, as ORCA's XTB2 IRC does.
@@ -466,7 +468,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.20.1...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.21.0...HEAD
+[0.21.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.21.0
 [0.20.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.1
 [0.20.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.0
 [0.19.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.19.0
