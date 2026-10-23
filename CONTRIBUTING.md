@@ -170,7 +170,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     if inp.model is None:
         raise EncoderError("myprog requires a model.")
     text = f"method {inp.model.method}\ncharge {inp.structure.charge}\n"
-    return invocation(inp, {"run.inp": text, "geom.xyz": inp.structure.to_xyz()}, "run.inp")
+    return invocation(
+        inp, {"run.inp": text, "geom.xyz": inp.structure.to_xyz()}, "run.inp"
+    )
 ```
 
 `invocation()` builds `myprog run.inp <cmdline_args>` and merges user-supplied
@@ -201,10 +203,12 @@ Each parser is a small function from contents to one value:
 def parse_energy(stdout: str) -> float:
     return float(re_search(r"Total energy:\s+(-?\d+\.\d+)", stdout).group(1))
 
+
 @codec.parser(file="run.grad", target="gradient", calctypes=[CalcType.gradient])
 def parse_gradient(contents: str) -> list[list[float]]:
     values = [float(v) for v in contents.split()]
     return [values[i : i + 3] for i in range(0, len(values), 3)]
+
 
 @codec.parser(target=("provenance", "program_version"), required=False)
 def parse_version(stdout: str) -> str:
@@ -230,8 +234,12 @@ Parsers that need more than one file take a `Context`:
 ```python
 @codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
 def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
-    structures = Structure.open_multi(ctx.path("traj.xyz"), charge=ctx.input_data.structure.charge)
-    step = ctx.decode(CalcType.gradient, stdout=ctx.stdout)   # reuse this codec's parsers
+    structures = Structure.open_multi(
+        ctx.path("traj.xyz"), charge=ctx.input_data.structure.charge
+    )
+    step = ctx.decode(
+        CalcType.gradient, stdout=ctx.stdout
+    )  # reuse this codec's parsers
     ...
 ```
 
@@ -248,6 +256,7 @@ versions:
 ```python
 @codec.parser(target="energy", versions="<4.0")
 def parse_energy_v3(stdout: str) -> float: ...
+
 
 @codec.parser(target="energy", versions=">=4.0")
 def parse_energy(stdout: str) -> float: ...
@@ -278,9 +287,13 @@ when it prints one).
 Skip parsers and give the codec a `decode` function:
 
 ```python
-def invoke(**kwargs): ...                       # imports the library, returns a plain snapshot
-def encode(inp) -> PythonInput: return PythonInput(function=invoke, kwargs={...})
-def decode(inp, out) -> SinglePointData: ...    # maps out.value into qcdata fields
+def invoke(**kwargs): ...  # imports the library, returns a plain snapshot
+def encode(inp) -> PythonInput:
+    return PythonInput(function=invoke, kwargs={...})
+
+
+def decode(inp, out) -> SinglePointData: ...  # maps out.value into qcdata fields
+
 
 codec = Codec("mylib", calctypes={CalcType.energy}, encode=encode, decode=decode)
 ```
@@ -342,7 +355,9 @@ helpers, as `tests/test_terachem_encoders.py` does.
 Write one script per kind of calculation the codec supports in
 `examples/<program>/`: `single_point.py` (energy, gradient, and Hessian; the
 calculation type is set on one line at the top), `optimization.py`,
-`transition_state.py`, and `conformer_search.py` as applicable. Scientists copy these,
+`transition_state.py`, and `conformer_search.py` as applicable, plus
+`many_calculations.py` if the codec batches (`encode_batch`), showing a list of inputs
+evaluated in batches; any program may have one to show lists. Scientists copy these,
 delete what they don't need, and run them, so each script:
 
 - is flat and self-contained, with an inline structure in bohr and cheap defaults so it
@@ -360,7 +375,7 @@ reference documentation: explain how `ProgramInput` maps onto the program, which
 keywords are routed specially, which fields carry atom indices, and how the input frame
 is kept.
 
-`tests/test_examples.py` fails until every calculation type has a script and every
+`tests/test_examples.py` fails until every calculation type (and batching) has a script and every
 script is on a docs page; `tests/integration/test_examples.py` runs every script.
 
 ### How decoding works

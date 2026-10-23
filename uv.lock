@@ -1935,21 +1935,21 @@ docs = [
     { name = "pymdown-extensions", specifier = "~=10.9" },
 ]
 integration = [
-    { name = "qccompute", specifier = ">=0.15.0" },
+    { name = "qccompute", specifier = ">=0.21.0" },
     { name = "tblite", marker = "python_full_version < '3.15'", specifier = ">=0.4" },
 ]
 
 [[package]]
 name = "qccompute"
-version = "0.15.0"
+version = "0.21.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "qccodec" },
     { name = "qcdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/42/f46f17a01df6040dc324820c6d9d06184376653e3bfd9a7f3a1f270c1323/qccompute-0.15.0.tar.gz", hash = "sha256:1af271670b44f3b6994633bc215b9cc1e42106dfb193e22224c8da6266716363", size = 519848, upload-time = "2026-10-15T02:34:54.238Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/f0/b28e292d56ea83a9d2a942503aa788d2b606d6e7e42502a9830c3320ccf6/qccompute-0.21.0.tar.gz", hash = "sha256:9169c7decd1c7869a67fc9c75a8d89d8f8f89d6161e5f6a628aea26639c12642", size = 571671, upload-time = "2026-10-23T16:54:08.899Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/e0/19795ca89dac6068111e76bb016b9692028f028d6824b3d9e6e91363bb5b/qccompute-0.15.0-py3-none-any.whl", hash = "sha256:842dc786e5d5963ffb5b73f454782a392336f5b98aae4d3a410e7a5a28b873bb", size = 20896, upload-time = "2026-10-15T02:34:52.806Z" },
+    { url = "https://files.pythonhosted.org/packages/68/cc/7ffeb9228bdf33ef97175bcbd8c18886c2e2a6967fa84d6d96f2bccddf0b/qccompute-0.21.0-py3-none-any.whl", hash = "sha256:3e12d6046ef6b03a84e6b44f4962ab6a6e25f6f51c3699268fb1030ea0268031", size = 36760, upload-time = "2026-10-23T16:54:07.446Z" },
 ]
 
 [[package]]

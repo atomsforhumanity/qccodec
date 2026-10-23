@@ -20,3 +20,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/fairchem/single_point.py!}
 ```
+
+### Many structures at once: batches
+
+[`examples/fairchem/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/fairchem/many_calculations.py)
+
+```python
+{!examples/fairchem/many_calculations.py!}
+```

@@ -28,3 +28,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/geometric/transition_state.py!}
 ```
+
+### Many calculations at once
+
+[`examples/geometric/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/many_calculations.py)
+
+```python
+{!examples/geometric/many_calculations.py!}
+```

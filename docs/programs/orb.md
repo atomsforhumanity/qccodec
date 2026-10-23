@@ -20,3 +20,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/orb/single_point.py!}
 ```
+
+### Many structures at once: batches
+
+[`examples/orb/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/orb/many_calculations.py)
+
+```python
+{!examples/orb/many_calculations.py!}
+```

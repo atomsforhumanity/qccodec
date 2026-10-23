@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- `many_calculations.py` examples, run in CI like the others: AIMNet2, TorchANI, MACE, Orb, and FAIR-Chem evaluate a 20-point bond scan in one batch and compare it with computing each structure alone; xtb runs 20 gradients side by side within the thread budget, with `ComputeErrors` handling; geomeTRIC runs four optimizations side by side in worker processes. Every codec that batches must have one (`tests/test_examples.py`).
+
+### Changed
+
+- The integration test group requires `qccompute>=0.21.0` (batched lists).
+
 ## [0.19.0] - 2026-10-23
 
 ### Added

@@ -28,3 +28,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/xtb/optimization.py!}
 ```
+
+### Many calculations at once
+
+[`examples/xtb/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/many_calculations.py)
+
+```python
+{!examples/xtb/many_calculations.py!}
+```

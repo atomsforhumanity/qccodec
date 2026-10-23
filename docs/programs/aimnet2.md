@@ -20,3 +20,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/aimnet2/single_point.py!}
 ```
+
+### Many structures at once: batches
+
+[`examples/aimnet2/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/aimnet2/many_calculations.py)
+
+```python
+{!examples/aimnet2/many_calculations.py!}
+```
