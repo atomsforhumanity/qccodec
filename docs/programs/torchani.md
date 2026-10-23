@@ -20,3 +20,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/torchani/single_point.py!}
 ```
+
+### Many structures at once: batches
+
+[`examples/torchani/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/torchani/many_calculations.py)
+
+```python
+{!examples/torchani/many_calculations.py!}
+```

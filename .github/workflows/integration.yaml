@@ -12,6 +12,7 @@ on:
       - "src/qccodec/programs/**"
       - "src/qccodec/codec.py"
       - "tests/integration/**"
+      - "examples/**"
       - ".github/workflows/integration.yaml"
   push:
     branches: [master]
@@ -19,6 +20,7 @@ on:
       - "src/qccodec/programs/**"
       - "src/qccodec/codec.py"
       - "tests/integration/**"
+      - "examples/**"
       - ".github/workflows/integration.yaml"
 
 concurrency:
