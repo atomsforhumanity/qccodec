@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Changed
+
+- Requires `qcdata<0.23`: qcdata 0.23 changes trajectories to frames and makes `ProgramInput.structure` optional, which this release does not handle. qccodec 0.21 supports it.
+
 ## [0.20.0] - 2026-10-23
 
 ### Added
