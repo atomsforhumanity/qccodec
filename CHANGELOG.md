@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.19.0] - 2026-10-23
+
 ### Added
 
 - A batch hook on `Codec`: `encode_batch(inputs) -> PythonInput`, whose function returns one native value per input, and `batch_key(input)`, under which inputs may share a batch (`None`: computed alone), plus `max_batch` (default 32). Each value is decoded with the codec's ordinary decoder, so every structure keeps its own result. qccompute will batch lists of such inputs.
@@ -437,7 +439,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.18.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.19.0...HEAD
+[0.19.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.19.0
 [0.18.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.18.0
 [0.17.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.17.0
 [0.16.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.16.1
