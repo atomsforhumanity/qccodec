@@ -36,10 +36,16 @@ converts them, and the forces and Hessian, to Hartree and bohr.
 
 MACE does not move the molecule, so results are in the input's frame. No input field
 carries atom indices.
+
+Energies and gradients of several structures can be computed as one batch:
+``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
+calculation type, evaluating them in one pass instead of one call each. Hessians are
+computed one structure at a time.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -50,6 +56,7 @@ from ..exceptions import EncoderError
 from ..native import PythonInput
 from ._python import (
     SinglePoint,
+    batch_signature,
     cached_model,
     from_ev,
     gpu_count,
@@ -60,6 +67,7 @@ from ._python import (
     require_model,
     resolve_device,
     single_point_decoder,
+    split_atoms,
 )
 
 # model.method prefix -> mace.calculators loader; the longest prefix wins.
@@ -158,11 +166,77 @@ def invoke_mace(
     hessian: bool,
 ) -> SinglePoint:
     """Run one MACE single point on the cached raw model."""
-    import torch
-    from mace import calculators, data
-    from mace.tools import torch_geometric, torch_tools, utils
-
     device = resolve_device(device)
+    network = _network(loader, model, device, default_dtype)
+    graph = _graph(network, loader, numbers, positions, charge_and_spin)
+    out = _evaluate(network, [graph], device, forces=forces or hessian, hessian=hessian)
+    snapshot = from_ev(
+        out["energy"].detach().cpu().double().item(),
+        out["forces"].detach().cpu().double().numpy() if forces else None,
+        out["hessian"].detach().cpu().double().numpy() if hessian else None,
+    )
+    snapshot["version"] = package_version("mace-torch")
+    return snapshot
+
+
+def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
+    """Encode inputs that share a batch key as one MACE evaluation.
+
+    Raises:
+        EncoderError: An input is invalid on its own (see ``encode``).
+    """
+    singles = [encode(inp).kwargs for inp in inputs]
+    first = singles[0]
+    return PythonInput(
+        gpus=gpu_count(first["device"]),
+        function=invoke_mace_batch,
+        kwargs={
+            **{k: first[k] for k in ("loader", "model", "device", "default_dtype")},
+            "forces": first["forces"],
+            "molecules": [
+                (k["numbers"], k["positions"], k["charge_and_spin"]) for k in singles
+            ],
+        },
+    )
+
+
+def invoke_mace_batch(
+    *,
+    loader: str | None,
+    model: str | None,
+    device: str | None,
+    default_dtype: str | None,
+    forces: bool,
+    molecules: list[tuple[list[int], list[list[float]], tuple[int, int] | None]],
+) -> list[SinglePoint]:
+    """Evaluate several molecules in one MACE pass, as one batch of graphs."""
+    device = resolve_device(device)
+    network = _network(loader, model, device, default_dtype)
+    graphs = [_graph(network, loader, n, p, cs) for n, p, cs in molecules]
+    out = _evaluate(network, graphs, device, forces=forces, hessian=False)
+    energies = out["energy"].detach().cpu().double().numpy().reshape(-1)
+    counts = [len(n) for n, _, _ in molecules]
+    per_forces = (
+        split_atoms(out["forces"].detach().cpu().double().numpy(), counts)
+        if forces
+        else [None] * len(molecules)
+    )
+    version = package_version("mace-torch")
+    results: list[SinglePoint] = []
+    for energy, f in zip(energies, per_forces, strict=True):
+        result = from_ev(float(energy), f)
+        result["version"] = version
+        results.append(result)
+    return results
+
+
+def _network(
+    loader: str | None, model: str | None, device: str, default_dtype: str | None
+) -> Any:
+    """Return the cached raw MACE model, in the requested precision."""
+    import torch
+    from mace import calculators
+
     dtype = default_dtype or (FAMILY_DTYPES[loader] if loader else None)
 
     def load() -> Any:
@@ -182,10 +256,21 @@ def invoke_mace(
             parameter.requires_grad = False
         return network
 
-    network = cached_model(("mace", loader, model, device, dtype), load)
+    return cached_model(("mace", loader, model, device, dtype), load)
+
+
+def _graph(
+    network: Any,
+    loader: str | None,
+    numbers: list[int],
+    positions: list[list[float]],
+    charge_and_spin: tuple[int, int] | None,
+) -> Any:
+    """Build MACE's graph for one isolated molecule, as its calculator does."""
+    from mace import data
+    from mace.tools import torch_tools, utils
+
     heads = list(getattr(network, "heads", ["Default"]))
-    head = select_head(heads, loader)
-    model_dtype = next(network.parameters()).dtype
     properties: dict[str, Any] = {}
     if charge_and_spin is not None:
         properties = {
@@ -199,35 +284,38 @@ def invoke_mace(
         property_weights={name: 1.0 for name in properties},
         pbc=(False, False, False),
         cell=np.zeros((3, 3)),
-        head=head,
+        head=select_head(heads, loader),
     )
-    with torch_tools.default_dtype(model_dtype):
-        graph = data.AtomicData.from_config(
+    with torch_tools.default_dtype(next(network.parameters()).dtype):
+        return data.AtomicData.from_config(
             config,
             z_table=utils.AtomicNumberTable([int(z) for z in network.atomic_numbers]),
             cutoff=float(network.r_max),
             heads=heads,
         )
-    batch = torch_geometric.Batch.from_data_list([graph]).to(device)
+
+
+def _evaluate(
+    network: Any, graphs: list[Any], device: str, *, forces: bool, hessian: bool
+) -> Any:
+    """Run the model on a batch of graphs."""
+    import torch
+    from mace.tools import torch_geometric
+
+    model_dtype = next(network.parameters()).dtype
+    batch = torch_geometric.Batch.from_data_list(graphs).to(device)
     inputs = {
         key: value.to(model_dtype) if torch.is_floating_point(value) else value
         for key, value in batch.to_dict().items()
         if torch.is_tensor(value)
     }
-    out = network(
+    return network(
         inputs,
-        compute_force=forces or hessian,
+        compute_force=forces,
         compute_hessian=hessian,
         compute_stress=False,
         training=False,
     )
-    snapshot = from_ev(
-        out["energy"].detach().cpu().double().item(),
-        out["forces"].detach().cpu().double().numpy() if forces else None,
-        out["hessian"].detach().cpu().double().numpy() if hessian else None,
-    )
-    snapshot["version"] = package_version("mace-torch")
-    return snapshot
 
 
 def select_head(heads: list[str], loader: str | None) -> str:
@@ -254,4 +342,6 @@ codec = Codec(
     calctypes={CalcType.energy, CalcType.gradient, CalcType.hessian},
     encode=encode,
     decode=single_point_decoder("mace"),
+    encode_batch=encode_batch,
+    batch_key=batch_signature,
 )

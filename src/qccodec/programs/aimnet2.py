@@ -29,10 +29,16 @@ forces and Hessian, to Hartree and bohr.
 
 AIMNet2 does not move the molecule, so results are in the input's frame. No input
 field carries atom indices.
+
+Energies and gradients of several structures can be computed as one batch:
+``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
+calculation type, evaluating them in one pass instead of one call each. Hessians are
+computed one structure at a time.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -42,6 +48,7 @@ from ..exceptions import EncoderError
 from ..native import PythonInput
 from ._python import (
     SinglePoint,
+    batch_signature,
     cached_model,
     from_ev,
     gpu_count,
@@ -52,6 +59,7 @@ from ._python import (
     require_model,
     resolve_device,
     single_point_decoder,
+    split_atoms,
 )
 
 
@@ -125,9 +133,84 @@ def invoke_aimnet2(
     return result
 
 
+def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
+    """Encode inputs that share a batch key as one AIMNet2 evaluation.
+
+    Raises:
+        EncoderError: An input is invalid on its own (see ``encode``).
+    """
+    singles = [encode(inp).kwargs for inp in inputs]
+    first = singles[0]
+    return PythonInput(
+        gpus=gpu_count(first["device"]),
+        function=invoke_aimnet2_batch,
+        kwargs={
+            "model": first["model"],
+            "device": first["device"],
+            "forces": first["forces"],
+            "validate_species": first["validate_species"],
+            "molecules": [
+                (k["numbers"], k["positions"], k["charge"], k["multiplicity"])
+                for k in singles
+            ],
+        },
+    )
+
+
+def invoke_aimnet2_batch(
+    *,
+    model: str,
+    device: str | None,
+    forces: bool,
+    validate_species: bool,
+    molecules: list[tuple[list[int], list[list[float]], int, int]],
+) -> list[SinglePoint]:
+    """Evaluate several molecules in one AIMNet2 pass: atoms concatenated, mol_idx."""
+    import numpy as np
+    from aimnet.calculators import AIMNet2Calculator
+
+    device = resolve_device(device)
+    calculator = cached_model(
+        ("aimnet2", model, device), lambda: AIMNet2Calculator(model, device=device)
+    )
+    counts = [len(numbers) for numbers, _, _, _ in molecules]
+    data: dict[str, Any] = {
+        "coord": np.concatenate([np.asarray(p) for _, p, _, _ in molecules]),
+        "numbers": np.concatenate([np.asarray(n) for n, _, _, _ in molecules]),
+        "charge": np.array([float(q) for _, _, q, _ in molecules]),
+        "mol_idx": np.repeat(np.arange(len(molecules)), counts),
+    }
+    multiplicities = [m for _, _, _, m in molecules]
+    if calculator.is_nse:
+        data["mult"] = np.array(multiplicities, dtype=float)
+    elif any(m != 1 for m in multiplicities):
+        raise ValueError(
+            f"AIMNet2 model {model!r} is closed-shell; use 'aimnet2-nse' for open "
+            "shells."
+        )
+    out = calculator.eval(data, forces=forces, validate_species=validate_species)
+    energies = out["energy"].detach().cpu().numpy().reshape(-1)
+    charges = split_atoms(out["charges"].detach().cpu().numpy().reshape(-1), counts)
+    per_forces = (
+        split_atoms(out["forces"].detach().cpu().numpy().reshape(-1, 3), counts)
+        if forces
+        else [None] * len(molecules)
+    )
+    version = package_version("aimnet")
+    results: list[SinglePoint] = []
+    for energy, f, q in zip(energies, per_forces, charges, strict=True):
+        result = from_ev(float(energy), f)
+        result["atomic_charges"] = q.tolist()
+        result["version"] = version
+        results.append(result)
+    return results
+
+
 codec = Codec(
     "aimnet2",
     calctypes={CalcType.energy, CalcType.gradient, CalcType.hessian},
     encode=encode,
     decode=single_point_decoder("aimnet2"),
+    encode_batch=encode_batch,
+    batch_key=batch_signature,
 )

@@ -4,7 +4,13 @@ import numpy as np
 import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
 
-from .conftest import Run, finite_difference_check, requires_modules
+from .conftest import (
+    Run,
+    batch_molecules,
+    check_batch_matches_single,
+    finite_difference_check,
+    requires_modules,
+)
 
 pytestmark = [pytest.mark.integration, requires_modules("orb", "orb_models")]
 
@@ -49,3 +55,9 @@ def test_charge_and_spin_reach_the_model(run: Run) -> None:
     e_anion = run(_input(anion, CalcType.energy)).results.energy
     e_radical = run(_input(radical, CalcType.energy)).results.energy
     assert abs(e_anion - e_radical) > 1e-2
+
+
+def test_batch_matches_single(run: Run) -> None:
+    """One batched pass gives each molecule what computing it alone gives."""
+    inputs = [_input(m, CalcType.gradient) for m in batch_molecules(charged=True)]
+    check_batch_matches_single(run, inputs, atol=1e-6)

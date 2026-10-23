@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- A batch hook on `Codec`: `encode_batch(inputs) -> PythonInput`, whose function returns one native value per input, and `batch_key(input)`, under which inputs may share a batch (`None`: computed alone), plus `max_batch` (default 32). Each value is decoded with the codec's ordinary decoder, so every structure keeps its own result. qccompute will batch lists of such inputs.
+- AIMNet2, TorchANI, MACE, Orb, and FAIR-Chem evaluate energies and gradients of several structures in one pass: concatenated atoms with a molecule index (AIMNet2), padded arrays (TorchANI), and batched graphs (MACE, Orb, FAIR-Chem). Batched results match single evaluations to the models' precision; structures may differ in size, and in charge where the model reads it. Hessians stay one structure at a time.
+
 ## [0.18.0] - 2026-10-22
 
 ### Added
