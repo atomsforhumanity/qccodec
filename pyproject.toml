@@ -46,6 +46,9 @@ Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.m
 [project.optional-dependencies]
 geometric = ["geometric>=1.0.1,<2"]
 tcpb = ["tcpb>=0.16.0"]
+sella = [
+    "sella>=2.6",
+]
 
 [dependency-groups]
 dev = [

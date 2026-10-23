@@ -22,6 +22,7 @@ _BUILTIN: dict[str, str] = {
     "xtb": "xtb",
     "psi4": "psi4",
     "geometric": "geometric",
+    "sella": "sella",
     "tblite": "tblite",
     "dftbplus": "dftbplus",
     "aimnet2": "aimnet2",

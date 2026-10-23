@@ -72,6 +72,7 @@ Each program has a documentation page and a runnable example script for every ca
 | [`crest`](https://qccodec.docs.atomsforhumanity.org/programs/crest/) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
 | [`dftbplus`](https://qccodec.docs.atomsforhumanity.org/programs/dftbplus/) | energy, gradient, hessian, optimization | DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref |
 | [`geometric`](https://qccodec.docs.atomsforhumanity.org/programs/geometric/) | optimization, transition_state | Drives any gradient program (`qccodec[geometric]`) |
+| [`sella`](https://qccodec.docs.atomsforhumanity.org/programs/sella/) | optimization, transition_state | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
 | [`orca`](https://qccodec.docs.atomsforhumanity.org/programs/orca/) | energy, gradient, hessian, optimization, transition_state | |
 | [`psi4`](https://qccodec.docs.atomsforhumanity.org/programs/psi4/) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
 | [`terachem`](https://qccodec.docs.atomsforhumanity.org/programs/terachem/) | energy, gradient, hessian, optimization | GPU quantum chemistry |
@@ -84,7 +85,7 @@ Each program has a documentation page and a runnable example script for every ca
 | [`orb`](https://qccodec.docs.atomsforhumanity.org/programs/orb/) | energy, gradient | Orb v3 and OrbMol |
 | [`torchani`](https://qccodec.docs.atomsforhumanity.org/programs/torchani/) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
 
-The last six run in the calling Python process: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` for optimizations and transition states.
+The last six run in the calling Python process: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
 
 To support a new program, see [Writing a codec](https://qccodec.docs.atomsforhumanity.org/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
@@ -96,4 +97,4 @@ If there's data you'd like parsed from output files or a program you'd like supp
 
 ## Optional dependencies
 
-Optional integrations install with `qccodec[geometric]` or `qccodec[tcpb]`. The tblite and machine-learned-potential codecs need their own libraries, installed separately (several of them, such as `mace-torch` and `fairchem-core`, cannot share an environment). Every library is imported only when a calculation is invoked.
+Optional integrations install with `qccodec[geometric]`, `qccodec[sella]`, or `qccodec[tcpb]`. To run any program from ASE-based tools, see [ASE workflows](https://qccodec.docs.atomsforhumanity.org/guides/ase/). The tblite and machine-learned-potential codecs need their own libraries, installed separately (several of them, such as `mace-torch` and `fairchem-core`, cannot share an environment). Every library is imported only when a calculation is invoked.

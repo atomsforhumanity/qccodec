@@ -48,6 +48,7 @@ Copy one, delete what you don't need, and run it.
 | --- | --- | --- |
 | [`crest`](programs/crest.md) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
 | [`geometric`](programs/geometric.md) | optimization, transition_state | Drives any gradient program |
+| [`sella`](programs/sella.md) | optimization, transition_state | Drives any gradient program; optional Hessian program |
 | [`orca`](programs/orca.md) | energy, gradient, hessian, optimization, transition_state | |
 | [`psi4`](programs/psi4.md) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
 | [`terachem`](programs/terachem.md) | energy, gradient, hessian, optimization | GPU quantum chemistry |
