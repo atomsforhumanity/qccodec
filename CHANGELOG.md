@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.20.0] - 2026-10-23
+
 ### Added
 
 - `sella` codec (`pip install qccodec[sella]`): Sella minimizations (`optimization`) and transition-state searches (`transition_state`) driving any gradient program in `subprograms`, like `geometric`. Keywords are Sella's own, passed unchanged (`fmax` and `steps` to `Sella.run`, the rest to `Sella`), with Sella's defaults. An optional `hessian` subprogram becomes Sella's `hessian_function`, so a search can start from xtb's or a machine-learned potential's Hessian; `constraints` maps Sella's `Constraints` methods (`fix_translation`, `fix_bond`, `fix_angle`, `fix_dihedral`) to their calls. The trajectory holds one frame per step, Hessians are attached to their frames, and a run that uses up `steps` fails with its trajectory.
@@ -450,7 +452,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.19.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.20.0...HEAD
+[0.20.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.0
 [0.19.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.19.0
 [0.18.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.18.0
 [0.17.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.17.0
