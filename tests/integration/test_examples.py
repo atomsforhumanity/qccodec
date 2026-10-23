@@ -11,8 +11,9 @@ from .conftest import requires, requires_hugging_face, requires_modules
 
 EXAMPLES = Path(__file__).parent.parent.parent / "examples"
 
-# Programs each example directory needs on PATH; geomeTRIC examples use CREST gradients.
-NEEDS = {"geometric": ("crest",), "dftbplus": ("dftb+",)}
+# Programs each example directory needs on PATH; geomeTRIC examples use CREST gradients,
+# Sella examples xtb.
+NEEDS = {"geometric": ("crest",), "sella": ("xtb",), "dftbplus": ("dftb+",)}
 # The tcpb clients need a running TeraChem server and a tcpb release built against
 # current qcdata; neither exists in CI yet.
 NEEDS_SERVER = {"terachem-fe", "terachem-pbs"}

@@ -11,6 +11,7 @@ on:
     paths:
       - "src/qccodec/programs/**"
       - "src/qccodec/codec.py"
+      - "src/qccodec/ase.py"
       - "tests/integration/**"
       - "examples/**"
       - ".github/workflows/integration.yaml"
@@ -19,6 +20,7 @@ on:
     paths:
       - "src/qccodec/programs/**"
       - "src/qccodec/codec.py"
+      - "src/qccodec/ase.py"
       - "tests/integration/**"
       - "examples/**"
       - ".github/workflows/integration.yaml"
@@ -110,7 +112,7 @@ jobs:
           enable-cache: true
           python-version: "3.12"
       - name: Install
-        run: uv sync --locked --group integration --extra geometric
+        run: uv sync --locked --group integration --extra geometric --extra sella
       - name: Program versions
         run: |
           crest --version | grep -i version
@@ -144,7 +146,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: uv sync --locked --group integration --extra geometric
+        run: uv sync --locked --group integration --extra geometric --extra sella
       - name: Hardware and programs
         run: |
           nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv

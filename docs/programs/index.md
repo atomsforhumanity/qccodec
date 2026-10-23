@@ -54,8 +54,9 @@ process, so install the library next to qccompute instead of putting anything on
 - **Charge and spin** reach models that understand them (AIMNet2-NSE, FAIR-Chem's
   `omol` head, MACE-OMOL, Orb's OMol25 models). Codecs refuse ions and open shells for
   models trained only on neutral closed-shell molecules.
-- **Optimizations and transition states** run under [geomeTRIC](geometric.md), with the
-  library's gradients as the child calculation.
+- **Optimizations and transition states** run under [geomeTRIC](geometric.md) or
+  [Sella](sella.md), with the library's gradients (and, for Sella, optionally its
+  Hessians) as the child calculations.
 - Some libraries pin incompatible dependencies; `fairchem-core` cannot share an
   environment with `mace-torch` or `orb-models`.
 
@@ -67,9 +68,11 @@ install, but no Hessians or optimizer of its own). Use `program="xtb"` for singl
 points, Hessians, and optimizations with xtb's full set of options, for point charges,
 and for g-xTB. Use `program="crest"` for conformer searches and CREST's other workflows.
 
-## Optimizations: the program's optimizer or geomeTRIC?
+## Optimizations: the program's optimizer, geomeTRIC, or Sella?
 
 Programs with their own optimizer (CREST, ORCA, Psi4, TeraChem, xtb) run
-`optimization` themselves. [geomeTRIC](geometric.md) can drive any program's gradients
-instead, which is useful for a consistent optimizer across programs, constraints, and
-QM/MM optimizations with Psi4 point charges.
+`optimization` themselves. [geomeTRIC](geometric.md) and [Sella](sella.md) can drive
+any program's gradients instead, which is useful for a consistent optimizer across
+programs, constraints, and QM/MM optimizations with Psi4 point charges. Sella can also
+start a transition-state search from a Hessian program (analytic or cheap Hessians,
+such as xtb's or a machine-learned potential's) instead of finite differences.

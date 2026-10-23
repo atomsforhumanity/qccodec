@@ -95,6 +95,7 @@ nav:
       - geomeTRIC: programs/geometric.md
       - ORCA: programs/orca.md
       - Psi4: programs/psi4.md
+      - Sella: programs/sella.md
       - tblite: programs/tblite.md
       - TeraChem: programs/terachem.md
       - TeraChem servers: programs/terachem-servers.md
@@ -108,6 +109,7 @@ nav:
   - Guides:
       - Decoding program output: guides/decoding.md
       - Writing a codec: guides/writing-a-codec.md
+      - ASE workflows: guides/ase.md
   - API reference: reference.md
   - Contributing: https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md
   - Changelog: https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md
