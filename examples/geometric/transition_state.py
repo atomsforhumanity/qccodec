@@ -9,7 +9,7 @@ Notes for geomeTRIC transition-state searches (https://geometric.readthedocs.io/
 - ``CalcType.transition_state`` turns on geomeTRIC's saddle-point optimizer.
   geomeTRIC needs a starting Hessian, which it builds by finite differences of child
   gradients (two per Cartesian coordinate). Those displaced gradients are not
-  optimizer steps, so ``results.trajectory`` leaves them out: it holds one frame per
+  optimizer steps, so ``results.frames`` leaves them out: it holds one frame per
   step, and each Hessian geomeTRIC computes is attached to the frame at its
   geometry (``frame.results.hessian``).
 - ``"hessian"`` chooses when: ``"first"`` (the default) at the start,
@@ -80,11 +80,11 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Transition-state energy (Hartree):", results.energies[-1])
 print("Transition-state structure (bohr):\n", results.final_structure.geometry)
 
 # Confirm the saddle point: exactly one negative eigenvalue of the final Hessian.
-final_hessian = results.trajectory[-1].results.hessian
+final_hessian = results.frames[-1].results.hessian
 eigenvalues = np.linalg.eigvalsh(final_hessian)
 print("Negative Hessian eigenvalues:", int((eigenvalues < -1e-3).sum()), "(1 for a TS)")

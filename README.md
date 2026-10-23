@@ -72,7 +72,7 @@ Each program has a documentation page and a runnable example script for every ca
 | [`crest`](https://qccodec.docs.atomsforhumanity.org/programs/crest/) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
 | [`dftbplus`](https://qccodec.docs.atomsforhumanity.org/programs/dftbplus/) | energy, gradient, hessian, optimization | DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref |
 | [`geometric`](https://qccodec.docs.atomsforhumanity.org/programs/geometric/) | optimization, transition_state | Drives any gradient program (`qccodec[geometric]`) |
-| [`sella`](https://qccodec.docs.atomsforhumanity.org/programs/sella/) | optimization, transition_state | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
+| [`sella`](https://qccodec.docs.atomsforhumanity.org/programs/sella/) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
 | [`orca`](https://qccodec.docs.atomsforhumanity.org/programs/orca/) | energy, gradient, hessian, optimization, transition_state | |
 | [`psi4`](https://qccodec.docs.atomsforhumanity.org/programs/psi4/) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
 | [`terachem`](https://qccodec.docs.atomsforhumanity.org/programs/terachem/) | energy, gradient, hessian, optimization | GPU quantum chemistry |

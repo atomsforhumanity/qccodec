@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Added
+
+- `sella` codec: `CalcType.irc` (qcdata 0.23). Both directions run from the transition state in `structure` with one Sella `IRC`; the result is a `PathData` from the reverse end through the transition state (`ts_index`) to the forward end, with the optional `hessian` subprogram's Hessian on the transition-state frame. The codec removes Sella's rigid drift (mass-weighted alignment of each frame onto the previous) and ends a branch on the vibrations' curvature, so Sella no longer spins a molecule at its minimum until `steps` runs out. New example `examples/sella/irc.py`. On HCN ⇌ HNC with GFN2-xTB it gives barriers of 53.2 and 73.2 kcal/mol, as ORCA's XTB2 IRC does.
+
+### Changed
+
+- Requires `qcdata>=0.23.1`, whose `Frame` replaces per-step `ProgramOutput`s. Optimization trajectories are `results.frames` (each step's `structure` and `results`, without a copy of the child's input); conformer searches return `conformers`/`rotamers` as frames. Native parsers (xtb, CREST, ORCA, Psi4, TeraChem, DFTB+) build frames directly instead of inventing a per-step input, and geomeTRIC and Sella record each child output as a frame. Codecs read `inp.require_structure()`. Fixture `expected.json` files are re-saved in the new format.
+
 ## [0.20.1] - 2026-10-23
 
 ### Changed

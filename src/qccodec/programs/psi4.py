@@ -59,8 +59,8 @@ from typing import Any
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
-    ProgramOutput,
     Provenance,
     SinglePointData,
     Structure,
@@ -144,10 +144,10 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         "options": options,
         "kwargs": kwargs,
         "molecule": {
-            "symbols": list(inp.structure.symbols),
-            "geometry": inp.structure.geometry.tolist(),
-            "charge": inp.structure.charge,
-            "multiplicity": inp.structure.multiplicity,
+            "symbols": list(inp.require_structure().symbols),
+            "geometry": inp.require_structure().geometry.tolist(),
+            "charge": inp.require_structure().charge,
+            "multiplicity": inp.require_structure().multiplicity,
             "symmetry": molecule_keywords.get("symmetry"),
         },
     }
@@ -267,11 +267,11 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in fields.items() if v is not None}
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=OPTIMIZATIONS)
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+@codec.parser(file="directory", target="frames", calctypes=OPTIMIZATIONS)
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build the optimization trajectory from optking's history.
 
-    Every step is a gradient calculation at that step's geometry. The final step also
+    Every frame holds the energy and gradient at that step's geometry. The final step also
     carries what the final wavefunction provides (charges, orbitals, variables).
     """
     if ctx.input_data is None:
@@ -283,8 +283,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
             return []
         raise MatchNotFoundError("trajectory", RESULTS_FILE)
     provenance = Provenance(program="psi4", program_version=results.get("psi4_version"))
-    structure = ctx.input_data.structure
-    trajectory: list[ProgramOutput] = []
+    structure = ctx.input_data.require_structure()
+    trajectory: list[Frame] = []
     for i, step in enumerate(steps):
         fields: dict[str, Any] = {
             "energy": step["energy"],
@@ -302,14 +302,8 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
             multiplicity=structure.multiplicity,
         )
         trajectory.append(
-            ProgramOutput(
-                input_data=ProgramInput.model_validate(
-                    {
-                        **ctx.input_data.model_dump(),
-                        "calctype": CalcType.gradient,
-                        "structure": step_structure,
-                    }
-                ),
+            Frame(
+                structure=step_structure,
                 success=True,
                 results=SinglePointData(provenance=provenance, **fields),
                 execution=ExecutionInfo(scratch_dir=ctx.directory),

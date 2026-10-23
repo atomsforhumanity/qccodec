@@ -64,8 +64,8 @@ from typing import Any
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
-    ProgramOutput,
     Provenance,
     SinglePointData,
     Structure,
@@ -162,7 +162,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 
     generated: dict[str, str | bytes] = {
         INPUT_FILE: render(document),
-        STRUCTURE_FILE: inp.structure.to_xyz(),
+        STRUCTURE_FILE: inp.require_structure().to_xyz(),
     }
     conflicts = generated.keys() & inp.files.keys()
     if conflicts:
@@ -180,10 +180,10 @@ def _hamiltonian(inp: ProgramInput, skf_dir: str | None) -> Typed:
     """Build the Hamiltonian block for the model."""
     assert inp.model is not None
     key = inp.model.method.lower().replace("_", "-")
-    charge = inp.structure.charge
+    charge = inp.require_structure().charge
     spin: dict[str, Any] = {}
-    if inp.structure.multiplicity > 1:
-        unpaired = inp.structure.multiplicity - 1
+    if inp.require_structure().multiplicity > 1:
+        unpaired = inp.require_structure().multiplicity - 1
         spin = {"SpinPolarisation": Typed("Colinear", {"UnpairedElectrons": unpaired})}
 
     if key in XTB_METHODS:
@@ -212,7 +212,7 @@ def _hamiltonian(inp: ProgramInput, skf_dir: str | None) -> Typed:
             f"Unknown DFTB parameter set {inp.model.basis!r}; known: "
             f"{[s.name for s in dftb_parameter_sets.values()]}."
         ) from None
-    elements = list(dict.fromkeys(inp.structure.symbols))
+    elements = list(dict.fromkeys(inp.require_structure().symbols))
     missing = [e for e in elements if e not in parameters.elements]
     if missing:
         raise EncoderError(
@@ -435,8 +435,8 @@ def parse_hessian(contents: str) -> list[list[float]]:
     return [values[i * n : (i + 1) * n] for i in range(n)]
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+@codec.parser(file="directory", target="frames", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build the trajectory from ``geo_end.xyz`` and each step's energy in stdout.
 
     Every step carries its structure and energy; the last also carries the gradient
@@ -458,7 +458,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
             flags=re.MULTILINE,
         )
     ]
-    structures = _xyz_frames(frames, ctx.input_data.structure)
+    structures = _xyz_frames(frames, ctx.input_data.require_structure())
     if len(energies) < len(structures):
         raise ParserError(
             f"{len(structures)} optimization steps but {len(energies)} energies."
@@ -477,22 +477,15 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
     trajectory = []
     for i, structure in enumerate(structures):
         last = i == len(structures) - 1
-        calctype = CalcType.gradient if last and gradient else CalcType.energy
         trajectory.append(
-            ProgramOutput(
-                input_data=ProgramInput.model_validate(
-                    {
-                        **ctx.input_data.model_dump(),
-                        "calctype": calctype,
-                        "structure": structure,
-                    }
-                ),
+            Frame(
+                structure=structure,
                 success=True,
                 results=SinglePointData.model_validate(
                     {
                         "provenance": provenance,
                         "energy": energies[i],
-                        "gradient": gradient if calctype == CalcType.gradient else None,
+                        "gradient": gradient if last else None,
                     }
                 ),
                 execution=ExecutionInfo(scratch_dir=ctx.directory),

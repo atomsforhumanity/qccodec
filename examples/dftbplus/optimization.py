@@ -12,7 +12,7 @@ Optimization specifics:
   any of it through ``keywords["Driver"]``, which merges into that block.
 - ``MovedAtoms`` takes DFTB+'s own syntax with 1-based atom numbers, e.g. "2:-1" to
   freeze the first atom.
-- Every step in ``results.trajectory`` carries its structure and energy; the last one
+- Every step in ``results.frames`` carries its structure and energy; the last one
   also carries the gradient. The first step is your input structure: DFTB+ does not
   move or reorient it.
 - A run that hits MaxSteps raises with "did not converge", trajectory attached.
@@ -48,6 +48,6 @@ prog_input = ProgramInput(
 output = compute(prog_input)
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)

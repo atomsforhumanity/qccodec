@@ -10,7 +10,7 @@ Notes for CREST optimizations (https://crest-lab.github.io/crest-docs/):
   ``optlev`` ("crude", "sloppy", "loose", "normal", "tight", "vtight", "extreme")
   and ``maxcycle``. Method settings (solvent, electronic temperature, ...) go in its
   ``level`` table, as in single_point.py. CREST stops on keys it does not know.
-- Each step in ``results.trajectory`` has its structure and energy; the last step
+- Each step in ``results.frames`` has its structure and energy; the last step
   also has the gradient.
 - For transition states, or an optimizer with more control, drive CREST gradients
   with geomeTRIC (examples/geometric/).
@@ -57,9 +57,9 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
-print("Final gradient (Hartree/bohr):\n", results.trajectory[-1].results.gradient)
+print("Final gradient (Hartree/bohr):\n", results.frames[-1].results.gradient)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:
 # results.save("optimization.json"); results.final_structure.save("final.xyz")

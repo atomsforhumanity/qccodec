@@ -2658,7 +2658,7 @@ integration = [
 requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
-    { name = "qcdata", specifier = ">=0.20.2,<0.23" },
+    { name = "qcdata", specifier = ">=0.23.1" },
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
     { name = "tcpb", marker = "extra == 'tcpb'", specifier = ">=0.16.0" },
@@ -2714,7 +2714,7 @@ wheels = [
 
 [[package]]
 name = "qcdata"
-version = "0.20.2"
+version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport" },
@@ -2728,9 +2728,9 @@ dependencies = [
     { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "typing-extensions", version = "4.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/72/292b21824f5d9692a0f131e9ef956f06337ed7cda731a6d3399218afc41e/qcdata-0.20.2.tar.gz", hash = "sha256:236fbfddd045c08321f07db20ce8d5eadb45ae3a30ca2b1c38383801f05f91a7", size = 1558707, upload-time = "2026-10-20T22:56:58.072Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/d0/947388015ae757f33aff116e2511edef22934400db6e032ee1dd27026afc/qcdata-0.23.1.tar.gz", hash = "sha256:d61dac914f165101de742a1893ba674f4efd3d531de26aed7955097edc02e45b", size = 1459708, upload-time = "2026-10-23T23:22:46.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/03/f55e9f226251ec152d64417f120c2cfdeea1ccaa220f79b7f3c330596b77/qcdata-0.20.2-py3-none-any.whl", hash = "sha256:261698abf18e1d1f49672691b07469b8c54e207115e92cb4ea34aea62cb779eb", size = 38300, upload-time = "2026-10-20T22:56:56.471Z" },
+    { url = "https://files.pythonhosted.org/packages/77/f5/2a03f0fd2cb18ecd92b007b4ff4eacc978ba66e130e4b3646ea4a414a9cc/qcdata-0.23.1-py3-none-any.whl", hash = "sha256:c7cefc0129e28289bc17e9373835aca52dd273ec3b1bc05b2518fc918384f3bc", size = 42719, upload-time = "2026-10-23T23:22:44.646Z" },
 ]
 
 [[package]]

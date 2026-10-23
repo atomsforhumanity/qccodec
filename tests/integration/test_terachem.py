@@ -112,7 +112,7 @@ def test_optimization(run: Run, water: Structure) -> None:
     inp = _input(water, CalcType.optimization, new_minimizer="yes")
     output = run(inp, case="water_optimization")
     assert isinstance(output.results, OptimizationData)
-    assert len(output.results.trajectory) > 1
+    assert len(output.results.frames) > 1
     assert output.results.energies[0] > output.results.energies[-1]
 
 
@@ -129,7 +129,7 @@ def test_constrained_optimization(run: Run, water: Structure) -> None:
         },
     )
     output = run(inp, case="water_constrained_optimization")
-    final = output.results.trajectory[-1].input_data.structure.geometry
+    final = output.results.frames[-1].structure.geometry
     assert np.allclose(final[0], water.geometry[0], atol=1e-4)
     assert np.isclose(np.linalg.norm(final[1] - final[0]), target, atol=1e-3)
 

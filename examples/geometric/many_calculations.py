@@ -64,7 +64,7 @@ elapsed = time.perf_counter() - start
 for i, output in enumerate(outputs):
     results = output.results
     print(
-        f"Optimization {i}: {len(results.trajectory)} steps, final energy "
+        f"Optimization {i}: {len(results.frames)} steps, final energy "
         f"{results.energies[-1]:.8f} Hartree"
     )
 print(f"Four optimizations side by side: {elapsed:.2f} s")

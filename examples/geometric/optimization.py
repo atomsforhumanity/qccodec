@@ -17,8 +17,8 @@ How it works (https://geometric.readthedocs.io/):
   several molecules), "dlc", "prim", or "cart".
 - ``constraints`` use geomeTRIC's dictionary format with 0-based atom indices,
   distances in bohr, and angles in degrees. Scans are not supported.
-- Every step in ``results.trajectory`` is the child's full output (energy, gradient,
-  charges, ...), whichever program it is.
+- Each step in ``results.frames`` is a frame: its structure and the child's
+  results (energy, gradient, charges, ...), whichever program it is.
 - QM/MM: this is the way to optimize a QM region in point charges with Psi4, since
   Psi4 1.11's own optimizer cannot (see the Psi4 child below). The charges stay fixed.
 """
@@ -104,10 +104,10 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
-print("Final gradient (Hartree/bohr):\n", results.trajectory[-1].results.gradient)
+print("Final gradient (Hartree/bohr):\n", results.frames[-1].results.gradient)
 print("Final structure (bohr):\n", results.final_structure.geometry)
-print("Gradient program:", results.trajectory[-1].input_data.program)
+print("Gradient program:", results.frames[-1].results.provenance.program)
 # Save the trajectory, e.g. to view in a molecule viewer:
 # results.save("optimization.json"); results.final_structure.save("final.xyz")

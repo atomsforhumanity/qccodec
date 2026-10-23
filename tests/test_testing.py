@@ -38,7 +38,7 @@ def toy_codec() -> Codec:
         """Fill calcinfo_natoms from the input when the option is on."""
         assert ctx.input_data is not None
         return (
-            {"calcinfo_natoms": len(ctx.input_data.structure.symbols)}
+            {"calcinfo_natoms": len(ctx.input_data.require_structure().symbols)}
             if ctx.options["natoms"]
             else {}
         )

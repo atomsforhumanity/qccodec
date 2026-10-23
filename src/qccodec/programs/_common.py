@@ -149,7 +149,7 @@ def parse_g98_normal_modes(ctx: Context) -> list[list[list[float]]]:
     if ctx.input_data is None:
         raise ParserError("Normal mode parsing requires input_data.")
     contents = ctx.read("g98.out")
-    structure = ctx.input_data.structure
+    structure = ctx.input_data.require_structure()
     modes = np.asarray(_g98_mass_weighted_modes(contents))
     if modes.size == 0:
         raise ParserError("g98.out holds no normal modes.")

@@ -116,10 +116,12 @@ def encode(inp: ProgramInput) -> PythonInput:
     if inp.cmdline_args or inp.files:
         raise EncoderError("MACE runs in Python; cmdline_args and files are unused.")
     charged = family in CHARGED_FAMILIES
-    if not charged and (inp.structure.charge != 0 or inp.structure.multiplicity != 1):
+    if not charged and (
+        inp.require_structure().charge != 0 or inp.require_structure().multiplicity != 1
+    ):
         raise EncoderError(
             f"{method} describes neutral closed-shell molecules only; got charge "
-            f"{inp.structure.charge} and multiplicity {inp.structure.multiplicity}. "
+            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}. "
             "MACE-OMOL ('mace-omol') takes charge and spin."
         )
     keywords = dict(inp.keywords)
@@ -139,10 +141,12 @@ def encode(inp: ProgramInput) -> PythonInput:
             "device": device,
             "default_dtype": dtype,
             "charge_and_spin": (
-                (inp.structure.charge, inp.structure.multiplicity) if charged else None
+                (inp.require_structure().charge, inp.require_structure().multiplicity)
+                if charged
+                else None
             ),
-            "numbers": inp.structure.atomic_numbers,
-            "positions": positions_angstrom(inp.structure),
+            "numbers": inp.require_structure().atomic_numbers,
+            "positions": positions_angstrom(inp.require_structure()),
             "forces": inp.calctype != CalcType.energy,
             "hessian": inp.calctype == CalcType.hessian,
         },

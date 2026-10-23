@@ -10,88 +10,69 @@
     "extras": {},
     "program": "xtb",
     "program_version": "6.7.1",
-    "qcdata_version": "0.20.1"
+    "qcdata_version": "0.23.0"
   },
-  "trajectory": [
+  "frames": [
     {
-      "extras": {},
-      "input_data": {
-        "extras": {},
-        "files": {},
-        "program": "xtb",
-        "cmdline_args": [],
-        "calctype": "energy",
-        "model": {
-          "extras": {},
-          "method": "gfn2",
-          "basis": null,
-          "qcdata_version": "0.20.1"
-        },
-        "keywords": {
-          "cycles": 1
-        },
-        "subprograms": [],
-        "structure": {
-          "extras": {
-            "xyz_comments": [
-              "energy:",
-              "-5.070218272202",
-              "gnorm:",
-              "0.018389627695",
-              "xtb:",
-              "6.7.1",
-              "(edcfbbe)"
-            ]
-          },
-          "symbols": [
-            "O",
-            "H",
-            "H"
-          ],
-          "geometry": [
-            [
-              0.0,
-              0.0,
-              0.0
-            ],
-            [
-              0.5240000000000076,
-              1.6870000000000038,
-              0.4799999999999999
-            ],
-            [
-              1.1459999999999926,
-              -0.45,
-              -1.3540000000000074
-            ]
-          ],
-          "charge": 0,
-          "multiplicity": 1,
-          "identifiers": {
-            "extras": {},
-            "name": null,
-            "name_IUPAC": null,
-            "smiles": null,
-            "canonical_smiles": null,
-            "canonical_smiles_program": null,
-            "canonical_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_smiles": null,
-            "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
-            "inchi": null,
-            "inchikey": null,
-            "pubchem_cid": null,
-            "pubchem_sid": null,
-            "pubchem_conformerid": null,
-            "qcdata_version": "0.20.1"
-          },
-          "connectivity": [],
-          "qcdata_version": "0.20.1"
-        },
-        "structures": {},
-        "qcdata_version": "0.20.1"
-      },
       "success": true,
+      "extras": {},
+      "structure": {
+        "extras": {
+          "xyz_comments": [
+            "energy:",
+            "-5.070218272202",
+            "gnorm:",
+            "0.018389627695",
+            "xtb:",
+            "6.7.1",
+            "(edcfbbe)"
+          ]
+        },
+        "symbols": [
+          "O",
+          "H",
+          "H"
+        ],
+        "geometry": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.5240000000000076,
+            1.6870000000000038,
+            0.4799999999999999
+          ],
+          [
+            1.1459999999999926,
+            -0.45,
+            -1.3540000000000074
+          ]
+        ],
+        "charge": 0,
+        "multiplicity": 1,
+        "identifiers": {
+          "extras": {},
+          "name": null,
+          "name_IUPAC": null,
+          "smiles": null,
+          "canonical_smiles": null,
+          "canonical_smiles_program": null,
+          "canonical_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_smiles": null,
+          "canonical_isomeric_explicit_hydrogen_mapped_smiles": null,
+          "inchi": null,
+          "inchikey": null,
+          "pubchem_cid": null,
+          "pubchem_sid": null,
+          "pubchem_conformerid": null,
+          "qcdata_version": "0.23.0"
+        },
+        "connectivity": [],
+        "qcdata_version": "0.23.0"
+      },
       "results": {
         "calcinfo_natoms": null,
         "calcinfo_nalpha": null,
@@ -104,7 +85,7 @@
           "extras": {},
           "program": "xtb",
           "program_version": "6.7.1",
-          "qcdata_version": "0.20.1"
+          "qcdata_version": "0.23.0"
         },
         "energy": -5.070218272202,
         "gradient": null,
@@ -117,12 +98,12 @@
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.20.1"
+        "qcdata_version": "0.23.0"
       },
+      "qcdata_version": "0.23.0",
       "logs": null,
-      "traceback": null,
-      "qcdata_version": "0.20.1"
+      "traceback": null
     }
   ],
-  "qcdata_version": "0.20.1"
+  "qcdata_version": "0.23.0"
 }

@@ -91,8 +91,8 @@ def test_geometric_optimization_with_tblite_gradients(
         )
     )
     assert isinstance(output.results, OptimizationData)
-    trajectory = output.results.trajectory
-    assert np.allclose(trajectory[0].input_data.structure.geometry, water.geometry)
+    trajectory = output.results.frames
+    assert np.allclose(trajectory[0].structure.geometry, water.geometry)
     final = trajectory[-1].results
     assert final.energy is not None and final.energy < ENERGY
     assert final.gradient is not None and np.abs(final.gradient).max() < 5e-4

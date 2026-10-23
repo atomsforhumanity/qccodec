@@ -41,8 +41,8 @@ import tomli_w
 from qcdata import (
     CalcType,
     ExecutionInfo,
+    Frame,
     ProgramInput,
-    ProgramOutput,
     Provenance,
     SinglePointData,
     Structure,
@@ -81,7 +81,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         inp,
         {
             "input.toml": tomli_w.dumps(toml_dict),
-            struct_filename: inp.structure.to_xyz(),
+            struct_filename: inp.require_structure().to_xyz(),
         },
         "input.toml",
         environment={"OMP_NUM_THREADS": "1"},
@@ -152,8 +152,8 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
     levels = calculation.pop("level", []) or [{}]
     for level in levels:
         level["method"] = inp.model.method
-        level["charge"] = inp.structure.charge
-        level["uhf"] = inp.structure.multiplicity - 1
+        level["charge"] = inp.require_structure().charge
+        level["uhf"] = inp.require_structure().multiplicity - 1
     calculation["level"] = levels
     toml_dict["calculation"] = calculation
     return toml_dict
@@ -176,37 +176,46 @@ def parse_version(stdout: str) -> str:
     return re_search(r"Version (\d+\.\d+\.\d+),", stdout).group(1)
 
 
-def _structures_with_energies(
-    ctx: Context, filename: str
-) -> tuple[list[Structure], list[float]]:
-    """Read a CREST multi-structure xyz file whose comment line holds the energy."""
+def _ensemble(ctx: Context, filename: str) -> list[Frame]:
+    """Read a CREST multi-structure xyz file whose comment lines hold the energies."""
     assert ctx.input_data is not None
     structures = Structure.open_multi(
         ctx.path(filename),
-        charge=ctx.input_data.structure.charge,
-        multiplicity=ctx.input_data.structure.multiplicity,
+        charge=ctx.input_data.require_structure().charge,
+        multiplicity=ctx.input_data.require_structure().multiplicity,
     )
     energies = [float(s.extras[Structure._xyz_comment_key][0]) for s in structures]
     # Identifiers carry over when the topology is unchanged.
     if ctx.input_data.keywords.get("topo", True):
-        ids = ctx.input_data.structure.identifiers.model_dump()
+        ids = ctx.input_data.require_structure().identifiers.model_dump()
         for structure in structures:
             structure.add_identifiers(**ids)
-    return structures, energies
+    try:
+        version = parse_version(ctx.stdout) if ctx.stdout else None
+    except MatchNotFoundError:
+        version = None
+    provenance = Provenance(program="crest", program_version=version)
+    return [
+        Frame(
+            structure=structure,
+            success=True,
+            results=SinglePointData(provenance=provenance, energy=energy),
+        )
+        for structure, energy in zip(structures, energies, strict=True)
+    ]
 
 
 @codec.parser(file="directory", calctypes=[CalcType.conformer_search])
 def parse_conformers(ctx: Context) -> dict[str, Any]:
-    """Parse conformers and their energies from ``crest_conformers.xyz``."""
+    """Parse the conformers, each a frame with its energy, from ``crest_conformers.xyz``."""
     if ctx.input_data is None:
         raise ParserError("Conformer parsing requires input_data.")
-    conformers, energies = _structures_with_energies(ctx, "crest_conformers.xyz")
-    return {"conformers": conformers, "conformer_energies": energies}
+    return {"conformers": _ensemble(ctx, "crest_conformers.xyz")}
 
 
 @codec.parser(file="directory", calctypes=[CalcType.conformer_search])
 def parse_rotamers(ctx: Context) -> dict[str, Any]:
-    """Parse rotamers and their energies from ``crest_rotamers.xyz``.
+    """Parse the rotamers, each a frame with its energy, from ``crest_rotamers.xyz``.
 
     Runs only with ``options={"collect_rotamers": True}``.
     """
@@ -214,8 +223,7 @@ def parse_rotamers(ctx: Context) -> dict[str, Any]:
         return {}
     if ctx.input_data is None:
         raise ParserError("Rotamer parsing requires input_data.")
-    rotamers, energies = _structures_with_energies(ctx, "crest_rotamers.xyz")
-    return {"rotamers": rotamers, "rotamer_energies": energies}
+    return {"rotamers": _ensemble(ctx, "crest_rotamers.xyz")}
 
 
 @codec.parser(
@@ -283,8 +291,8 @@ def _to_input_frame(structures: list[Structure], start: Structure) -> list[Struc
     ]
 
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
+@codec.parser(file="directory", target="frames", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[Frame]:
     """Build an optimization trajectory from ``crestopt.log`` and ``crest.engrad``.
 
     Intermediate steps expose energies only; the final step gains the gradient when
@@ -294,25 +302,19 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         raise ParserError("Optimization trajectory parsing requires input_data.")
     structures = Structure.from_xyz_multi(
         ctx.read("crestopt.log"),
-        charge=ctx.input_data.structure.charge,
-        multiplicity=ctx.input_data.structure.multiplicity,
+        charge=ctx.input_data.require_structure().charge,
+        multiplicity=ctx.input_data.require_structure().multiplicity,
     )
     energies = [float(s.extras[Structure._xyz_comment_key][1]) for s in structures]
-    structures = _to_input_frame(structures, ctx.input_data.structure)
+    structures = _to_input_frame(structures, ctx.input_data.require_structure())
     try:
         version = parse_version(ctx.stdout) if ctx.stdout else None
     except MatchNotFoundError:
         version = None
     provenance = Provenance(program="crest", program_version=version)
-    trajectory: list[ProgramOutput] = [
-        ProgramOutput(
-            input_data=ProgramInput.model_validate(
-                {
-                    **ctx.input_data.model_dump(),
-                    "calctype": CalcType.energy,
-                    "structure": structure,
-                }
-            ),
+    trajectory: list[Frame] = [
+        Frame(
+            structure=structure,
             success=True,
             results=SinglePointData(provenance=provenance, energy=energy),
             execution=ExecutionInfo(scratch_dir=ctx.directory),
@@ -324,7 +326,6 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
             return []
         raise ParserError("CREST optimization trajectory is empty.")
 
-    final = trajectory[-1].model_dump()
     try:
         gradient = parse_gradient(ctx.read("crest.engrad"))
     except FileNotFoundError:
@@ -333,7 +334,7 @@ def parse_trajectory(ctx: Context) -> list[ProgramOutput]:
         if not ctx.failed:
             raise
     else:
-        final["input_data"]["calctype"] = CalcType.gradient
-        final["results"]["gradient"] = gradient
-    trajectory[-1] = ProgramOutput.model_validate(final)
+        final = trajectory[-1]
+        results = final.results.model_copy(update={"gradient": gradient})
+        trajectory[-1] = Frame.model_validate({**dict(final), "results": results})
     return trajectory

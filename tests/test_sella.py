@@ -14,11 +14,13 @@ import pytest
 from qcdata import (
     CalcType,
     Data,
+    Frame,
     Model,
     OptimizationData,
     ProgramInput,
     ProgramOutput,
     ProgramSpec,
+    Provenance,
     SinglePointData,
     Structure,
 )
@@ -84,7 +86,7 @@ class Child:
     ) -> ProgramOutput[ProgramInput, Data]:
         self.inputs.append(input_data)
         self.previous.append(previous)
-        geometry = input_data.structure.geometry
+        geometry = input_data.require_structure().geometry
         energy, gradient = springs(geometry)
         results: dict[str, Any] = {
             "provenance": {"program": "springs"},
@@ -191,7 +193,7 @@ def test_minimization_reaches_the_springs_minimum() -> None:
     result = _run(_input(fmax=1e-4, steps=100), child)
     assert result.provenance.program == "sella"
     assert result.provenance.program_version
-    assert len(result.trajectory) > 2
+    assert len(result.frames) > 2
     assert result.energies[0] > result.energies[-1]
     assert result.energies[-1] < 1e-8
     for pair, rest in REST.items():
@@ -201,10 +203,8 @@ def test_minimization_reaches_the_springs_minimum() -> None:
     assert np.allclose(
         result.final_structure.geometry.mean(axis=0), WATER.geometry.mean(axis=0)
     )
-    assert all(frame.input_data.program == "springs" for frame in result.trajectory)
-    assert np.allclose(
-        result.trajectory[0].input_data.structure.geometry, WATER.geometry
-    )
+    assert all(frame.results.provenance.program == "springs" for frame in result.frames)
+    assert np.allclose(result.frames[0].structure.geometry, WATER.geometry)
 
 
 def test_running_out_of_steps_fails_with_the_trajectory() -> None:
@@ -213,7 +213,7 @@ def test_running_out_of_steps_fails_with_the_trajectory() -> None:
     with pytest.raises(CalculationError, match="did not converge") as raised:
         _run(_input(fmax=1e-6, steps=1), Child())
     assert isinstance(raised.value.data, OptimizationData)
-    assert len(raised.value.data.trajectory) >= 1
+    assert len(raised.value.data.frames) >= 1
 
 
 def test_a_failed_child_ends_the_trajectory() -> None:
@@ -222,7 +222,7 @@ def test_a_failed_child_ends_the_trajectory() -> None:
     with pytest.raises(CalculationError) as raised:
         _run(_input(fmax=1e-6, steps=50), Child(fail_at=2))
     assert isinstance(raised.value.data, OptimizationData)
-    trajectory = raised.value.data.trajectory
+    trajectory = raised.value.data.frames
     assert not trajectory[-1].success
     assert all(frame.success for frame in trajectory[:-1])
 
@@ -235,7 +235,7 @@ def test_hessian_subprogram_starts_sella_and_is_attached() -> None:
         _input(fmax=1e-4, steps=100, eig=True, subprograms=[GRADIENT, HESSIAN]), child
     )
     assert [i.calctype for i in child.inputs].count(CalcType.hessian) >= 1
-    assert result.trajectory[0].results.hessian is not None
+    assert result.frames[0].results.hessian is not None
     assert result.energies[-1] < 1e-8
 
 
@@ -279,7 +279,7 @@ def test_calculator_converts_units_and_records_outputs() -> None:
         atoms.get_forces(), -gradient * c.HARTREE_TO_EV * c.ANGSTROM_TO_BOHR
     )
     assert len(atoms.calc.outputs) == 1  # ASE caches by geometry
-    assert np.allclose(child.inputs[0].structure.geometry, WATER.geometry)
+    assert np.allclose(child.inputs[0].require_structure().geometry, WATER.geometry)
 
 
 def test_calculator_raises_with_the_failed_output() -> None:
@@ -323,3 +323,73 @@ def test_declares_the_resources_of_its_gradient_child() -> None:
     )
     native = get_codec("sella").encode(_input(subprograms=[child]))
     assert native.threads == 4
+
+
+def _irc(**keywords: Any) -> ProgramInput:
+    subprograms = keywords.pop("subprograms", [GRADIENT])
+    return ProgramInput(
+        program="sella",
+        calctype=CalcType.irc,
+        structure=WATER,
+        subprograms=subprograms,
+        keywords=keywords,
+    )
+
+
+def test_irc_encoding_routes_its_run_keywords() -> None:
+    """fmax_inner goes to IRC.run for an IRC; direction belongs to the codec."""
+    native = get_codec("sella").encode(_irc(fmax=0.01, fmax_inner=0.005, dx=0.05))
+    assert isinstance(native, PythonInput)
+    assert native.kwargs["irc"] is True
+    assert native.kwargs["run_kwargs"] == {"fmax": 0.01, "fmax_inner": 0.005}
+    assert native.kwargs["init_kwargs"] == {"dx": 0.05}
+    with pytest.raises(EncoderError, match="sets these keywords"):
+        get_codec("sella").encode(_irc(direction="forward"))
+
+
+def _frame(geometry: np.ndarray, energy: float, gradient: np.ndarray) -> Frame:
+    return Frame(
+        structure=WATER.model_copy(update={"geometry": geometry}),
+        success=True,
+        results=SinglePointData(
+            provenance=Provenance(program="springs"), energy=energy, gradient=gradient
+        ),
+    )
+
+
+def _rotation(angle: float) -> np.ndarray:
+    c, s = np.cos(angle), np.sin(angle)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+def test_irc_branches_join_through_the_transition_state() -> None:
+    """Reverse branch reversed, the transition state once, then the forward branch."""
+    from qccodec.programs.sella import _irc_path
+
+    g = WATER.geometry
+    grad = np.zeros_like(g)
+    ts = _frame(g, 0.0, grad)
+    reverse = [ts, _frame(g, -1.0, grad), _frame(g, -2.0, grad)]
+    forward = [ts, _frame(g, -3.0, grad)]
+    path, ts_index = _irc_path({"reverse": reverse, "forward": forward})
+    assert [f.results.energy for f in path] == [-2.0, -1.0, 0.0, -3.0]
+    assert ts_index == 2
+    path, ts_index = _irc_path({"reverse": [ts]})  # failed before the forward branch
+    assert len(path) == 1 and ts_index == 0
+    assert _irc_path({}) == ([], None)
+
+
+def test_irc_branches_lose_their_rigid_drift() -> None:
+    """A frame that is only a rotated, shifted copy of the last aligns back onto it."""
+    from qccodec.programs.sella import _aligned
+
+    g = WATER.geometry
+    grad = np.arange(9.0).reshape(3, 3)
+    turn = _rotation(0.3)
+    drifted = (g - g.mean(axis=0)) @ turn.T + np.array([1.0, -2.0, 0.5])
+    branch = [_frame(g, 0.0, grad), _frame(drifted, -1.0, grad @ turn.T)]
+    aligned = _aligned(branch)
+    assert np.allclose(aligned[1].structure.geometry, g, atol=1e-10)
+    gradient = aligned[1].results.gradient
+    assert gradient is not None and np.allclose(gradient, grad, atol=1e-10)
+    assert aligned[1].results.energy == -1.0

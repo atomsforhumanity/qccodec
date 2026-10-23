@@ -82,8 +82,8 @@ def test_optimization(run: Run, water: Structure) -> None:
     output = run(_input(water, CalcType.optimization), case="water_optimization")
     results = output.results
     assert isinstance(results, OptimizationData)
-    trajectory = results.trajectory
-    assert np.array_equal(trajectory[0].input_data.structure.geometry, water.geometry)
+    trajectory = results.frames
+    assert np.array_equal(trajectory[0].structure.geometry, water.geometry)
     assert np.isclose(results.energies[0], ENERGY, atol=1e-8)
     assert np.isclose(results.energies[-1], -74.96590112165362, atol=1e-6)
     assert all(np.diff(results.energies) <= 1e-8)
@@ -154,7 +154,7 @@ def test_transition_state(run: Run) -> None:
     results = output.results
     assert isinstance(results, OptimizationData)
     assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)
-    final = results.trajectory[-1].input_data.structure
+    final = results.frames[-1].structure
     frequencies = run(_input(final, CalcType.hessian)).results.freqs_wavenumber
     assert sum(f < 0 for f in frequencies) == 1
 

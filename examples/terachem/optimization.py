@@ -12,7 +12,7 @@ Notes for TeraChem optimizations (manual: https://mtzweb.stanford.edu/terachem/)
 - TeraChem does not stop on a misspelled keyword: it prints "Unrecognized or
   unnecessary keywords: These are being ignored." in its output and carries on.
   Check ``output.logs`` for that warning when a setting seems to have no effect.
-- Every step in ``results.trajectory`` carries its structure, energy, and gradient,
+- Every step in ``results.frames`` carries its structure, energy, and gradient,
   read from TeraChem's ``optim.xyz``/``optim_trajectory.xyz`` and its output.
 - The first step is your input structure: TeraChem does not move or reorient it.
 - ``constraints`` is not a tc.in keyword: it is the same dictionary the geomeTRIC
@@ -65,7 +65,7 @@ prog_input = ProgramInput(
 output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
 
 results = output.results
-print("Steps:", len(results.trajectory))
+print("Steps:", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

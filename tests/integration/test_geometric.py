@@ -56,7 +56,9 @@ def test_optimization_with_crest(run: Run, water: Structure) -> None:
     assert len(energies) > 1
     assert energies[0] > energies[-1]
     assert np.isclose(energies[-1], -5.0705443538, atol=1e-5)
-    assert all(step.input_data.program == "crest" for step in output.results.trajectory)
+    assert all(
+        step.results.provenance.program == "crest" for step in output.results.frames
+    )
 
 
 HF_STO3G = Model(method="hf", basis="sto-3g")
@@ -105,8 +107,10 @@ def test_qmmm_optimization_with_psi4(run: Run) -> None:
     energies = output.results.energies
     assert len(energies) > 1 and energies[0] >= energies[-1]
     assert np.isclose(energies[-1], -74.96621433, atol=1e-6)
-    for step in output.results.trajectory:
-        assert step.input_data.keywords["external_potentials"] == QMMM_CHARGES
+    # Each step's input is the gradient spec at the step's structure, charges included.
+    gradient_spec = output.input_data.get_subprogram("gradient")
+    assert gradient_spec.keywords["external_potentials"] == QMMM_CHARGES
+    for step in output.results.frames:
         assert step.results.point_charge_gradient is not None
 
 
@@ -118,7 +122,7 @@ def test_optimization_with_terachem_propagates_wavefunction(
     inp = _input(hydrogen, CalcType.optimization, "terachem", HF_STO3G, purify="no")
     output = run(inp, propagate_wfn=True)
     assert isinstance(output.results, OptimizationData)
-    logs = output.results.trajectory[-1].logs
+    logs = output.results.frames[-1].logs
     assert logs is not None
     assert "Initial guess will be loaded from c0" in logs
     assert output.results.energies[0] > output.results.energies[-1]
@@ -150,7 +154,7 @@ def test_transition_state_with_crest(run: Run) -> None:
     inp = inp.model_copy(update={"keywords": {"hessian": "first+last"}})
     output = run(inp)
     assert isinstance(output.results, OptimizationData)
-    trajectory = output.results.trajectory
+    trajectory = output.results.frames
     assert len(trajectory) < 2 * 3 * len(NEAR_PLANAR_AMMONIA.symbols)
     assert np.isclose(output.results.energies[-1], -4.4165068, atol=1e-6)
     with_hessian = [
