@@ -26,7 +26,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from qcdata import CalcType, ProgramInput, ProgramOutput, Structure
+from qcdata import CalcType, ProgramInput, ProgramOutput, SinglePointData, Structure
 
 from qccodec import get_codec
 from qccodec.native import SubprocessInput
@@ -255,3 +255,57 @@ def finite_difference_check(
         numeric = (values[0] - values[1]) / (2 * step)
         expected = reference[k] if hessian else reference[0, k]
         assert np.allclose(expected, numeric, atol=atol), (k, expected, numeric)
+
+
+def batch_molecules(charged: bool = True) -> list[Structure]:
+    """Molecules of different sizes for batch tests; OH- too unless ``charged`` is False."""
+    rng = np.random.default_rng(0)
+    water = np.array([[0.0, 0.0, 0.0], [0.524, 1.687, 0.48], [1.146, -0.45, -1.354]])
+    molecules = [
+        Structure(symbols=["O", "H", "H"], geometry=water + rng.normal(0, 0.05, (3, 3)))
+        for _ in range(3)
+    ]
+    molecules.append(
+        Structure(
+            symbols=["C", "H", "H", "H", "H"],
+            geometry=np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.19, 1.19, 1.19],
+                    [-1.19, -1.19, 1.19],
+                    [-1.19, 1.19, -1.19],
+                    [1.19, -1.19, -1.19],
+                ]
+            ),
+        )
+    )
+    if charged:
+        molecules.append(
+            Structure(
+                symbols=["O", "H"],
+                geometry=np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.83]]),
+                charge=-1,
+            )
+        )
+    return molecules
+
+
+def check_batch_matches_single(
+    run: Run, inputs: list[ProgramInput], *, atol: float = 1e-6
+) -> None:
+    """A codec's batch gives each molecule what computing it alone gives."""
+    from qccodec import PythonOutput
+
+    codec = get_codec(inputs[0].program)
+    batch = codec.encode_batch(inputs)
+    values = batch.function(*batch.args, **batch.kwargs)
+    assert len(values) == len(inputs)
+    for inp, value in zip(inputs, values, strict=True):
+        batched = codec.decode(inp, PythonOutput(value=value))
+        alone = run(inp).results
+        assert isinstance(batched, SinglePointData)
+        assert isinstance(alone, SinglePointData)
+        assert batched.energy is not None and alone.energy is not None
+        assert np.isclose(batched.energy, alone.energy, atol=atol)
+        assert batched.gradient is not None and alone.gradient is not None
+        assert np.allclose(batched.gradient, alone.gradient, atol=atol)

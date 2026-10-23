@@ -367,3 +367,54 @@ def test_fairchem_default_task() -> None:
     assert default_task(["omat", "omol", "oc20"]) == "omol"
     with pytest.raises(ValueError, match="task"):
         default_task(["omat", "oc20"])
+
+
+# ------------------------------------------------------------------ batches
+
+
+def test_codec_batch_hook_validation() -> None:
+    """A codec batches only with both functions and a positive max_batch."""
+    from qccodec import Codec
+    from qccodec.exceptions import RegistryError
+
+    with pytest.raises(RegistryError, match="both"):
+        Codec("x", calctypes=["energy"], encode_batch=lambda inputs: None)  # type: ignore[arg-type, return-value]
+    with pytest.raises(RegistryError, match="max_batch"):
+        Codec("x", calctypes=["energy"], max_batch=0)
+    plain = get_codec("tblite")
+    assert plain.batch_key(_input("tblite")) is None
+    with pytest.raises(EncoderError, match="cannot batch"):
+        plain.encode_batch([_input("tblite")])
+
+
+@pytest.mark.parametrize("program", ["aimnet2", "torchani", "mace", "orb", "fairchem"])
+def test_ml_batch_keys(program: str) -> None:
+    """Structures differ within a batch; models, keywords, and calctypes do not."""
+    codec = get_codec(program)
+    moved = WATER.model_copy(update={"geometry": WATER.geometry + 0.1})
+    key = codec.batch_key(_input(program))
+    assert key is not None
+    assert codec.batch_key(_input(program, structure=moved)) == key
+    assert codec.batch_key(_input(program, CalcType.energy)) != key
+    assert codec.batch_key(_input(program, keywords={"device": "cpu"})) != key
+    assert codec.batch_key(_input(program, CalcType.hessian)) is None
+    assert codec.batch_key(_input("tblite")) is None  # another program's input
+
+
+@pytest.mark.parametrize("program", ["aimnet2", "torchani", "mace", "orb", "fairchem"])
+def test_ml_encode_batch(program: str) -> None:
+    """A batch encodes every molecule, in order, for one call."""
+    codec = get_codec(program)
+    moved = WATER.model_copy(update={"geometry": WATER.geometry + 0.1})
+    native = codec.encode_batch([_input(program), _input(program, structure=moved)])
+    assert isinstance(native, PythonInput)
+    molecules = native.kwargs["molecules"]
+    assert len(molecules) == 2
+    assert np.allclose(molecules[1][1], moved.geometry / c.ANGSTROM_TO_BOHR)
+    assert native.gpus == 1  # the device is chosen at run time, so a GPU is declared
+    with pytest.raises(EncoderError, match="share a batch key"):
+        codec.encode_batch([_input(program), _input(program, CalcType.energy)])
+    with pytest.raises(EncoderError, match="1 to"):
+        codec.encode_batch([])
+    with pytest.raises(EncoderError, match="1 to"):
+        codec.encode_batch([_input(program)] * (codec.max_batch + 1))

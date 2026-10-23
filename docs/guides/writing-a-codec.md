@@ -96,6 +96,32 @@ codec = Codec("mlp", calctypes={CalcType.energy, CalcType.gradient}, encode=enco
 where `decode(input_data, native_output)` maps `native_output.value` into a qcdata
 object.
 
+## Batches
+
+Libraries that evaluate many structures in one pass, such as machine-learned
+potentials on a GPU, can let qccompute batch a list of inputs. Give the codec two
+functions:
+
+```python
+codec = Codec(
+    "mlp",
+    calctypes={CalcType.energy, CalcType.gradient},
+    encode=encode,
+    decode=decode,
+    encode_batch=encode_batch,   # (inputs) -> PythonInput returning one value per input
+    batch_key=batch_key,         # (input) -> key; equal keys may share a batch, None: alone
+    max_batch=64,
+)
+```
+
+`encode_batch` gets inputs that share a batch key and returns a `PythonInput` whose
+function returns a list of native values, one per input in order. Each value is decoded
+with the codec's ordinary decoder, `decode(input, PythonOutput(value=...))`, so every
+structure still gets its own result. The key holds everything a batch must share (model,
+keywords, calculation type) and nothing about the structure; return `None` for inputs
+the library computes one at a time, such as Hessians. The built-in machine-learned
+potentials use `batch_signature` from `qccodec.programs._python` as their key.
+
 ## Options and wavefunction propagation
 
 A codec declares the decode options it accepts, with defaults. Callers override them

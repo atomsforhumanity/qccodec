@@ -44,11 +44,17 @@ and bohr.
 
 FAIR-Chem does not move the molecule, so results are in the input's frame. No input
 field carries atom indices.
+
+Energies and gradients of several structures can be computed as one batch:
+``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
+calculation type, evaluating them in one pass instead of one call each. Hessians are
+computed one structure at a time.
 """
 
 from __future__ import annotations
 
 import copy
+from collections.abc import Sequence
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -58,6 +64,7 @@ from ..exceptions import EncoderError
 from ..native import PythonInput
 from ._python import (
     SinglePoint,
+    batch_signature,
     cached_model,
     from_ev,
     gpu_count,
@@ -68,6 +75,7 @@ from ._python import (
     require_model,
     resolve_device,
     single_point_decoder,
+    split_atoms,
 )
 
 DEFAULT_INFERENCE_SETTINGS: dict[str, Any] = {
@@ -130,46 +138,10 @@ def invoke_fairchem(
     hessian: bool,
 ) -> SinglePoint:
     """Run one FAIR-Chem single point with a cached predict unit."""
-    import os
-
-    from fairchem.core.calculate import pretrained_mlip
-    from fairchem.core.units.mlip_unit.api.inference import (
-        InferenceSettings,
-        guess_inference_settings,
-    )
-
     device = resolve_device(device)
-    settings_key = (
-        repr(sorted(inference_settings.items()))
-        if isinstance(inference_settings, dict)
-        else inference_settings
-    )
 
     def predict_unit(hessian_task: str | None) -> Any:
-        """Load the model, adding a Hessian head for ``hessian_task`` if given."""
-
-        def load() -> Any:
-            if isinstance(inference_settings, dict):
-                settings = InferenceSettings(**inference_settings)
-            else:
-                settings = copy.copy(guess_inference_settings(inference_settings))
-            if hessian_task is not None:
-                settings.predict_untrained_hessian = {hessian_task}
-            if model in pretrained_mlip.available_models:
-                return pretrained_mlip.get_predict_unit(
-                    model, inference_settings=settings, device=device
-                )
-            if os.path.isfile(model):
-                return pretrained_mlip.load_predict_unit(
-                    model, inference_settings=settings, device=device
-                )
-            raise ValueError(
-                f"{model!r} is neither a FAIR-Chem model name "
-                f"({sorted(pretrained_mlip.available_models)}) nor a checkpoint file."
-            )
-
-        key = ("fairchem", model, device, settings_key, hessian_task)
-        return cached_model(key, load)
+        return _predict_unit(model, device, inference_settings, hessian_task)
 
     unit = predict_unit(task if hessian else None)
     if task is None:
@@ -238,6 +210,118 @@ def atomic_data(
     )
 
 
+def _predict_unit(
+    model: str,
+    device: str,
+    inference_settings: str | dict[str, Any],
+    hessian_task: str | None,
+) -> Any:
+    """Return the cached predict unit, with a Hessian head for ``hessian_task`` if given."""
+    import os
+
+    from fairchem.core.calculate import pretrained_mlip
+    from fairchem.core.units.mlip_unit.api.inference import (
+        InferenceSettings,
+        guess_inference_settings,
+    )
+
+    def load() -> Any:
+        if isinstance(inference_settings, dict):
+            settings = InferenceSettings(**inference_settings)
+        else:
+            settings = copy.copy(guess_inference_settings(inference_settings))
+        if hessian_task is not None:
+            settings.predict_untrained_hessian = {hessian_task}
+        if model in pretrained_mlip.available_models:
+            return pretrained_mlip.get_predict_unit(
+                model, inference_settings=settings, device=device
+            )
+        if os.path.isfile(model):
+            return pretrained_mlip.load_predict_unit(
+                model, inference_settings=settings, device=device
+            )
+        raise ValueError(
+            f"{model!r} is neither a FAIR-Chem model name "
+            f"({sorted(pretrained_mlip.available_models)}) nor a checkpoint file."
+        )
+
+    settings_key = (
+        repr(sorted(inference_settings.items()))
+        if isinstance(inference_settings, dict)
+        else inference_settings
+    )
+    return cached_model(("fairchem", model, device, settings_key, hessian_task), load)
+
+
+def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
+    """Encode inputs that share a batch key as one FAIR-Chem prediction.
+
+    Raises:
+        EncoderError: An input is invalid on its own (see ``encode``).
+    """
+    singles = [encode(inp).kwargs for inp in inputs]
+    first = singles[0]
+    return PythonInput(
+        gpus=gpu_count(first["device"]),
+        function=invoke_fairchem_batch,
+        kwargs={
+            **{k: first[k] for k in ("model", "task", "device", "inference_settings")},
+            "forces": first["forces"],
+            "molecules": [
+                (k["numbers"], k["positions"], k["charge"], k["multiplicity"])
+                for k in singles
+            ],
+        },
+    )
+
+
+def invoke_fairchem_batch(
+    *,
+    model: str,
+    task: str | None,
+    device: str | None,
+    inference_settings: str | dict[str, Any],
+    forces: bool,
+    molecules: list[tuple[list[int], list[list[float]], int, int]],
+) -> list[SinglePoint]:
+    """Evaluate several molecules in one FAIR-Chem prediction (one batched graph)."""
+    from fairchem.core.datasets.atomic_data import atomicdata_list_to_batch
+
+    device = resolve_device(device)
+    unit = _predict_unit(model, device, inference_settings, None)
+    task = task or default_task(list(unit.dataset_to_tasks))
+    wanted = ["energy"] + (["forces"] if forces else [])
+    missing = [
+        p for p in wanted if p not in {t.property for t in unit.dataset_to_tasks[task]}
+    ]
+    if missing:
+        raise ValueError(
+            f"FAIR-Chem model {model!r} predicts no {missing} for {task!r}."
+        )
+    batch = atomicdata_list_to_batch(
+        [
+            atomic_data(n, p, q, m, task, unit.inference_settings)
+            for n, p, q, m in molecules
+        ]
+    )
+    prediction = unit.predict(batch)
+    energies = prediction["energy"].detach().cpu().double().numpy().reshape(-1)
+    counts = [len(n) for n, _, _, _ in molecules]
+    per_forces = (
+        split_atoms(prediction["forces"].detach().cpu().double().numpy(), counts)
+        if forces
+        else [None] * len(molecules)
+    )
+    version = package_version("fairchem-core")
+    results: list[SinglePoint] = []
+    for energy, f in zip(energies, per_forces, strict=True):
+        result = from_ev(float(energy), f)
+        result["extras"] = {"fairchem_task": task}
+        result["version"] = version
+        results.append(result)
+    return results
+
+
 def default_task(datasets: list[str]) -> str:
     """Pick the task head when none is given: a model's only one, else ``omol``.
 
@@ -259,4 +343,6 @@ codec = Codec(
     calctypes={CalcType.energy, CalcType.gradient, CalcType.hessian},
     encode=encode,
     decode=single_point_decoder("fairchem"),
+    encode_batch=encode_batch,
+    batch_key=batch_signature,
 )

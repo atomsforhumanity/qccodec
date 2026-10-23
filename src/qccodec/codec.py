@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, TypeVar, overload
@@ -45,6 +45,8 @@ Decoder = Callable[[Any, NativeOutput], Data]
 Failure = Callable[["Context"], "str | None"]
 PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
 VersionKey = Callable[[str], str]
+BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
+BatchKey = Callable[[ProgramInput], "Hashable | None"]
 
 
 @dataclass(frozen=True)
@@ -182,6 +184,14 @@ class Codec:
         version_key: Turns the program's version string into a PEP 440 version
             for matching parser ``versions``. Not needed when the program already
             prints versions like ``6.1.0``.
+        encode_batch: Encodes several inputs as one ``PythonInput`` whose function
+            returns a list with one native value per input, in order. Each value is
+            decoded on its own with this codec's decoder, as if its input had run
+            alone. For libraries that evaluate many structures in one pass, such as
+            machine-learned potentials. Requires ``batch_key``.
+        batch_key: Returns a key for an input: inputs with equal keys may share a
+            batch; ``None`` means the input is computed alone.
+        max_batch: The most inputs one batch may hold.
         parsers: Pre-built parser specifications.
     """
 
@@ -197,8 +207,16 @@ class Codec:
         propagate_wfn: PropagateWfn | None = None,
         version_key: VersionKey | None = None,
         parsers: Iterable[ParserSpec] = (),
+        encode_batch: BatchEncoder | None = None,
+        batch_key: BatchKey | None = None,
+        max_batch: int = 32,
     ) -> None:
-        """Create a codec; hooks may also be attached later with decorators."""
+        """Create a codec; hooks may also be attached later with decorators.
+
+        Raises:
+            RegistryError: Only one of ``encode_batch`` and ``batch_key`` is given, or
+                ``max_batch`` is not positive.
+        """
         self.program: str = program
         self.calctypes: frozenset[CalcType] = frozenset(CalcType(c) for c in calctypes)
         self.options: dict[str, Any] = dict(options or {})
@@ -208,6 +226,15 @@ class Codec:
         self._encode: Encoder | None = encode
         self._decode: Decoder | None = None
         self._failure: Failure | None = failure
+        if (encode_batch is None) != (batch_key is None):
+            raise RegistryError(
+                f"Codec {program!r} needs both encode_batch and batch_key to batch."
+            )
+        if max_batch < 1:
+            raise RegistryError(f"Codec {program!r} max_batch must be positive.")
+        self._encode_batch: BatchEncoder | None = encode_batch
+        self._batch_key: BatchKey | None = batch_key
+        self.max_batch: int = max_batch
         if decode is not None:
             self.decoder(decode)
 
@@ -361,6 +388,52 @@ class Codec:
             raise EncoderError(
                 f"{self.program} encoder must return SubprocessInput or PythonInput, "
                 f"not {type(native).__name__}."
+            )
+        return native
+
+    def batch_key(self, input_data: Inputs) -> Hashable | None:
+        """Return the key under which an input may share a batch, or None.
+
+        None when the codec cannot batch, the input is not a ``ProgramInput`` this
+        codec computes, or the codec computes this input alone (for example a
+        Hessian, where libraries take one structure at a time).
+        """
+        if (
+            self._batch_key is None
+            or not isinstance(input_data, ProgramInput)
+            or input_data.program != self.program
+            or input_data.calctype not in self.calctypes
+        ):
+            return None
+        return self._batch_key(input_data)
+
+    def encode_batch(self, inputs: Sequence[ProgramInput]) -> PythonInput:
+        """Encode inputs that share a batch key as one Python invocation.
+
+        Its function returns a list of native values, one per input in order;
+        decode each with ``decode(input, PythonOutput(value=...))``.
+
+        Raises:
+            EncoderError: The codec cannot batch, the list is empty or longer than
+                ``max_batch``, or the inputs do not share one batch key.
+        """
+        if self._encode_batch is None:
+            raise EncoderError(f"Codec {self.program!r} cannot batch.")
+        if not inputs or len(inputs) > self.max_batch:
+            raise EncoderError(
+                f"A {self.program} batch holds 1 to {self.max_batch} inputs, "
+                f"not {len(inputs)}."
+            )
+        keys = {self.batch_key(inp) for inp in inputs}
+        if len(keys) != 1 or None in keys:
+            raise EncoderError(
+                f"{self.program} inputs in one batch must share a batch key."
+            )
+        native = self._encode_batch(inputs)
+        if not isinstance(native, PythonInput):
+            raise EncoderError(
+                f"{self.program} batch encoder must return PythonInput, not "
+                f"{type(native).__name__}."
             )
         return native
 

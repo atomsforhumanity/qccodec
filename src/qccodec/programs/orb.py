@@ -29,10 +29,16 @@ energies in eV; the codec converts them, and the forces, to Hartree and bohr.
 
 Orb does not move the molecule, so gradients are in the input's frame. No input field
 carries atom indices.
+
+Energies and gradients of several structures can be computed as one batch:
+``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
+calculation type, evaluating them in one pass instead of one call each. Hessians are
+computed one structure at a time.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -42,6 +48,7 @@ from ..exceptions import EncoderError
 from ..native import PythonInput
 from ._python import (
     SinglePoint,
+    batch_signature,
     cached_model,
     from_ev,
     gpu_count,
@@ -52,6 +59,7 @@ from ._python import (
     require_model,
     resolve_device,
     single_point_decoder,
+    split_atoms,
 )
 
 PRECISIONS = ("float32-high", "float32-highest", "float64")
@@ -103,6 +111,45 @@ def invoke_orb(
     forces: bool,
 ) -> SinglePoint:
     """Run one Orb single point on the cached model and its graph adapter."""
+    return invoke_orb_batch(
+        model=model,
+        device=device,
+        precision=precision,
+        forces=forces,
+        molecules=[(symbols, positions, charge, multiplicity)],
+    )[0]
+
+
+def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
+    """Encode inputs that share a batch key as one Orb evaluation.
+
+    Raises:
+        EncoderError: An input is invalid on its own (see ``encode``).
+    """
+    singles = [encode(inp).kwargs for inp in inputs]
+    first = singles[0]
+    return PythonInput(
+        gpus=gpu_count(first["device"]),
+        function=invoke_orb_batch,
+        kwargs={
+            **{k: first[k] for k in ("model", "device", "precision", "forces")},
+            "molecules": [
+                (k["symbols"], k["positions"], k["charge"], k["multiplicity"])
+                for k in singles
+            ],
+        },
+    )
+
+
+def invoke_orb_batch(
+    *,
+    model: str,
+    device: str | None,
+    precision: str,
+    forces: bool,
+    molecules: list[tuple[list[str], list[list[float]], int, int]],
+) -> list[SinglePoint]:
+    """Evaluate molecules in one Orb pass, as one batched graph."""
     from ase import Atoms
     from orb_models.common.models.nn_util import ChargeSpinConditioner
     from orb_models.forcefield import pretrained
@@ -122,27 +169,42 @@ def invoke_orb(
     regressor, adapter = cached_model(("orb", model, device, precision), load)
     # D3-corrected models wrap the regressor that carries the heads and conditioner.
     inner = getattr(regressor, "xc_model", regressor)
-    atoms = Atoms(symbols=symbols, positions=positions)
-    if isinstance(inner.model.conditioner, ChargeSpinConditioner):
-        atoms.info.update({"charge": charge, "spin": multiplicity})
-    elif charge != 0 or multiplicity != 1:
-        raise ValueError(
-            f"Orb model {model!r} describes neutral closed-shell systems only; use "
-            "an OMol25 model such as 'orb-v3-conservative-omol'."
-        )
+    charged = isinstance(inner.model.conditioner, ChargeSpinConditioner)
+    atoms_list = []
+    for symbols, positions, charge, multiplicity in molecules:
+        atoms = Atoms(symbols=symbols, positions=positions)
+        if charged:
+            atoms.info.update({"charge": charge, "spin": multiplicity})
+        elif charge != 0 or multiplicity != 1:
+            raise ValueError(
+                f"Orb model {model!r} describes neutral closed-shell systems only; "
+                "use an OMol25 model such as 'orb-v3-conservative-omol'."
+            )
+        atoms_list.append(atoms)
     # ASE Atoms is only the container Orb's graph builder reads; no ASE calculator runs.
-    batch = adapter.from_ase_atoms(atoms, device=device)
+    if len(atoms_list) == 1:
+        batch = adapter.from_ase_atoms(atoms_list[0], device=device)
+    else:
+        batch = adapter.from_ase_atoms_list(atoms_list, device=device)
     out = regressor.predict(batch)
     # Conservative models name their heads and return forces as the energy gradient;
     # direct models key their outputs by head ("energy", "forces").
     energy_key = getattr(inner, "energy_name", "energy")
     force_key = getattr(inner, "grad_forces_name", "forces")
-    snapshot = from_ev(
-        out[energy_key].detach().cpu().double().reshape(-1)[0].item(),
-        out[force_key].detach().cpu().double().numpy() if forces else None,
+    energies = out[energy_key].detach().cpu().double().numpy().reshape(-1)
+    counts = [len(symbols) for symbols, _, _, _ in molecules]
+    per_forces = (
+        split_atoms(out[force_key].detach().cpu().double().numpy(), counts)
+        if forces
+        else [None] * len(molecules)
     )
-    snapshot["version"] = package_version("orb-models")
-    return snapshot
+    version = package_version("orb-models")
+    results: list[SinglePoint] = []
+    for energy, f in zip(energies, per_forces, strict=True):
+        result = from_ev(float(energy), f)
+        result["version"] = version
+        results.append(result)
+    return results
 
 
 codec = Codec(
@@ -150,4 +212,6 @@ codec = Codec(
     calctypes={CalcType.energy, CalcType.gradient},
     encode=encode,
     decode=single_point_decoder("orb"),
+    encode_batch=encode_batch,
+    batch_key=batch_signature,
 )

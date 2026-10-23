@@ -8,7 +8,8 @@ inside the function so encoding and decoding work, and are testable, without the
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+import json
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from typing import Any, TypedDict, cast
 
 from qcdata import CalcType, ProgramInput, Provenance, SinglePointData, Structure
@@ -184,3 +185,31 @@ def single_point_decoder(
         return SinglePointData(provenance=provenance, **fields)
 
     return decode
+
+
+def batch_signature(inp: ProgramInput) -> Hashable | None:
+    """Return the batch key of an input: everything a batch shares, all but the structure.
+
+    Hessians return None: libraries differentiate one structure at a time.
+    """
+    if inp.calctype == CalcType.hessian:
+        return None
+    return json.dumps(
+        {
+            "program": inp.program,
+            "calctype": inp.calctype.value,
+            "model": inp.model.model_dump(mode="json") if inp.model else None,
+            "keywords": inp.keywords,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def split_atoms(values: Any, counts: Sequence[int]) -> list[Any]:
+    """Split per-atom rows of a batch (all molecules' atoms in order) per molecule."""
+    import numpy as np
+
+    array = np.asarray(values)
+    bounds = np.cumsum([0, *counts])
+    return [array[bounds[i] : bounds[i + 1]] for i in range(len(counts))]

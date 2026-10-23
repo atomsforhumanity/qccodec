@@ -6,6 +6,8 @@ from qcdata import CalcType, Model, ProgramInput, Structure
 
 from .conftest import (
     Run,
+    batch_molecules,
+    check_batch_matches_single,
     finite_difference_check,
     requires_hugging_face,
     requires_modules,
@@ -76,3 +78,9 @@ def test_single_head_checkpoint(run: Run, water: Structure) -> None:
     assert results.extras["fairchem_task"] == "omol"
     assert results.energy is not None and abs(results.energy - ESEN_ENERGY) < 1e-5
     finite_difference_check(run, inp, atol=1e-4)
+
+
+def test_batch_matches_single(run: Run) -> None:
+    """One batched pass gives each molecule what computing it alone gives."""
+    inputs = [_input(m, CalcType.gradient) for m in batch_molecules(charged=True)]
+    check_batch_matches_single(run, inputs, atol=1e-6)
