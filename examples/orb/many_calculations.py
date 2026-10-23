@@ -19,6 +19,12 @@ How batching works:
   of a path optimization, say) does not load it again.
 - ``output.execution.extras`` records ``batch_size`` and the structure's
   ``batch_index``; ``logs`` and ``wall_time`` are the whole batch's.
+- Orb compiles its model with ``torch.compile`` (orb-models' default). The first calls
+  at new input sizes take seconds while PyTorch optimizes for them; after a few sizes
+  it stops recompiling and calls are fast. So the one-at-a-time timing below includes
+  that setup for single structures, and a script making only a handful of Orb calls
+  pays it without benefiting. Optimizations, scans, and paths make many calls and
+  come out well ahead.
 """
 
 import math
