@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.20.1] - 2026-10-23
+
 ### Changed
 
 - Requires `qcdata<0.23`: qcdata 0.23 changes trajectories to frames and makes `ProgramInput.structure` optional, which this release does not handle. qccodec 0.21 supports it.
@@ -456,7 +458,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.20.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.20.1...HEAD
+[0.20.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.1
 [0.20.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.0
 [0.19.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.19.0
 [0.18.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.18.0
