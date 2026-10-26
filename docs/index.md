@@ -1,12 +1,12 @@
 # qccodec
 
 qccodec knows how to talk to quantum chemistry programs. For each program it has one
-**codec** that turns a [qcdata](https://qcdata.docs.atomsforhumanity.org)
+**codec** that turns a [qcdata](https://qcdata.docs.afh.org)
 `ProgramInput` into the program's native input files and command, and turns the
 program's output back into structured qcdata results.
 
 qccodec never runs anything itself.
-[qccompute](https://qccompute.docs.atomsforhumanity.org) runs the program and uses
+[qccompute](https://qccompute.docs.afh.org) runs the program and uses
 the codec on both ends, so most scientists use the two together.
 
 ## Install
@@ -65,12 +65,12 @@ that isn't supported yet.
 
 - [qcref](https://github.com/atomsforhumanity/qcref): physical constants, conversion
   factors, the periodic table, and solvent properties, each with its source.
-- [qcdata](https://qcdata.docs.atomsforhumanity.org): data structures for quantum
+- [qcdata](https://qcdata.docs.afh.org): data structures for quantum
   chemistry inputs and results.
 - [qcinf](https://github.com/atomsforhumanity/qcinf): cheminformatics algorithms for
   qcdata structures.
 - **qccodec**: program-specific encoders and parsers (this site).
-- [qccompute](https://qccompute.docs.atomsforhumanity.org): runs programs and
+- [qccompute](https://qccompute.docs.afh.org): runs programs and
   returns structured results.
 - [BigChem](https://github.com/mtzgroup/bigchem) and
   [ChemCloud](https://github.com/mtzgroup/chemcloud-client): distributed and cloud
