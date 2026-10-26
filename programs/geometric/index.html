@@ -1,0 +1,1870 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Program-specific encoders and parsers for quantum chemistry programs, with copy-and-paste examples.">
+      
+      
+        <meta name="author" content="Colton Hicks">
+      
+      
+        <link rel="canonical" href="https://qccodec.docs.afh.org/programs/geometric/">
+      
+      
+        <link rel="prev" href="../dftbplus/">
+      
+      
+        <link rel="next" href="../orca/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>geomeTRIC - qccodec</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#geometric" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="qccodec" class="md-header__button md-logo" aria-label="qccodec" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            qccodec
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              geomeTRIC
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/atomsforhumanity/qccodec" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Programs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/decoding/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="qccodec" class="md-nav__button md-logo" aria-label="qccodec" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    qccodec
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/atomsforhumanity/qccodec" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Programs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CREST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dftbplus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DFTB+
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    geomeTRIC
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    geomeTRIC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transition-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transition state
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#many-calculations-at-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Many calculations at once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orca/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ORCA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psi4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Psi4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sella/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sella
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tblite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    tblite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terachem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TeraChem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terachem-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TeraChem servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../xtb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    xtb
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Machine-learned potentials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Machine-learned potentials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aimnet2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AIMNet2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fairchem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAIR-Chem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MACE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orb
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../torchani/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TorchANI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/decoding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoding program output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/writing-a-codec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing a codec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/ase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ASE workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transition-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transition state
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#many-calculations-at-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Many calculations at once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Programs
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="geometric">geomeTRIC<a class="headerlink" href="#geometric" title="Permanent link">&para;</a></h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+
+    <div class="doc doc-contents first">
+
+      <p>geomeTRIC: optimizations and transition-state searches driving another program.</p>
+<p>geomeTRIC runs in Python and asks for gradients through a callback: every step is a
+full <code>gradient</code> calculation of the program named in <code>subprograms</code>, run by qccompute
+like any other calculation and kept in the trajectory. Any codec with gradients works
+as the child, including ones registered with <code>qccodec.register</code>.</p>
+<p>Inputs map to geomeTRIC as follows:</p>
+<ul>
+<li><code>subprograms</code> must hold one <code>ProgramSpec</code> with <code>calctype="gradient"</code>: the child
+  program, its model, and its own keywords (passed to that program unchanged).</li>
+<li><code>keywords</code> are geomeTRIC's optimizer parameters (<code>geometric.params.OptParams</code>):
+  <code>maxiter</code>, <code>convergence_set</code>, <code>convergence_energy</code>, <code>trust</code>, <code>hessian</code>,
+  <code>enforce</code>, ... Two are handled by the codec: <code>coordsys</code> (<code>tric</code> by default, or
+  <code>cart</code>, <code>prim</code>, <code>dlc</code>, <code>hdlc</code>) and <code>constraints</code> (geomeTRIC's constraint
+  dictionary, e.g. <code>{"freeze": [{"type": "xyz", "indices": [0]}]}</code>, with <code>set</code>
+  distances in bohr; scans are not supported).</li>
+<li><code>cmdline_args</code> are not accepted.</li>
+</ul>
+<p>Calculation types: <code>optimization</code> and <code>transition_state</code> (<code>transition=True</code>;
+geomeTRIC computes a starting Hessian from finite differences of child gradients).</p>
+<p>The trajectory holds one frame per optimizer step. Gradients at the displaced
+geometries of a finite-difference Hessian are not steps, so they are left out, unless
+one fails. Each Hessian geomeTRIC computes is attached to the frame at its geometry
+(<code>frame.results.hessian</code>): the first frame for <code>hessian="first"</code>, the default for
+transition states, and also the last frame for <code>"first+last"</code> or <code>"last"</code>.
+Atom indices in <code>constraints</code> are 0-based, as in geomeTRIC's Python interface.</p>
+<p>With qccompute, <code>propagate_wfn=True</code> starts each child calculation from the previous
+step's orbitals when the child codec supports it (TeraChem). The optimization declares
+the threads and GPUs its child does, so lists of optimizations share the machine
+correctly.</p>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<p>Each script runs as written. Copy it, delete the options you don't need, and run it
+with <code>python script.py</code>. They live in the repository's
+<a href="https://github.com/atomsforhumanity/qccodec/tree/master/examples"><code>examples/</code></a> folder.</p>
+<h3 id="optimization">Optimization<a class="headerlink" href="#optimization" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/optimization.py"><code>examples/geometric/optimization.py</code></a></p>
+<div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC geometry optimization driving another program&#39;s gradients.</span>
+
+<span class="sd">Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the</span>
+<span class="sd">gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:</span>
+<span class="sd">https://github.com/crest-lab/crest/releases (official static build).</span>
+
+<span class="sd">How it works (https://geometric.readthedocs.io/):</span>
+
+<span class="sd">- geomeTRIC runs in Python and asks for a gradient at every step. Each one is a full</span>
+<span class="sd">  ``gradient`` calculation of the program in ``subprograms``, with that program&#39;s own</span>
+<span class="sd">  model and keywords, so any program with gradients works: CREST, xtb, Psi4, ORCA,</span>
+<span class="sd">  TeraChem, ... Swap the ``ProgramSpec`` below for one of the commented alternatives.</span>
+<span class="sd">- ``keywords`` are geomeTRIC&#39;s optimizer parameters (``geometric.params.OptParams``,</span>
+<span class="sd">  the long ``geometric-optimize --help`` names). geomeTRIC ignores names it does not</span>
+<span class="sd">  know, so check spelling against its documentation.</span>
+<span class="sd">- ``coordsys``: &quot;tric&quot; (default, translation-rotation internal coordinates, good for</span>
+<span class="sd">  several molecules), &quot;dlc&quot;, &quot;prim&quot;, or &quot;cart&quot;.</span>
+<span class="sd">- ``constraints`` use geomeTRIC&#39;s dictionary format with 0-based atom indices,</span>
+<span class="sd">  distances in bohr, and angles in degrees. Scans are not supported.</span>
+<span class="sd">- Each step in ``results.frames`` is a frame: its structure and the child&#39;s</span>
+<span class="sd">  results (energy, gradient, charges, ...), whichever program it is.</span>
+<span class="sd">- QM/MM: this is the way to optimize a QM region in point charges with Psi4, since</span>
+<span class="sd">  Psi4 1.11&#39;s own optimizer cannot (see the Psi4 child below). The charges stay fixed.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qcdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalcType</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ProgramInput</span><span class="p">,</span> <span class="n">ProgramSpec</span><span class="p">,</span> <span class="n">Structure</span>
+
+<span class="c1"># Coordinates are in bohr.</span>
+<span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">(</span>
+    <span class="n">symbols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">],</span>
+    <span class="n">geometry</span><span class="o">=</span><span class="p">[[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.524</span><span class="p">,</span> <span class="mf">1.687</span><span class="p">,</span> <span class="mf">0.48</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.146</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.45</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.354</span><span class="p">]],</span>
+    <span class="n">charge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">multiplicity</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># The program that computes energies and gradients: CREST with GFN2-xTB.</span>
+<span class="n">gradient_program</span> <span class="o">=</span> <span class="n">ProgramSpec</span><span class="p">(</span>
+    <span class="n">program</span><span class="o">=</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span>
+    <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;calculation&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;alpb&quot;</span><span class="p">:</span> <span class="s2">&quot;water&quot;</span><span class="p">}]}},</span>
+<span class="p">)</span>
+
+<span class="c1"># xtb instead (examples/xtb/single_point.py lists its keywords):</span>
+<span class="c1"># gradient_program = ProgramSpec(</span>
+<span class="c1">#     program=&quot;xtb&quot;,</span>
+<span class="c1">#     calctype=CalcType.gradient,</span>
+<span class="c1">#     model=Model(method=&quot;gfn2&quot;),</span>
+<span class="c1">#     keywords={&quot;alpb&quot;: &quot;water&quot;},</span>
+<span class="c1"># )</span>
+
+<span class="c1"># Psi4 instead, here with QM/MM point charges [charge, [x, y, z]] in bohr:</span>
+<span class="c1"># gradient_program = ProgramSpec(</span>
+<span class="c1">#     program=&quot;psi4&quot;,</span>
+<span class="c1">#     calctype=CalcType.gradient,</span>
+<span class="c1">#     model=Model(method=&quot;wb97x-d&quot;, basis=&quot;def2-svp&quot;),</span>
+<span class="c1">#     keywords={</span>
+<span class="c1">#         &quot;external_potentials&quot;: [[-0.2, [0.0, 0.0, 8.0]], [0.2, [2.0, 2.0, 9.0]]],</span>
+<span class="c1">#     },</span>
+<span class="c1">#     cmdline_args=[&quot;-n&quot;, &quot;1&quot;, &quot;--memory&quot;, &quot;2GB&quot;],</span>
+<span class="c1"># )</span>
+
+<span class="c1"># TeraChem instead (GPU); pass propagate_wfn=True to compute() below:</span>
+<span class="c1"># gradient_program = ProgramSpec(</span>
+<span class="c1">#     program=&quot;terachem&quot;,</span>
+<span class="c1">#     calctype=CalcType.gradient,</span>
+<span class="c1">#     model=Model(method=&quot;wb97xd3&quot;, basis=&quot;def2-svp&quot;),</span>
+<span class="c1">#     keywords={&quot;dftd&quot;: &quot;d3&quot;},</span>
+<span class="c1"># )</span>
+
+<span class="n">prog_input</span> <span class="o">=</span> <span class="n">ProgramInput</span><span class="p">(</span>
+    <span class="n">program</span><span class="o">=</span><span class="s2">&quot;geometric&quot;</span><span class="p">,</span>
+    <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">optimization</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">subprograms</span><span class="o">=</span><span class="p">[</span><span class="n">gradient_program</span><span class="p">],</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;coordsys&quot;</span><span class="p">:</span> <span class="s2">&quot;tric&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;dlc&quot;, &quot;prim&quot;, &quot;cart&quot;</span>
+        <span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>  <span class="c1"># maximum optimization steps</span>
+        <span class="s2">&quot;convergence_set&quot;</span><span class="p">:</span> <span class="s2">&quot;gau&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;gau_loose&quot;, &quot;gau_tight&quot;, &quot;gau_verytight&quot;, ...</span>
+        <span class="c1"># Individual criteria override the set (Hartree, Hartree/bohr, angstrom):</span>
+        <span class="c1"># &quot;convergence_energy&quot;: 1e-6,</span>
+        <span class="c1"># &quot;convergence_grms&quot;: 3e-4,</span>
+        <span class="c1"># &quot;convergence_gmax&quot;: 4.5e-4,</span>
+        <span class="c1"># &quot;convergence_drms&quot;: 1.2e-3,</span>
+        <span class="c1"># &quot;convergence_dmax&quot;: 1.8e-3,</span>
+        <span class="c1"># &quot;trust&quot;: 0.1,  # starting trust radius (angstrom)</span>
+        <span class="c1"># &quot;tmax&quot;: 0.3,  # largest trust radius (angstrom)</span>
+        <span class="c1">#</span>
+        <span class="c1"># Constraints (0-based atom indices; distances in bohr, angles in degrees):</span>
+        <span class="c1"># &quot;constraints&quot;: {</span>
+        <span class="c1">#     &quot;freeze&quot;: [{&quot;type&quot;: &quot;xyz&quot;, &quot;indices&quot;: [0]}],  # fix the oxygen in place</span>
+        <span class="c1">#     &quot;set&quot;: [{&quot;type&quot;: &quot;angle&quot;, &quot;indices&quot;: [1, 0, 2], &quot;value&quot;: 104.5}],</span>
+        <span class="c1"># },</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
+    <span class="n">prog_input</span><span class="p">,</span>
+    <span class="c1"># propagate_wfn=True,  # TeraChem: start each step from the previous orbitals</span>
+    <span class="c1"># timeout=3600,  # seconds before the whole optimization is stopped</span>
+    <span class="c1"># collect_files=True,  # keep each child&#39;s output files in its results.files</span>
+    <span class="c1"># executables={&quot;crest&quot;: &quot;/path/to/crest&quot;},  # the child&#39;s executable</span>
+<span class="p">)</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient program:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">program</span><span class="p">)</span>
+<span class="c1"># Save the trajectory, e.g. to view in a molecule viewer:</span>
+<span class="c1"># results.save(&quot;optimization.json&quot;); results.final_structure.save(&quot;final.xyz&quot;)</span>
+</code></pre></div>
+<h3 id="transition-state">Transition state<a class="headerlink" href="#transition-state" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/transition_state.py"><code>examples/geometric/transition_state.py</code></a></p>
+<div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC transition-state search driving another program&#39;s gradients.</span>
+
+<span class="sd">Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the</span>
+<span class="sd">gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:</span>
+<span class="sd">https://github.com/crest-lab/crest/releases (official static build).</span>
+
+<span class="sd">Notes for geomeTRIC transition-state searches (https://geometric.readthedocs.io/):</span>
+
+<span class="sd">- ``CalcType.transition_state`` turns on geomeTRIC&#39;s saddle-point optimizer.</span>
+<span class="sd">  geomeTRIC needs a starting Hessian, which it builds by finite differences of child</span>
+<span class="sd">  gradients (two per Cartesian coordinate). Those displaced gradients are not</span>
+<span class="sd">  optimizer steps, so ``results.frames`` leaves them out: it holds one frame per</span>
+<span class="sd">  step, and each Hessian geomeTRIC computes is attached to the frame at its</span>
+<span class="sd">  geometry (``frame.results.hessian``).</span>
+<span class="sd">- ``&quot;hessian&quot;`` chooses when: ``&quot;first&quot;`` (the default) at the start,</span>
+<span class="sd">  ``&quot;first+last&quot;`` also at the end, which is how this example checks its result,</span>
+<span class="sd">  ``&quot;each&quot;`` at every step (costly).</span>
+<span class="sd">- Start close to the saddle point. This example starts from nearly planar ammonia;</span>
+<span class="sd">  its inversion transition state is planar, with one imaginary frequency.</span>
+<span class="sd">- A transition state has exactly one negative Hessian eigenvalue (one imaginary</span>
+<span class="sd">  frequency). The final frame&#39;s Hessian shows it, whatever the child program.</span>
+<span class="sd">- The child program, coordinate systems, constraints, and QM/MM point charges work</span>
+<span class="sd">  as in optimization.py; swap the ``ProgramSpec`` for xtb, Psi4, TeraChem, ...</span>
+<span class="sd">- Transition-state steps use a small trust radius by default (``trust`` 0.01,</span>
+<span class="sd">  ``tmax`` 0.03 angstrom), so expect more steps than for a minimum.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qcdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalcType</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ProgramInput</span><span class="p">,</span> <span class="n">ProgramSpec</span><span class="p">,</span> <span class="n">Structure</span>
+
+<span class="c1"># Ammonia near its planar inversion saddle point, coordinates in bohr.</span>
+<span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">(</span>
+    <span class="n">symbols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">],</span>
+    <span class="n">geometry</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">1.88</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+        <span class="p">[</span><span class="o">-</span><span class="mf">0.94</span><span class="p">,</span> <span class="mf">1.62</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+        <span class="p">[</span><span class="o">-</span><span class="mf">0.94</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.62</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+    <span class="p">],</span>
+    <span class="n">charge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">multiplicity</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># The program that computes energies and gradients: CREST with GFN2-xTB.</span>
+<span class="n">gradient_program</span> <span class="o">=</span> <span class="n">ProgramSpec</span><span class="p">(</span>
+    <span class="n">program</span><span class="o">=</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span>
+    <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>  <span class="c1"># add &quot;calculation&quot;: {&quot;level&quot;: [{&quot;alpb&quot;: &quot;water&quot;}]}</span>
+<span class="p">)</span>
+
+<span class="c1"># Psi4 instead (any gradient program works; see optimization.py for more):</span>
+<span class="c1"># gradient_program = ProgramSpec(</span>
+<span class="c1">#     program=&quot;psi4&quot;,</span>
+<span class="c1">#     calctype=CalcType.gradient,</span>
+<span class="c1">#     model=Model(method=&quot;wb97x-d&quot;, basis=&quot;def2-svp&quot;),</span>
+<span class="c1">#     cmdline_args=[&quot;-n&quot;, &quot;1&quot;, &quot;--memory&quot;, &quot;2GB&quot;],</span>
+<span class="c1"># )</span>
+
+<span class="n">prog_input</span> <span class="o">=</span> <span class="n">ProgramInput</span><span class="p">(</span>
+    <span class="n">program</span><span class="o">=</span><span class="s2">&quot;geometric&quot;</span><span class="p">,</span>
+    <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">transition_state</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">subprograms</span><span class="o">=</span><span class="p">[</span><span class="n">gradient_program</span><span class="p">],</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;coordsys&quot;</span><span class="p">:</span> <span class="s2">&quot;tric&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;dlc&quot;, &quot;prim&quot;, &quot;cart&quot;</span>
+        <span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s2">&quot;convergence_set&quot;</span><span class="p">:</span> <span class="s2">&quot;gau&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;gau_tight&quot;, ...</span>
+        <span class="s2">&quot;hessian&quot;</span><span class="p">:</span> <span class="s2">&quot;first+last&quot;</span><span class="p">,</span>  <span class="c1"># exact Hessians at the start and the end</span>
+        <span class="c1"># &quot;trust&quot;: 0.01,  # starting trust radius (angstrom)</span>
+        <span class="c1"># &quot;tmax&quot;: 0.03,  # largest trust radius (angstrom)</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
+    <span class="n">prog_input</span><span class="p">,</span>
+    <span class="c1"># propagate_wfn=True,  # TeraChem: start each step from the previous orbitals</span>
+    <span class="c1"># timeout=3600,</span>
+<span class="p">)</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state energy (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
+
+<span class="c1"># Confirm the saddle point: exactly one negative eigenvalue of the final Hessian.</span>
+<span class="n">final_hessian</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">hessian</span>
+<span class="n">eigenvalues</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvalsh</span><span class="p">(</span><span class="n">final_hessian</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Negative Hessian eigenvalues:&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">eigenvalues</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">1e-3</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="s2">&quot;(1 for a TS)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="many-calculations-at-once">Many calculations at once<a class="headerlink" href="#many-calculations-at-once" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/many_calculations.py"><code>examples/geometric/many_calculations.py</code></a></p>
+<div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC for many structures at once: optimizations run side by side.</span>
+
+<span class="sd">Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST), and</span>
+<span class="sd">qccompute 0.21.0 or newer.</span>
+
+<span class="sd">How lists of Python calculations work (geomeTRIC, tblite):</span>
+
+<span class="sd">- geomeTRIC runs in Python, and a Python calculation takes over its process&#39;s output</span>
+<span class="sd">  streams and working directory while it runs. So when a list holds two or more,</span>
+<span class="sd">  qccompute runs them side by side in worker processes, started with</span>
+<span class="sd">  ``python -m qccompute._worker``: this script is never imported again and needs no</span>
+<span class="sd">  ``if __name__ == &quot;__main__&quot;:`` guard.</span>
+<span class="sd">- ``max_workers`` is the budget of CPU threads, by default the cores this process may</span>
+<span class="sd">  use. An optimization counts the threads of its gradient program (CREST ``threads``</span>
+<span class="sd">  here). Each worker starts with ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``, and</span>
+<span class="sd">  ``MKL_NUM_THREADS`` set to its share (unless you set them), so numpy in each worker</span>
+<span class="sd">  does not start a thread per core.</span>
+<span class="sd">- The gradient calculations run inside each optimization as usual.</span>
+<span class="sd">- Failures are reported as for any list: see examples/xtb/many_calculations.py.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qcdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalcType</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ProgramInput</span><span class="p">,</span> <span class="n">ProgramSpec</span><span class="p">,</span> <span class="n">Structure</span>
+
+<span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">start_geometry</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.524</span><span class="p">,</span> <span class="mf">1.687</span><span class="p">,</span> <span class="mf">0.48</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.146</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.45</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.354</span><span class="p">]]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">jiggled</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Structure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The starting water with every coordinate moved by up to 0.2 bohr.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Structure</span><span class="p">(</span>
+        <span class="n">symbols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">],</span>
+        <span class="n">geometry</span><span class="o">=</span><span class="p">[</span>
+            <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">atom</span><span class="p">]</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">start_geometry</span>
+        <span class="p">],</span>
+    <span class="p">)</span>
+
+
+<span class="n">gradient_program</span> <span class="o">=</span> <span class="n">ProgramSpec</span><span class="p">(</span>
+    <span class="n">program</span><span class="o">=</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span>
+    <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>  <span class="c1"># threads for each gradient, counted against max_workers</span>
+<span class="p">)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ProgramInput</span><span class="p">(</span>
+        <span class="n">program</span><span class="o">=</span><span class="s2">&quot;geometric&quot;</span><span class="p">,</span>
+        <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">optimization</span><span class="p">,</span>
+        <span class="n">structure</span><span class="o">=</span><span class="n">jiggled</span><span class="p">(),</span>
+        <span class="n">subprograms</span><span class="o">=</span><span class="p">[</span><span class="n">gradient_program</span><span class="p">],</span>
+        <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;maxiter&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>  <span class="c1"># four workers, one optimization each</span>
+<span class="c1"># outputs = compute(inputs, max_workers=2)  # at most two at a time</span>
+<span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">outputs</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Optimization </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">)</span><span class="si">}</span><span class="s2"> steps, final energy &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.8f</span><span class="si">}</span><span class="s2"> Hartree&quot;</span>
+    <span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Four optimizations side by side: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link", "content.code.annotate", "content.code.copy", "announce.dismiss", "navigation.tabs", "navigation.instant", "navigation.instant.prefetch", "navigation.instant.preview", "navigation.instant.progress", "navigation.path", "navigation.sections", "navigation.top", "navigation.tracking", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
