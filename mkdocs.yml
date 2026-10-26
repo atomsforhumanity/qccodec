@@ -1,5 +1,5 @@
 site_name: qccodec
-site_url: https://qccodec.docs.atomsforhumanity.org/
+site_url: https://qccodec.docs.afh.org/
 site_description: Program-specific encoders and parsers for quantum chemistry programs, with copy-and-paste examples.
 theme:
   name: material

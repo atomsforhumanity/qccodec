@@ -1,6 +1,6 @@
 name: Docs
 
-# Publishes https://qccodec.docs.atomsforhumanity.org from the gh-pages branch.
+# Publishes https://qccodec.docs.afh.org from the gh-pages branch.
 # A release tag (the same tags as the Release workflow) or a manual run builds and
 # deploys the site; pull requests that touch the docs only build it.
 on:
