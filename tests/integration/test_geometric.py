@@ -163,3 +163,26 @@ def test_transition_state_with_crest(run: Run) -> None:
     assert with_hessian == [0, len(trajectory) - 1]
     eigenvalues = np.linalg.eigvalsh(np.asarray(trajectory[-1].results.hessian))
     assert (eigenvalues < -1e-3).sum() == 1  # a first-order saddle point
+
+
+@requires("crest")
+def test_irc_with_crest(run: Run) -> None:
+    """geomeTRIC's IRC from the HCN <-> HNC saddle reaches both minima, in frame."""
+    from qcdata import PathData
+    from qcref import periodic_table
+
+    ts = Structure(
+        symbols=["C", "N", "H"],
+        geometry=np.array([[0.017, 0.036, 0.0], [2.283, -0.137, 0.0], [1.0, 2.0, 0.0]]),
+    )
+    inp = _input(ts, CalcType.irc, "crest", Model(method="gfn2"), threads=1)
+    inp = inp.model_copy(update={"keywords": {"maxiter": 300}})
+    path = run(inp).results
+    assert isinstance(path, PathData) and path.ts_index is not None
+    assert path.frames[path.ts_index].results.hessian is not None
+    assert path.forward_barrier is not None and path.reverse_barrier is not None
+    barriers = sorted([path.forward_barrier, path.reverse_barrier])
+    assert np.allclose(np.array(barriers) * 627.5095, [53.2, 73.2], atol=0.5)
+    masses = np.array([float(periodic_table[s].mass) for s in ts.symbols])[:, None]
+    centers = [(masses * f.structure.geometry).sum(axis=0) for f in path.frames]
+    assert np.abs(np.array(centers) - centers[path.ts_index]).max() < 1e-6
