@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -19,6 +19,7 @@ from qcdata import (
 
 from qccodec import (
     Codec,
+    PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
@@ -365,3 +366,124 @@ def test_geometric_irc_path_is_the_accepted_points_in_order() -> None:
     path, ts_index = _irc_path(optimizer, trajectory, ts.structure)
     assert [f.results.energy for f in path] == [-0.1, 0.0, -0.1, -0.2]
     assert ts_index == 1
+
+
+def _neb_input(**keywords: Any) -> ProgramInput:
+    from qcdata import CalcType, Model, ProgramSpec, Structure
+
+    chain = [
+        Structure(
+            symbols=["H", "H"], geometry=np.array([[0.0, 0, 0], [0, 0, 1.2 + 0.1 * i]])
+        )
+        for i in range(5)
+    ]
+    return ProgramInput(
+        program="geometric",
+        calctype=CalcType.path_optimization,
+        structures={"initial_chain": chain},
+        subprograms=[
+            ProgramSpec(
+                program="morse", calctype=CalcType.gradient, model=Model(method="m")
+            )
+        ],
+        keywords=keywords,
+    )
+
+
+def _morse(child: ProgramInput) -> ProgramOutput[ProgramInput, Data]:
+    """H2 on a Morse curve: energy and gradient (Hartree, bohr)."""
+    g = child.require_structure().geometry
+    d = g[1] - g[0]
+    r = float(np.linalg.norm(d))
+    x = np.exp(-1.0 * (r - 1.4))
+    energy = 0.17 * (1 - x) ** 2
+    dedr = 2 * 0.17 * (1 - x) * x
+    grad = np.array([-dedr * d / r, dedr * d / r])
+    return ProgramOutput.model_validate(
+        {
+            "input_data": child,
+            "success": True,
+            "results": SinglePointData.model_validate(
+                {"provenance": {"program": "morse"}, "energy": energy, "gradient": grad}
+            ),
+        }
+    )
+
+
+def test_geometric_neb_encoding() -> None:
+    """The chain and both callbacks are requested; bigchem is the runner's job."""
+    native = get_codec("geometric").encode(_neb_input(images=5))
+    assert isinstance(native, PythonInput)
+    assert native.child_callback == "compute_child"
+    assert native.children_callback == "compute_children"
+    assert len(native.kwargs["chain"]) == 5
+    assert native.kwargs["keywords"] == {"images": 5}
+    with pytest.raises(EncoderError, match="bigchem"):
+        get_codec("geometric").encode(_neb_input(bigchem=True))
+
+
+def test_geometric_neb_computes_each_iteration_s_images_together() -> None:
+    """Every evaluation hands all images to compute_children; paths are recorded."""
+    pytest.importorskip("geometric")
+    inp = _neb_input(images=5, neb_maxcyc=3)
+    native = get_codec("geometric").encode(inp)
+    assert isinstance(native, PythonInput)
+    sizes: list[int] = []
+
+    def children(inputs: Any) -> list[ProgramOutput[ProgramInput, Data]]:
+        sizes.append(len(inputs))
+        return [_morse(child) for child in inputs]
+
+    value = native.function(
+        **native.kwargs, compute_child=_morse, compute_children=children
+    )
+    assert sizes and set(sizes) == {5}
+    assert value["paths"] and all(len(frames) == 5 for frames, _ in value["paths"])
+    data = None
+    try:
+        data = get_codec("geometric").decode(inp, PythonOutput(value=value))
+    except CalculationError as exc:  # three cycles may not converge
+        data = exc.data
+    from qcdata import PathOptimizationData
+
+    assert isinstance(data, PathOptimizationData) and data.final_path is not None
+    assert len(data.paths) == len(value["paths"])
+
+
+def test_geometric_neb_falls_back_to_one_child_at_a_time() -> None:
+    """Without compute_children (an older runner), images go to compute_child."""
+    pytest.importorskip("geometric")
+    native = get_codec("geometric").encode(_neb_input(images=5, neb_maxcyc=1))
+    assert isinstance(native, PythonInput)
+    seen: list[ProgramInput] = []
+
+    def child(inp: ProgramInput, **_: Any) -> ProgramOutput[ProgramInput, Data]:
+        seen.append(inp)
+        return _morse(inp)
+
+    native.function(**native.kwargs, compute_child=child)
+    assert len(seen) >= 5 and len(seen) % 5 == 0
+
+
+def test_geometric_neb_reports_failed_images() -> None:
+    """A failed image stops the run with the frames computed so far."""
+    pytest.importorskip("geometric")
+    inp = _neb_input(images=5)
+    native = get_codec("geometric").encode(inp)
+    assert isinstance(native, PythonInput)
+
+    def children(inputs: Any) -> list[ProgramOutput[ProgramInput, Data]]:
+        outputs = [_morse(child) for child in inputs]
+        outputs[2] = outputs[2].model_copy(update={"success": False, "traceback": "x"})
+        return outputs
+
+    value = native.function(
+        **native.kwargs, compute_child=_morse, compute_children=children
+    )
+    assert "images [2]" in value["error"]
+    with pytest.raises(CalculationError) as raised:
+        get_codec("geometric").decode(inp, PythonOutput(value=value))
+    from qcdata import PathOptimizationData
+
+    assert isinstance(raised.value.data, PathOptimizationData)
+    assert not raised.value.data.paths[-1].frames[2].success

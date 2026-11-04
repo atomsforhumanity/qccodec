@@ -186,3 +186,37 @@ def test_irc_with_crest(run: Run) -> None:
     masses = np.array([float(periodic_table[s].mass) for s in ts.symbols])[:, None]
     centers = [(masses * f.structure.geometry).sum(axis=0) for f in path.frames]
     assert np.abs(np.array(centers) - centers[path.ts_index]).max() < 1e-6
+
+
+@requires("xtb")
+def test_neb_with_xtb(run: Run) -> None:
+    """The HCN -> HNC band climbs to the saddle the TS search and IRC find."""
+    from qcdata import PathOptimizationData
+
+    hcn = np.array([[0.0, 0.0, 0.0], [2.18, 0.0, 0.0], [-2.02, 0.0, 0.0]])
+    bent = np.array([[0.017, 0.036, 0.0], [2.283, -0.137, 0.0], [1.0, 2.0, 0.0]])
+    hnc = np.array([[0.0, 0.0, 0.0], [2.21, 0.0, 0.0], [4.10, 0.0, 0.0]])
+    steps = np.linspace(0.0, 1.0, 6)
+    geometries = [hcn + (bent - hcn) * t for t in steps]
+    geometries += [bent + (hnc - bent) * t for t in steps[1:]]
+    chain = [Structure(symbols=["C", "N", "H"], geometry=g) for g in geometries]
+    inp = ProgramInput(
+        program="geometric",
+        calctype=CalcType.path_optimization,
+        structures={"initial_chain": chain},
+        subprograms=[
+            ProgramSpec(
+                program="xtb", calctype=CalcType.gradient, model=Model(method="gfn2")
+            )
+        ],
+        keywords={"images": 11, "neb_maxcyc": 100},
+    )
+    results = run(inp).results
+    assert isinstance(results, PathOptimizationData) and len(results.paths) > 1
+    path = results.final_path
+    assert path is not None and path.ts_index is not None
+    assert all(len(p.frames) == 11 for p in results.paths)
+    assert path.forward_barrier is not None and path.reverse_barrier is not None
+    # The climbing image sits near the saddle: 73.2 and 53.2 kcal/mol.
+    assert abs(path.forward_barrier * 627.5095 - 73.2) < 1.5
+    assert abs(path.reverse_barrier * 627.5095 - 53.2) < 1.5

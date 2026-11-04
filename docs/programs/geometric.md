@@ -44,3 +44,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/geometric/irc.py!}
 ```
+
+### Path optimization (NEB)
+
+[`examples/geometric/path_optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/path_optimization.py)
+
+```python
+{!examples/geometric/path_optimization.py!}
+```

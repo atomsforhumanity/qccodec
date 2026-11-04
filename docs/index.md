@@ -47,7 +47,7 @@ Copy one, delete what you don't need, and run it.
 | `program` | Calculation types | Notes |
 | --- | --- | --- |
 | [`crest`](programs/crest.md) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
-| [`geometric`](programs/geometric.md) | optimization, transition_state, irc | Drives any gradient program |
+| [`geometric`](programs/geometric.md) | optimization, transition_state, irc, path_optimization | Drives any gradient program |
 | [`sella`](programs/sella.md) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program |
 | [`orca`](programs/orca.md) | energy, gradient, hessian, optimization, transition_state | |
 | [`psi4`](programs/psi4.md) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
