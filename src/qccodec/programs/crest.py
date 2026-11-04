@@ -12,8 +12,9 @@ Inputs map to CREST 3's TOML input as follows:
 - ``runtype`` defaults from the calculation type (``singlepoint``, ``numhess``,
   ``optimize``, ``imtd-gc``); a given ``runtype`` must match it, e.g. ``nci`` or
   ``entropy`` for conformer searches.
-- ``threads`` defaults to the number of CPUs, at most 16. CREST itself always runs
-  with ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
+- ``threads`` is CREST's own: 1 unless set. The codec declares it to qccompute,
+  and CREST itself always runs with ``OMP_NUM_THREADS=1`` and parallelizes over its
+  own threads.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
 and normal modes), ``optimization``, and ``conformer_search``. CREST writes the normal
@@ -33,7 +34,6 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 from typing import Any
 
 import numpy as np
@@ -85,7 +85,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         },
         "input.toml",
         environment={"OMP_NUM_THREADS": "1"},
-        threads=int(toml_dict["threads"]),
+        threads=int(toml_dict.get("threads", 1)),  # CREST's default
     )
 
 
@@ -138,8 +138,6 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
     if inp.model is None:
         raise EncoderError("crest input requires a scientific model.")
     toml_dict = copy.deepcopy(inp.keywords)
-    # Logical cores were 10% faster than physical cores, so psutil is not used.
-    toml_dict.setdefault("threads", min(os.cpu_count() or 16, 16))
     toml_dict["input"] = struct_filename
     if "runtype" not in toml_dict:
         if inp.calctype not in _DEFAULT_RUNTYPE:
@@ -234,11 +232,7 @@ def parse_energy(contents: str) -> float:
     return float(re_search(r"# Energy \( Eh \)\n#*\n\s*([-\d.]+)", contents).group(1))
 
 
-@codec.parser(
-    file="crest.engrad",
-    target="gradient",
-    calctypes=[CalcType.energy, CalcType.gradient],
-)
+@codec.parser(file="crest.engrad", target="gradient", calctypes=[CalcType.gradient])
 def parse_gradient(contents: str) -> list[list[float]]:
     """Parse the gradient from ``crest.engrad`` as an N x 3 list."""
     regex = r"# Gradient \( Eh/a0 \)\n#\s*\n((?:\s*[-\d.]+\n)+)"

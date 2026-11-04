@@ -55,7 +55,7 @@ inputs = [
         structure=water(r),
         model=Model(method="orb-v3-conservative-omol"),
         keywords={
-            # "precision": "float64",  # GPU default float32-high differs in the last digits
+            # "precision": "float64",  # batched and single runs then agree to more digits
             # "device": "cpu",  # or "cuda"; leave out to use a GPU when present
         },
     )

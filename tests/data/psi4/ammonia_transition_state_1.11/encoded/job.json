@@ -3,8 +3,8 @@
   "method": "hf/sto-3g",
   "options": {
     "scf_type": "pk",
-    "opt_type": "ts",
-    "full_hess_every": 0
+    "full_hess_every": 0,
+    "opt_type": "ts"
   },
   "kwargs": {},
   "molecule": {

@@ -11,7 +11,8 @@
     "qcdata_version": "0.20.1"
   },
   "keywords": {
-    "scf_type": "pk"
+    "scf_type": "pk",
+    "full_hess_every": 0
   },
   "subprograms": [],
   "structure": {

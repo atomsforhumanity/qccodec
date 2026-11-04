@@ -36,8 +36,9 @@ has. No input field carries atom indices.
 Calculation types: ``energy``, ``gradient``, ``hessian`` (``psi4.frequency``: also
 frequencies, normal modes, and the gradient), ``optimization`` and
 ``transition_state`` (``psi4.optimize`` with optking; every step carries its energy
-and gradient). A transition-state search sets ``opt_type ts`` and, unless given,
-``full_hess_every 0`` (an exact Hessian at the first step). Every single point also
+and gradient). A transition-state search sets ``opt_type ts``; everything else is
+optking's own default, including its guess Hessian (set ``full_hess_every`` for exact
+ones, e.g. ``0`` for the first step only). Every single point also
 records Mulliken charges in ``atomic_charges`` when the method supports them, the
 gradient on external point charges in ``point_charge_gradient``, and all scalar Psi4
 variables in ``extras["psi4_variables"]``.
@@ -185,8 +186,6 @@ def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:
         if opt_type not in (None, "ts"):
             raise EncoderError("A transition_state calculation needs opt_type 'ts'.")
         options.setdefault(lower.get("opt_type", "opt_type"), "ts")
-        # optking's guess Hessian rarely finds a saddle point; start from an exact one.
-        options.setdefault(lower.get("full_hess_every", "full_hess_every"), 0)
     elif calctype == CalcType.optimization and opt_type == "ts":
         raise EncoderError("Use calctype transition_state for opt_type 'ts'.")
 

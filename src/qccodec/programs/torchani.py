@@ -13,9 +13,9 @@ Inputs map to TorchANI as follows:
 - ANI models describe neutral closed-shell molecules only, so the codec raises for a
   charge other than 0 or a multiplicity other than 1.
 - ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default),
-  ``dtype`` (``"float64"`` by default, for smooth gradients and Hessians; or
-  ``"float32"``, faster), and ``model_index`` (one member of the ensemble instead of
-  its average). Nothing else is accepted. A model on a GPU declares one for
+  ``dtype`` (``"float32"`` by default, TorchANI's own; or ``"float64"``, for
+  finite differences or Hessians smooth to more digits), and ``model_index`` (one
+  member of the ensemble instead of its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
 - ``cmdline_args`` and ``files`` are not accepted.
@@ -59,7 +59,7 @@ from ._python import (
 )
 
 MODELS = ("ANI1x", "ANI1ccx", "ANI2x", "ANI2xr", "ANI2dr", "ANImbis", "SnnANI2xr")
-DTYPES = ("float64", "float32")
+DTYPES = ("float32", "float64")
 
 
 def model_name(method: str) -> str:
@@ -98,7 +98,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
     reject_unknown("torchani", keywords, frozenset({"dtype", "model_index"}))
-    dtype = keywords.get("dtype", "float64")
+    dtype = keywords.get("dtype", "float32")
     if dtype not in DTYPES:
         raise EncoderError(f"dtype must be one of {list(DTYPES)}, not {dtype!r}.")
     model_index = keywords.get("model_index")

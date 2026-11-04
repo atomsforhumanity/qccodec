@@ -29,7 +29,8 @@ def _input(structure: Structure, calctype: CalcType) -> ProgramInput:
         structure=structure,
         calctype=calctype,
         model=Model(method="ANI2x"),
-        keywords={"device": "cpu"},
+        # float64: the reference values and finite-difference checks need it.
+        keywords={"device": "cpu", "dtype": "float64"},
     )
 
 

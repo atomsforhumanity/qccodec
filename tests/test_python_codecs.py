@@ -299,6 +299,13 @@ def test_torchani_models(method: str, name: str) -> None:
     assert _encode(_input("torchani", method=method)).kwargs["model"] == name
 
 
+def test_torchani_defaults_to_its_own_float32() -> None:
+    """TorchANI's dtype is its own default unless asked for float64."""
+    assert _encode(_input("torchani")).kwargs["dtype"] == "float32"
+    chosen = _input("torchani", keywords={"dtype": "float64"})
+    assert _encode(chosen).kwargs["dtype"] == "float64"
+
+
 def test_torchani_rejects_what_ani_cannot_describe() -> None:
     """ANI models are neutral closed-shell only; dtype and model names are checked."""
     with pytest.raises(EncoderError, match="neutral closed-shell"):
@@ -341,6 +348,45 @@ def test_orb_has_no_hessian_and_checks_precision() -> None:
         _encode(_input("orb", CalcType.hessian))
     with pytest.raises(EncoderError, match="precision"):
         _encode(_input("orb", keywords={"precision": "float16"}))
+    with pytest.raises(EncoderError, match="compile"):
+        _encode(_input("orb", keywords={"compile": "yes"}))
+
+
+def test_orb_defaults_to_full_precision_uncompiled() -> None:
+    """Full FP32 and no torch.compile unless asked for; both reach the loader."""
+    kwargs = _encode(_input("orb")).kwargs
+    assert (kwargs["precision"], kwargs["compile"]) == ("float32-highest", False)
+    chosen = _input("orb", keywords={"precision": "float32-high", "compile": True})
+    kwargs = _encode(chosen).kwargs
+    assert (kwargs["precision"], kwargs["compile"]) == ("float32-high", True)
+
+
+def test_orb_restores_the_process_s_torch_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Orb's dtype and matmul precision apply during the call only."""
+    from qccodec.programs.orb import _numerics
+
+    state = {"dtype": "float32", "matmul": "highest"}
+    torch = SimpleNamespace(
+        float32="float32",
+        float64="float64",
+        get_default_dtype=lambda: state["dtype"],
+        set_default_dtype=lambda d: state.update(dtype=d),
+        get_float32_matmul_precision=lambda: state["matmul"],
+        set_float32_matmul_precision=lambda p: state.update(matmul=p),
+    )
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    with _numerics("float32-high"):
+        assert state == {"dtype": "float32", "matmul": "high"}
+    assert state == {"dtype": "float32", "matmul": "highest"}
+    state["matmul"] = "medium"  # set by another program
+    with _numerics("float64"):
+        assert state == {"dtype": "float64", "matmul": "medium"}
+    assert state == {"dtype": "float32", "matmul": "medium"}
+    with pytest.raises(RuntimeError), _numerics("float32-highest"):
+        raise RuntimeError
+    assert state == {"dtype": "float32", "matmul": "medium"}
 
 
 def test_fairchem_defaults_and_settings() -> None:
@@ -353,8 +399,8 @@ def test_fairchem_defaults_and_settings() -> None:
         "activation_checkpointing": False,
     }
     assert (kwargs["charge"], kwargs["multiplicity"]) == (-1, 1)
-    turbo = _input("fairchem", keywords={"inference_settings": "turbo", "task": "omat"})
-    assert _encode(turbo).kwargs["inference_settings"] == "turbo"
+    nitro = _input("fairchem", keywords={"inference_settings": "nitro", "task": "omat"})
+    assert _encode(nitro).kwargs["inference_settings"] == "nitro"
     with pytest.raises(EncoderError, match="inference_settings"):
         _encode(_input("fairchem", keywords={"inference_settings": 3}))
 

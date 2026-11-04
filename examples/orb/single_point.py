@@ -13,7 +13,10 @@ How the codec talks to Orb (https://github.com/orbital-materials/orb-models):
   forces), "orbmol-v2", or the materials models. There is no basis set.
 - OMol25 models read charge and multiplicity from ``structure``; the others describe
   neutral closed-shell systems only.
-- ``precision`` is "float32-high" by default, or "float32-highest" or "float64".
+- ``precision`` is "float32-highest" (full FP32) by default, or "float64", or
+  "float32-high" (Orb's own default: faster on GPUs, with less accurate gradients).
+- ``compile`` is False by default; True compiles the model, which costs tens of
+  seconds per process and paid off only for long runs on one molecule.
 - Orb has no Hessian. Use geomeTRIC with Orb gradients for optimizations and
   transition states (examples/geometric/).
 - Energies come back in Hartree and gradients in Hartree/bohr, converted from Orb's
@@ -40,7 +43,8 @@ prog_input = ProgramInput(
     model=Model(method="orb-v3-conservative-omol"),  # or "orb-v3-direct-omol", ...
     keywords={
         "device": "cpu",  # or "cuda"; leave out to use a GPU when present
-        # "precision": "float64",  # or "float32-highest"
+        # "precision": "float64",  # or "float32-high"
+        # "compile": True,
     },
 )
 
