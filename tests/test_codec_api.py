@@ -431,13 +431,19 @@ def test_version_key_and_check_codec() -> None:
         check_codec(blind)
 
 
-def test_python_input_names_an_optional_children_callback() -> None:
-    """Drivers can ask for a callback that computes several children at once."""
-    from qccodec.native import ComputeChildren, PythonInput
+def test_python_input_names_the_compute_callback() -> None:
+    """Drivers name a keyword for the runner's Compute; child_callback is deprecated."""
+    import warnings
 
-    assert PythonInput(print).children_callback is None
-    request = PythonInput(
-        print, child_callback="compute_child", children_callback="compute_children"
-    )
-    assert request.children_callback == "compute_children"
-    assert ComputeChildren.__call__.__doc__
+    from qccodec.native import PythonInput
+
+    assert PythonInput(print).compute_callback is None
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        request = PythonInput(
+            print, compute_callback="compute", child_callback="compute_child"
+        )
+    assert request.compute_callback == "compute"
+    with pytest.warns(DeprecationWarning, match="compute_callback"):
+        PythonInput(print, child_callback="compute_child")
+    assert qccodec.Compute.__doc__ and "previous" in qccodec.Compute.__doc__

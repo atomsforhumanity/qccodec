@@ -19,14 +19,17 @@ from qcdata import (
 
 from qccodec import (
     Codec,
+    Compute,
     PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
     get_codec,
+    sequential,
     supported_programs,
 )
 from qccodec.exceptions import CalculationError, EncoderError
+from qccodec.programs._driver import Recorder, outcome
 
 
 @pytest.mark.parametrize(
@@ -174,7 +177,7 @@ def test_crest_rotamers_are_opt_in(
 def test_geometric_binding_and_failure_trajectory(
     prog_input_factory: Callable[..., ProgramInput],
 ) -> None:
-    """Geometric binding and failure trajectory."""
+    """A failed child ends the trajectory as its last frame."""
     from qccodec.programs.geometric import make_engine
 
     inp = prog_input_factory("gradient", "child")
@@ -185,7 +188,6 @@ def test_geometric_binding_and_failure_trajectory(
             pass
 
     seen: list[ProgramInput] = []
-    trajectory: list[Frame] = []
 
     def child(
         input_data: ProgramInput,
@@ -206,14 +208,14 @@ def test_geometric_binding_and_failure_trajectory(
         )
 
     structure = inp.require_structure()
+    recorder = Recorder("geometric", sequential(child))
     engine = make_engine(
         cast(ModuleType, SimpleNamespace(engine=SimpleNamespace(Engine=Engine))),
         object(),
         structure,
         {"reference": structure},
         inp,
-        child,
-        trajectory,
+        recorder,
     )
     coords = structure.geometry + 0.1
     with pytest.raises(RuntimeError, match="child calculation"):
@@ -221,15 +223,12 @@ def test_geometric_binding_and_failure_trajectory(
     np.testing.assert_allclose(seen[0].require_structure().geometry, coords)
     assert seen[0].structures["reference"] == structure
     assert seen[0].keywords == inp.keywords
+    trajectory = recorder.frames
     assert len(trajectory) == 1 and (not trajectory[0].success)
     outer = get_codec("geometric")
+    value = {**outcome("test"), "frames": trajectory, "error": "failed"}
     with pytest.raises(CalculationError) as raised:
-        outer.decode(
-            inp,
-            PythonOutput(
-                value={"trajectory": trajectory, "version": "test", "error": "failed"}
-            ),
-        )
+        outer.decode(inp, PythonOutput(value=value))
     assert isinstance(raised.value.data, OptimizationData)
     assert raised.value.data.frames == trajectory
 
@@ -284,43 +283,55 @@ def test_geometric_coordinate_systems_match_geometric() -> None:
         assert hasattr(geometric.internal, class_name)
 
 
-def test_geometric_hessians_attach_to_the_frame_at_their_geometry() -> None:
-    """Each recorded Hessian goes on the last frame computed at the same geometry."""
-    import numpy as np
-    from qcdata import Frame, SinglePointData, Structure
+@pytest.mark.parametrize(
+    ("keywords", "match"),
+    [
+        ({"maxiterr": 5}, "Unknown geometric keywords"),
+        ({"convergence_sett": "GAU_TIGHT"}, "Unknown geometric keywords"),
+        ({"transition": True}, "sets these keywords itself"),
+        ({"irc": True}, "sets these keywords itself"),
+        ({"bigchem": True}, "bigchem"),
+    ],
+)
+def test_geometric_refuses_keywords_it_would_ignore_or_overwrite(
+    prog_input_factory: Callable[..., ProgramInput],
+    keywords: dict[str, Any],
+    match: str,
+) -> None:
+    """geomeTRIC ignores names it does not read; a typo must not run with a default."""
+    from qcdata import CalcType, Model, ProgramSpec
 
-    from qccodec.programs.geometric import _attach_hessians
-
-    def frame(z: float) -> Frame:
-        structure = Structure(
-            symbols=["H", "H"], geometry=np.array([[0.0, 0, 0], [0, 0, z]])
-        )
-        return Frame(
-            structure=structure,
-            success=True,
-            results=SinglePointData.model_validate(
-                {
-                    "provenance": {"program": "test"},
-                    "energy": -1.0,
-                    "gradient": np.zeros((2, 3)),
-                }
-            ),
-        )
-
-    trajectory = [frame(1.4), frame(1.35), frame(1.3)]
-    first, last = np.eye(6), 2 * np.eye(6)
-    _attach_hessians(
-        trajectory,
-        [
-            (np.array([0, 0, 0, 0, 0, 1.4]), first),
-            (np.array([0, 0, 0, 0, 0, 1.3]), last),
-            (np.array([0, 0, 0, 0, 0, 9.9]), 3 * np.eye(6)),  # no such frame
-        ],
+    child = ProgramSpec(
+        program="xtb", calctype=CalcType.gradient, model=Model(method="gfn2")
     )
-    hessians = [frame.results.hessian for frame in trajectory]
-    assert hessians[0] is not None and np.array_equal(hessians[0], first)
-    assert hessians[1] is None
-    assert hessians[2] is not None and np.array_equal(hessians[2], last)
+    inp = prog_input_factory("optimization", "geometric").model_copy(
+        update={"keywords": keywords, "subprograms": [child]}
+    )
+    get_codec("geometric").encode(inp.model_copy(update={"keywords": {"maxiter": 5}}))
+    with pytest.raises(EncoderError, match=match):
+        get_codec("geometric").encode(inp)
+
+
+def test_geometric_keyword_lists_match_what_geometric_reads() -> None:
+    """The codec's lists are the names OptParams and NEBParams read, less the refused."""
+    import inspect
+    import re
+
+    geometric = pytest.importorskip("geometric")
+    from qccodec.programs.geometric import (
+        NEB_KEYWORDS,
+        OPT_KEYWORDS,
+        OWNED_KEYWORDS,
+    )
+
+    def read(cls: type) -> set[str]:
+        return set(
+            re.findall(r"kwargs\.get\(\s*['\"](\w+)['\"]", inspect.getsource(cls))
+        )
+
+    refused = OWNED_KEYWORDS | {"bigchem", "meci"}
+    assert read(geometric.params.OptParams) - refused == OPT_KEYWORDS
+    assert read(geometric.params.NEBParams) - refused == NEB_KEYWORDS
 
 
 def test_geometric_irc_path_is_the_accepted_points_in_order() -> None:
@@ -410,34 +421,58 @@ def _morse(child: ProgramInput) -> ProgramOutput[ProgramInput, Data]:
     )
 
 
+class _MorseCompute:
+    """A Compute on the Morse curve recording each list call and its ``previous``."""
+
+    def __init__(self, fail_image: int | None = None) -> None:
+        self.calls: list[list[ProgramOutput[ProgramInput, Data]]] = []
+        self.starts: list[list[Any]] = []
+        self.fail_image = fail_image
+
+    def __call__(self, inputs: Any, /, *, previous: Any = None) -> Any:
+        if isinstance(inputs, ProgramInput):
+            return _morse(inputs)
+        outputs = [_morse(child) for child in inputs]
+        if self.fail_image is not None:
+            outputs[self.fail_image] = outputs[self.fail_image].model_copy(
+                update={"success": False, "traceback": "x"}
+            )
+        self.calls.append(outputs)
+        self.starts.append(list(previous))
+        return outputs
+
+
 def test_geometric_neb_encoding() -> None:
-    """The chain and both callbacks are requested; bigchem is the runner's job."""
+    """The chain and the compute callback are requested; bigchem is the runner's job."""
     native = get_codec("geometric").encode(_neb_input(images=5))
     assert isinstance(native, PythonInput)
-    assert native.child_callback == "compute_child"
-    assert native.children_callback == "compute_children"
+    assert native.compute_callback == "compute"
+    assert native.child_callback == "compute_child"  # runners before qccompute 0.23
     assert len(native.kwargs["chain"]) == 5
     assert native.kwargs["keywords"] == {"images": 5}
     with pytest.raises(EncoderError, match="bigchem"):
         get_codec("geometric").encode(_neb_input(bigchem=True))
+    with pytest.raises(EncoderError, match="Unknown geometric keywords"):
+        get_codec("geometric").encode(_neb_input(imagse=5))
+    with pytest.raises(EncoderError, match="Unknown geometric keywords"):
+        get_codec("geometric").encode(_neb_input(maxiter=5))  # an optimizer keyword
 
 
 def test_geometric_neb_computes_each_iteration_s_images_together() -> None:
-    """Every evaluation hands all images to compute_children; paths are recorded."""
+    """Every evaluation hands all images to compute at once; paths are recorded.
+
+    From the second iteration on, each image starts from its own previous output.
+    """
     pytest.importorskip("geometric")
     inp = _neb_input(images=5, neb_maxcyc=3)
     native = get_codec("geometric").encode(inp)
     assert isinstance(native, PythonInput)
-    sizes: list[int] = []
-
-    def children(inputs: Any) -> list[ProgramOutput[ProgramInput, Data]]:
-        sizes.append(len(inputs))
-        return [_morse(child) for child in inputs]
-
-    value = native.function(
-        **native.kwargs, compute_child=_morse, compute_children=children
-    )
-    assert sizes and set(sizes) == {5}
+    compute = _MorseCompute()
+    value = native.function(**native.kwargs, compute=cast(Compute, compute))
+    assert compute.calls and {len(outputs) for outputs in compute.calls} == {5}
+    assert compute.starts[0] == [None] * 5
+    for before, starts in zip(compute.calls, compute.starts[1:], strict=False):
+        assert all(s is b for s, b in zip(starts, before, strict=True))
     assert value["paths"] and all(len(frames) == 5 for frames, _ in value["paths"])
     data = None
     try:
@@ -450,8 +485,8 @@ def test_geometric_neb_computes_each_iteration_s_images_together() -> None:
     assert len(data.paths) == len(value["paths"])
 
 
-def test_geometric_neb_falls_back_to_one_child_at_a_time() -> None:
-    """Without compute_children (an older runner), images go to compute_child."""
+def test_geometric_neb_runs_one_image_at_a_time_with_older_runners() -> None:
+    """Runners before qccompute 0.23 inject only compute_child, one input per call."""
     pytest.importorskip("geometric")
     native = get_codec("geometric").encode(_neb_input(images=5, neb_maxcyc=1))
     assert isinstance(native, PythonInput)
@@ -472,15 +507,9 @@ def test_geometric_neb_reports_failed_images() -> None:
     native = get_codec("geometric").encode(inp)
     assert isinstance(native, PythonInput)
 
-    def children(inputs: Any) -> list[ProgramOutput[ProgramInput, Data]]:
-        outputs = [_morse(child) for child in inputs]
-        outputs[2] = outputs[2].model_copy(update={"success": False, "traceback": "x"})
-        return outputs
-
-    value = native.function(
-        **native.kwargs, compute_child=_morse, compute_children=children
-    )
-    assert "images [2]" in value["error"]
+    compute = cast(Compute, _MorseCompute(fail_image=2))
+    value = native.function(**native.kwargs, compute=compute)
+    assert value["error"] is not None and "images [2]" in value["error"]
     with pytest.raises(CalculationError) as raised:
         get_codec("geometric").decode(inp, PythonOutput(value=value))
     from qcdata import PathOptimizationData

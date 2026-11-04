@@ -14,8 +14,8 @@ runs through its codec rather than through an ASE calculator of its own::
     BFGS(atoms).run(fmax=0.01)
 
 qccodec translates and never runs programs, so the caller supplies ``compute``:
-``qccompute.compute``, or the child-calculation callback inside a codec such as
-``sella``. Requires ASE (``pip install ase``; ``qccodec[sella]`` includes it).
+``qccompute.compute``, or the ``qccodec.Compute`` a driver codec such as ``sella``
+receives from its runner. Requires ASE (``pip install ase``; ``qccodec[sella]`` includes it).
 
 Units are converted at the boundary: ASE positions in angstrom become a ``Structure``
 in bohr, and energies and gradients in Hartree and Hartree/bohr come back as eV and
@@ -24,7 +24,7 @@ eV/angstrom forces.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import numpy as np
@@ -42,7 +42,8 @@ from qcdata import (
 )
 from qcref import constants as c
 
-Compute = Callable[[ProgramInput], ProgramOutput[ProgramInput, Data]]
+# The one-input call of qccodec.Compute, which qccompute.compute also takes.
+ComputeOne = Callable[[ProgramInput], ProgramOutput[ProgramInput, Data]]
 
 
 def atoms_structure(atoms: Atoms, template: Structure) -> Structure:
@@ -77,12 +78,12 @@ class ProgramCalculator(Calculator):  # type: ignore[misc]
     def __init__(
         self,
         spec: ProgramSpec,
-        compute: Compute,
+        compute: ComputeOne,
         *,
         charge: int = 0,
         multiplicity: int = 1,
         structure: Structure | None = None,
-        structures: dict[str, Structure] | None = None,
+        structures: Mapping[str, Structure | list[Structure]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Create the calculator.
@@ -91,7 +92,7 @@ class ProgramCalculator(Calculator):  # type: ignore[misc]
             spec: The program, model, and keywords; ``calctype`` ``gradient`` gives
                 energies and forces, ``energy`` only energies.
             compute: Runs one input and returns its output, such as
-                ``qccompute.compute``.
+                ``qccompute.compute`` or a driver's ``qccodec.Compute``.
             charge: Total charge, when no ``structure`` is given.
             multiplicity: Spin multiplicity, when no ``structure`` is given.
             structure: A structure whose charge, multiplicity, and identifiers every
@@ -113,7 +114,7 @@ class ProgramCalculator(Calculator):  # type: ignore[misc]
         self.charge = charge
         self.multiplicity = multiplicity
         self.template = structure
-        self.structures = structures or {}
+        self.structures = dict(structures or {})
         self.outputs: list[ProgramOutput[ProgramInput, Data]] = []
 
     def structure(self, atoms: Atoms) -> Structure:

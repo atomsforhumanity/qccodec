@@ -55,8 +55,8 @@ def parse_energy(stdout: str) -> float: ...                      # reads stdout 
 @codec.parser(file="crest.engrad", target="gradient", calctypes=[CalcType.gradient])
 def parse_gradient(contents: str) -> list[list[float]]: ...      # reads a named file or glob
 
-@codec.parser(file="directory", target="trajectory", calctypes=[CalcType.optimization])
-def parse_trajectory(ctx: Context) -> list[ProgramOutput]: ...   # needs several files
+@codec.parser(file="directory", target="frames", calctypes=[CalcType.optimization])
+def parse_trajectory(ctx: Context) -> list[Frame]: ...           # needs several files
 ```
 
 - `target` is the result field to fill, or a tuple for nested fields such as
@@ -144,6 +144,95 @@ Unknown option names raise `EncoderError`. For optimizers that chain calculation
 codec may set `codec.propagate_wfn = fn` where `fn(output, input_data)` returns a new
 input carrying the previous output's wavefunction as the initial guess; TeraChem copies
 `c0`/`ca0`/`cb0` and sets `guess`. qccompute calls it when `propagate_wfn=True`.
+
+## Driver codecs
+
+Some programs drive others: an optimizer asks for an energy and gradient at every
+step. In qc* each request is a child calculation, a full calculation of a program
+named in `subprograms`, computed through that program's own codec. The driver's codec
+returns a `PythonInput` that names `compute_callback`, and the runner injects its
+`Compute` into that keyword:
+
+```python
+def invoke_myopt(*, structure, gradient_spec, keywords, compute):
+    output = compute(ProgramInput.from_spec(gradient_spec, structure))  # one child
+    outputs = compute([child_a, child_b])  # several at once: batched or side by side
+```
+
+`compute` takes what `qccompute.compute` takes, one input or a list, and returns
+outputs without raising for a failed calculation. `previous=` passes the outputs whose
+wavefunctions start the children (one per input for a list); runners use them when
+the user asks for `propagate_wfn=True`. Outside a runner, such as in tests,
+`qccodec.sequential(fn)` makes a `Compute` from a function that computes one input
+at a time.
+
+The built-in drivers (geomeTRIC, Sella) share their machinery in
+`qccodec.programs._driver`; a new driver should use it too, so every driver reads its
+inputs and reports its results the same way:
+
+- `subprograms(inp, CalcType.gradient, [CalcType.hessian])` returns the subprograms
+  by calculation type: the first required, the rest optional, any other refused.
+- `check_keywords(program, keywords, owned=..., known=...)` refuses keywords the codec
+  sets itself (from the calculation type), and, for programs that silently ignore
+  names they do not read, such as geomeTRIC, any name not in `known`.
+- `child_resources(inp, specs)` returns the most threads and GPUs any child declares.
+  The driver declares them: it occupies what its children use.
+- `Recorder(program, compute)` computes the children and keeps the frames:
+  `compute(child)` for a step, `compute(child, step=False)` for a probe such as a
+  finite-difference displacement (kept only if it fails), `record_at(geometry)` for
+  drivers that learn afterwards which geometry was a step, `compute_images(children)`
+  for the images of a chain, and `add_hessian`/`attach_hessians` to put Hessians on
+  the frames at their geometries. Each child starts from the last successful output
+  of the same program; each image from its own last output.
+- The driver's function returns an `Outcome`: `outcome(version)` with `frames`,
+  `ts_index`, `paths`, and `error` filled in. `driver_decoder(program)` turns it into
+  `OptimizationData`, `PathData` (`irc`), or `PathOptimizationData`
+  (`path_optimization`), and raises `CalculationError` with that data when `error`
+  is set.
+
+```python
+import traceback
+
+from qccodec.programs._driver import (
+    Recorder, check_keywords, child_resources, driver_decoder, outcome, subprograms,
+)
+
+def encode(inp: ProgramInput) -> PythonInput:
+    specs = subprograms(inp, CalcType.gradient)
+    check_keywords("myopt", inp.keywords, owned={"order"})
+    threads, gpus = child_resources(inp, specs.values())
+    return PythonInput(
+        function=invoke_myopt,
+        kwargs={
+            "structure": inp.require_structure(),
+            "gradient_spec": specs[CalcType.gradient],
+            "keywords": dict(inp.keywords),
+        },
+        compute_callback="compute",
+        threads=threads,
+        gpus=gpus,
+    )
+
+def invoke_myopt(*, structure, gradient_spec, keywords, compute):
+    recorder = Recorder("myopt", compute)
+    result = outcome(version="1.0")
+    try:
+        ...  # each step: recorder.compute(ProgramInput.from_spec(gradient_spec, step))
+    except Exception:
+        result["error"] = traceback.format_exc()  # keep the frames computed so far
+    result["frames"] = recorder.frames
+    return result
+
+codec = Codec(
+    "myopt",
+    calctypes={CalcType.optimization},
+    encode=encode,
+    decode=driver_decoder("myopt"),
+)
+```
+
+The built-in drivers also name `child_callback="compute_child"`, a one-input callback
+that runners before qccompute 0.23 inject instead; a new driver does not need it.
 
 ## Program versions
 

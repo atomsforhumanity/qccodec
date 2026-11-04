@@ -16,11 +16,24 @@ Inputs map to Orb as follows:
 - Models trained on OMol25 get ``structure.charge`` and ``structure.multiplicity``
   through ``atoms.info["charge"]`` and ``atoms.info["spin"]``. The others describe
   neutral closed-shell systems only, so the codec raises for anything else.
-- ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default)
-  and ``precision`` (``"float32-high"`` by default, ``"float32-highest"``, or
-  ``"float64"``). Nothing else is accepted. A model on a GPU declares one for
-  qccompute, which gives each calculation of a list its own; an explicit index such
-  as ``"cuda:1"`` opts out of that.
+- ``keywords``: ``device`` (``"cpu"``, ``"cuda"``; CUDA when available by default),
+  ``precision``, and ``compile``. Nothing else is accepted. A model on a GPU declares
+  one for qccompute, which gives each calculation of a list its own; an explicit
+  index such as ``"cuda:1"`` opts out of that.
+
+  - ``precision`` is ``"float32-highest"`` by default (full FP32), or ``"float64"``,
+    or ``"float32-high"``: Orb's own default, reduced-precision matrix multiplies
+    (TF32 on NVIDIA GPUs), about 10% faster. Against float64, its gradients for a
+    26-atom molecule differed by 2e-3 eV/angstrom (full FP32: 2e-5), more than a
+    tight transition-state convergence threshold.
+  - ``compile`` (``False`` by default) compiles the model with ``torch.compile``, as
+    Orb does by default. For molecules it made each call slower (47 against 17 ms for
+    26 atoms on an RTX 3050 Ti, orb-models 0.7) and cost 10 to 40 s per process plus
+    seconds for each new batch shape.
+
+  Orb sets PyTorch's default dtype and matrix-multiply precision for the whole
+  process; the codec applies them for each calculation only and restores the
+  process's own afterwards, so other programs in the same process are unaffected.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy`` and ``gradient``. Orb provides no Hessian; use
@@ -38,7 +51,8 @@ computed one structure at a time.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -62,7 +76,7 @@ from ._python import (
     split_atoms,
 )
 
-PRECISIONS = ("float32-high", "float32-highest", "float64")
+PRECISIONS = ("float32-highest", "float64", "float32-high")
 
 
 def encode(inp: ProgramInput) -> PythonInput:
@@ -77,12 +91,15 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError("Orb runs in Python; cmdline_args and files are unused.")
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("orb", keywords, frozenset({"precision"}))
-    precision = keywords.get("precision", "float32-high")
+    reject_unknown("orb", keywords, frozenset({"precision", "compile"}))
+    precision = keywords.get("precision", "float32-highest")
     if precision not in PRECISIONS:
         raise EncoderError(
             f"precision must be one of {list(PRECISIONS)}, not {precision!r}."
         )
+    compile_model = keywords.get("compile", False)
+    if not isinstance(compile_model, bool):
+        raise EncoderError(f"compile must be true or false, not {compile_model!r}.")
     return PythonInput(
         gpus=gpu_count(device),
         function=invoke_orb,
@@ -90,6 +107,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             "model": model,
             "device": device,
             "precision": precision,
+            "compile": compile_model,
             "symbols": inp.require_structure().symbols,
             "positions": positions_angstrom(inp.require_structure()),
             "charge": inp.require_structure().charge,
@@ -104,6 +122,7 @@ def invoke_orb(
     model: str,
     device: str | None,
     precision: str,
+    compile: bool,
     symbols: list[str],
     positions: list[list[float]],
     charge: int,
@@ -115,6 +134,7 @@ def invoke_orb(
         model=model,
         device=device,
         precision=precision,
+        compile=compile,
         forces=forces,
         molecules=[(symbols, positions, charge, multiplicity)],
     )[0]
@@ -132,7 +152,10 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
         gpus=gpu_count(first["device"]),
         function=invoke_orb_batch,
         kwargs={
-            **{k: first[k] for k in ("model", "device", "precision", "forces")},
+            **{
+                k: first[k]
+                for k in ("model", "device", "precision", "compile", "forces")
+            },
             "molecules": [
                 (k["symbols"], k["positions"], k["charge"], k["multiplicity"])
                 for k in singles
@@ -146,10 +169,45 @@ def invoke_orb_batch(
     model: str,
     device: str | None,
     precision: str,
+    compile: bool,
     forces: bool,
     molecules: list[tuple[list[str], list[list[float]], int, int]],
 ) -> list[SinglePoint]:
     """Evaluate molecules in one Orb pass, as one batched graph."""
+    with _numerics(precision):
+        return _evaluate(model, device, precision, compile, forces, molecules)
+
+
+@contextmanager
+def _numerics(precision: str) -> Iterator[None]:
+    """Use Orb's default dtype and matmul precision for one call, then restore both.
+
+    Orb's loader sets them for the whole process, which would change later
+    calculations of other programs, and a cached model would otherwise run with
+    whatever another program set in between.
+    """
+    import torch
+
+    dtype, matmul = torch.get_default_dtype(), torch.get_float32_matmul_precision()
+    torch.set_default_dtype(torch.float64 if precision == "float64" else torch.float32)
+    if precision != "float64":
+        torch.set_float32_matmul_precision(precision.removeprefix("float32-"))
+    try:
+        yield
+    finally:
+        torch.set_default_dtype(dtype)
+        torch.set_float32_matmul_precision(matmul)
+
+
+def _evaluate(
+    model: str,
+    device: str | None,
+    precision: str,
+    compile: bool,
+    forces: bool,
+    molecules: list[tuple[list[str], list[list[float]], int, int]],
+) -> list[SinglePoint]:
+    """Evaluate molecules in one Orb pass, with Orb's numeric settings in force."""
     from ase import Atoms
     from orb_models.common.models.nn_util import ChargeSpinConditioner
     from orb_models.forcefield import pretrained
@@ -163,10 +221,10 @@ def invoke_orb_batch(
 
     def load() -> Any:
         return pretrained.ORB_PRETRAINED_MODELS[model](
-            device=device, precision=precision
+            device=device, precision=precision, compile=compile
         )
 
-    regressor, adapter = cached_model(("orb", model, device, precision), load)
+    regressor, adapter = cached_model(("orb", model, device, precision, compile), load)
     # D3-corrected models wrap the regressor that carries the heads and conditioner.
     inner = getattr(regressor, "xc_model", regressor)
     charged = isinstance(inner.model.conditioner, ChargeSpinConditioner)

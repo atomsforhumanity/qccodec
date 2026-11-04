@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
@@ -58,9 +56,10 @@ def test_declared_resources(
 
 
 def test_crest_declares_its_default_threads() -> None:
-    """CREST's default thread count (all cores, at most 16) is declared too."""
+    """Without threads, CREST runs one thread (its default) and declares it."""
     native = _native("crest")
-    assert native.threads == min(os.cpu_count() or 16, 16)
+    assert native.threads == 1
+    assert "threads" not in native.files["input.toml"]
 
 
 def test_defaults() -> None:

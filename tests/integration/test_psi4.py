@@ -148,9 +148,9 @@ AMMONIA = Structure(
 
 def test_transition_state(run: Run) -> None:
     """optking finds ammonia's planar inversion saddle point: one imaginary mode."""
-    output = run(
-        _input(AMMONIA, CalcType.transition_state), case="ammonia_transition_state"
-    )
+    # An exact Hessian at the first step, as the recorded case was run.
+    inp = _input(AMMONIA, CalcType.transition_state, full_hess_every=0)
+    output = run(inp, case="ammonia_transition_state")
     results = output.results
     assert isinstance(results, OptimizationData)
     assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)

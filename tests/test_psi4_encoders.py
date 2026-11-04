@@ -81,10 +81,10 @@ def test_symmetry_defaults_to_psi4() -> None:
 
 
 def test_transition_state_options() -> None:
-    """A transition-state search sets opt_type and an exact starting Hessian."""
+    """A transition-state search sets opt_type; the Hessian strategy is optking's."""
     job = _job(_encode(calctype=CalcType.transition_state))
     assert job["calctype"] == "transition_state"
-    assert job["options"] == {"opt_type": "ts", "full_hess_every": 0}
+    assert job["options"] == {"opt_type": "ts"}
     job = _job(
         _encode(calctype=CalcType.transition_state, keywords={"FULL_HESS_EVERY": 3})
     )

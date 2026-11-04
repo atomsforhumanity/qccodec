@@ -1,15 +1,51 @@
 # Design Decisions
 
+Internal notes on why qccodec is shaped as it is; not part of the site.
+
+## qccodec translates, qccompute executes
+
+A codec encodes a `ProgramInput` into a native invocation (`SubprocessInput` or
+`PythonInput`) and decodes what the program produced into qcdata results. It never
+runs anything, so codecs can be tested from recorded runs without the programs, and
+one runner (qccompute) owns scheduling, scratch directories, resources, and failure
+handling for every program.
+
+Decoding builds whatever the calculation type returns: `SinglePointData`, but also
+optimization trajectories, IRC paths, and conformer ensembles as `Frame`s, each frame
+a structure and the single-point results computed there, in the input's frame.
+
+## Codecs are transparent
+
+Keywords reach the program unchanged, in its units, with its own defaults, so the
+program's documentation applies. What a codec may decide (accepted 2026-11-04):
+
+- What the input means (calculation type to program switches, units, charge,
+  coordinate frame): always the codec's job.
+- Correctness (Psi4's `no_com`, IRC alignment, Sella's IRC end test, failing on
+  non-convergence): always, documented in the codec's docstring as a deviation.
+- Operational, the same numbers (compilation, logging, scratch files): allowed when
+  the library default fits our runner badly; documented, and overridable by keyword.
+  Decided from measurements on current versions (Orb and FAIR-Chem compile off).
+- Scientific (thresholds, step sizes, TS Hessian strategy, NEB images): the program's
+  default. Tuned values belong in the research-skills repository.
+- Precision: the program's standard full precision by default (FP32 for
+  machine-learned potentials); reduced-precision speed modes such as TF32 are opt-in.
+  A codec must not leave process-wide numeric settings changed.
+- Threads and GPUs: the user's and the scheduler's; a codec declares what it was
+  asked to use (CREST's own default is 1 thread).
+
+## Drivers compute children through the runner
+
+geomeTRIC and Sella ask for energies and gradients. Each request is a child
+calculation, computed by the runner's `Compute` (`PythonInput.compute_callback`) with
+the call shape of `qccompute.compute`: one input, or a list computed together, which
+lets a path optimization's images be batched or run side by side. Children go through
+their own codecs, so any program with gradients can be driven, and failed children
+are kept as frames. What drivers share lives in `programs/_driver.py`.
+
 ## Other parser packages to look at
 
-- [iodata](https://github.com/theochem/iodata) and [cclib](https://cclib.github.io/contents.html) are recommended by [this](https://mattermodeling.stackexchange.com/questions/6532/whats-the-best-quantum-chemistry-output-parser-for-the-command-line) StackOverflow post. `iodata` was [published](https://onlinelibrary.wiley.com/doi/abs/10.1002/jcc.26468?casa_token=iQFOBtKf0qAAAAAA:pAv_vxn6Nfis_DhQENlqGpeIZoawNhJYCg17fdobB3ftuyEbHSOAyHbsjKTeU_AdVS48EiqqQDzUHKNf) in 2020 so I'd consider it the more modern alternative. It's still a mess to use.
-
-## UPDATED DESIGN DECISION:
-
-- I don't see a strong reason for making this package a standalone package that parses everything required for a `ProgramOutput` object including input data, provenance data, xyz files, etc... While the original idea was to have a cli tool to run on TeraChem files, now that I've build my own data structures (`qcdata`) and driver program (`qccompute`), there's no reason to parse anything but `SinglePointData` values because we should just be driving the programs with `qccompute` and already have access to the input data. The code is far easier to maintain as only a data parser. The only downside would be walking in to someone else's old data and wanting to slurp it all in, but perhaps there's no reason to build for that use case now... Just go with SIMPLE and keep the code maintainable.
-
-## Future Features
-
-- At some point it could be good to have a `parse_dir` function that parses the entire output directory of a program and returns the corresponding `ProgramOutput` object. The `parse` function would still be used on individual files/output data; however, the `parse_dir` function would be the top-level function for collecting all outputs from a directory and turning them into structured data. Useful for:
-  - Parsing all CREST outputs, e.g., `crest_conformers.xyz` and `crest_rotamers.xyz` into a `ConformerSearchResults` object.
-  - Parsing data from other TeraChem output files besides just the `stdout`, e.g., converting the `c0` binary files into a `Wavefunction` object.
+- [iodata](https://github.com/theochem/iodata) and
+  [cclib](https://cclib.github.io/contents.html) are commonly recommended.
+  `iodata` was
+  [published](https://onlinelibrary.wiley.com/doi/abs/10.1002/jcc.26468) in 2020.

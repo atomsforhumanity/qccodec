@@ -14,7 +14,10 @@ Inputs map to geomeTRIC as follows:
   ``enforce``, ... Two are handled by the codec: ``coordsys`` (``tric`` by default, or
   ``cart``, ``prim``, ``dlc``, ``hdlc``) and ``constraints`` (geomeTRIC's constraint
   dictionary, e.g. ``{"freeze": [{"type": "xyz", "indices": [0]}]}``, with ``set``
-  distances in bohr; scans are not supported).
+  distances in bohr; scans are not supported). geomeTRIC ignores names it does not
+  read, so the codec refuses them rather than let a typo run with a default.
+  ``transition`` and ``irc`` follow from the calculation type and are refused, as are
+  ``bigchem`` (the runner computes children) and ``meci``.
 - ``cmdline_args`` are not accepted.
 
 Calculation types: ``optimization``, ``transition_state`` (``transition=True``;
@@ -31,10 +34,10 @@ ends are minima (its ``irc_direction`` keyword can limit the IRC to one branch).
 ``structures["initial_chain"]`` (endpoints included, in order; geomeTRIC uses
 ``images`` of them, 11 by default, picked evenly, and does not interpolate). Its
 ``keywords`` are ``geometric.params.NEBParams`` (``images``, ``maxg``, ``avgg``,
-``nebk``, ``neb_maxcyc``, ``climb``, ``optep``, ``align``, ``trust``, ...); ``bigchem``
-is not accepted. Each iteration's images are computed together: all go to the
-runner's ``compute_children`` at once, which batches machine-learned potentials and
-runs programs side by side (one at a time with runners that lack it). The result is a
+``nebk``, ``neb_maxcyc``, ``climb``, ``optep``, ``align``, ``trust``, ...); other names
+and ``bigchem`` are refused. Each iteration's images are computed together: all go to
+the runner's ``compute`` at once, which batches machine-learned potentials and runs
+programs side by side (one at a time with runners before qccompute 0.23). The result is a
 ``PathOptimizationData`` with the chain at every iteration; each path's ``ts_index``
 is the climbing image, or the highest interior image before climbing starts. A band
 that has not met ``maxg`` and ``avgg`` within ``neb_maxcyc`` fails, with its paths.
@@ -46,10 +49,10 @@ one fails. Each Hessian geomeTRIC computes is attached to the frame at its geome
 transition states, and also the last frame for ``"first+last"`` or ``"last"``.
 Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
-With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.
+With qccompute, ``propagate_wfn=True`` starts each child calculation from the orbitals
+of the last successful one when the child codec supports it (TeraChem); each NEB image
+starts from its own orbitals of the previous iteration. The optimization declares the
+threads and GPUs its child does, so lists of optimizations share the machine correctly.
 """
 
 from __future__ import annotations
@@ -58,51 +61,111 @@ import traceback
 from copy import deepcopy
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 from qcdata import (
     CalcType,
-    Data,
     Frame,
-    OptimizationData,
-    PathData,
-    PathOptimizationData,
     ProgramInput,
-    ProgramOutput,
     ProgramSpec,
-    Provenance,
     SinglePointData,
     Structure,
 )
 from qcref import constants as c
 
 from ..codec import Codec
-from ..exceptions import CalculationError, EncoderError
-from ..native import (
-    ComputeChild,
-    ComputeChildren,
-    NativeOutput,
-    PythonInput,
-    PythonOutput,
+from ..exceptions import EncoderError
+from ..native import Compute, ComputeChild, PythonInput
+from ._driver import (
+    COMPUTE,
+    COMPUTE_CHILD,
+    Outcome,
+    Recorder,
+    align_path,
+    check_keywords,
+    child_resources,
+    driver_decoder,
+    outcome,
+    subprograms,
 )
-from ._common import align_path
 
 if TYPE_CHECKING:
     from geometric.engine import Engine as NativeEngine
     from geometric.molecule import Molecule
 
 
-class GeometricOutcome(TypedDict):
-    """Optimizer completion state plus the independently recorded child outputs."""
-
-    trajectory: list[Frame]
-    path: list[Frame]
-    ts_index: int | None
-    version: str | None
-    error: str | None
-
+# Names geometric.params.OptParams and NEBParams read (geomeTRIC 1.1); both silently
+# ignore any other. tests/test_native_codecs.py checks them against the installed
+# geomeTRIC. bigchem and meci are left out: the runner computes the children, and
+# the codec's engine has no second state for a conical intersection.
+OPT_KEYWORDS = frozenset(
+    {
+        "bothre",
+        "check",
+        "converge",
+        "convergence_cmax",
+        "convergence_dmax",
+        "convergence_drms",
+        "convergence_energy",
+        "convergence_gmax",
+        "convergence_grms",
+        "convergence_molpro_dmax",
+        "convergence_molpro_gmax",
+        "convergence_set",
+        "enforce",
+        "epsilon",
+        "frequency",
+        "hess_data",
+        "hessian",
+        "ignore_modes",
+        "irc_direction",
+        "maxiter",
+        "molcnv",
+        "qccnv",
+        "qdata",
+        "reset",
+        "subfrctor",
+        "thermo",
+        "tmax",
+        "tmin",
+        "trust",
+        "usedmax",
+        "verbose",
+        "wigner",
+        "write_cart_hess",
+        "xyzout",
+    }
+)
+NEB_KEYWORDS = frozenset(
+    {
+        "align",
+        "avgg",
+        "climb",
+        "epsilon",
+        "guessk",
+        "guessw",
+        "images",
+        "maxg",
+        "ncimg",
+        "neb_history",
+        "neb_maxcyc",
+        "nebk",
+        "optep",
+        "plain",
+        "prefix",
+        "skip",
+        "tmax",
+        "tmin",
+        "trust",
+        "verbose",
+        "xyzout",
+    }
+)
+# Keywords of the codec itself, and ones it sets from the calculation type.
+CODEC_KEYWORDS = frozenset({"coordsys", "constraints"})
+OWNED_KEYWORDS = frozenset({"transition", "irc"})
 
 # geomeTRIC computes finite-difference Hessians in directories below this one.
 HESSIAN_DISPLACEMENT = "hessian/displace"
@@ -119,16 +182,24 @@ COORDINATE_SYSTEMS: dict[str, tuple[str, bool, bool]] = {
 
 def encode(inp: ProgramInput) -> PythonInput:
     """Prepare optimizer arguments; the gradient child comes from ``subprograms``."""
-    try:
-        gradient_spec = inp.get_subprogram(CalcType.gradient)
-    except ValueError as exc:
-        raise EncoderError(str(exc)) from exc
+    gradient_spec = subprograms(inp, CalcType.gradient)[CalcType.gradient]
     if inp.cmdline_args:
         raise EncoderError(
             "geomeTRIC's Python interface does not accept command-line arguments."
         )
+    if "bigchem" in inp.keywords:
+        raise EncoderError(
+            "The geometric codec computes child calculations through the runner "
+            "(batched or in parallel); bigchem is not accepted."
+        )
     if inp.calctype == CalcType.path_optimization:
         return _encode_neb(inp, gradient_spec)
+    check_keywords(
+        "geometric",
+        inp.keywords,
+        owned=OWNED_KEYWORDS,
+        known=OPT_KEYWORDS | CODEC_KEYWORDS,
+    )
     keywords = deepcopy(inp.keywords)
     keywords["transition"] = inp.calctype == CalcType.transition_state
     keywords["irc"] = inp.calctype == CalcType.irc
@@ -140,7 +211,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(
             "Constraint scans are not supported by this geomeTRIC integration."
         )
-    threads, gpus = _child_resources(gradient_spec, inp)
+    threads, gpus = child_resources(inp, [gradient_spec])
     filename = "initial_geometry.xyz"
     if filename in inp.files:
         raise EncoderError(f"Supplied files conflict with generated input {filename}.")
@@ -156,7 +227,8 @@ def encode(inp: ProgramInput) -> PythonInput:
             "geometry_file": filename,
         },
         files={**inp.files, filename: inp.require_structure().to_xyz()},
-        child_callback="compute_child",
+        compute_callback=COMPUTE,
+        child_callback=COMPUTE_CHILD,
         loggers=("geometric",),
         # Each step runs the child, so the optimization occupies what it declares.
         threads=threads,
@@ -166,15 +238,11 @@ def encode(inp: ProgramInput) -> PythonInput:
 
 def _encode_neb(inp: ProgramInput, gradient_spec: ProgramSpec) -> PythonInput:
     """Prepare geomeTRIC's nudged elastic band over ``structures["initial_chain"]``."""
+    check_keywords("geometric", inp.keywords, known=NEB_KEYWORDS)
     keywords = deepcopy(inp.keywords)
-    if "bigchem" in keywords:
-        raise EncoderError(
-            "The geometric codec computes the images itself (batched or in parallel "
-            "by the runner); bigchem is not accepted."
-        )
     chain = [s.model_copy(deep=True) for s in inp.initial_chain]
     others = {k: v for k, v in inp.structures.items() if k != "initial_chain"}
-    threads, gpus = _child_resources(gradient_spec, inp)
+    threads, gpus = child_resources(inp, [gradient_spec])
     return PythonInput(
         function=invoke_geometric_neb,
         kwargs={
@@ -184,26 +252,12 @@ def _encode_neb(inp: ProgramInput, gradient_spec: ProgramSpec) -> PythonInput:
             "keywords": keywords,
         },
         files=dict(inp.files),
-        child_callback="compute_child",
-        children_callback="compute_children",
+        compute_callback=COMPUTE,
+        child_callback=COMPUTE_CHILD,
         loggers=("geometric",),
         threads=threads,
         gpus=gpus,
     )
-
-
-def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int, int]:
-    """Return the threads and GPUs the gradient child declares; defaults if unknown."""
-    from ..registry import get_codec
-
-    try:
-        structure = inp.structure or inp.initial_chain[0]
-        others = {k: v for k, v in inp.structures.items() if k != "initial_chain"}
-        child = ProgramInput.from_spec(spec, structure, structures=others)
-        native = get_codec(child).encode(child)
-    except Exception:  # noqa: BLE001 - computing the child reports any problem
-        return 1, 0
-    return native.threads, native.gpus
 
 
 def make_engine(
@@ -212,13 +266,10 @@ def make_engine(
     structure: Structure,
     structures: dict[str, Structure | list[Structure]],
     gradient_spec: ProgramSpec,
-    compute_child: ComputeChild,
-    trajectory: list[Frame],
+    recorder: Recorder,
 ) -> NativeEngine:
     """Bind geomeTRIC's native engine interface to independent child calculations."""
     base_engine: Any = geometric.engine.Engine
-    # The last step's full output, to restart the next child from its wavefunction.
-    last_step: list[ProgramOutput[ProgramInput, Data]] = []
 
     class Engine(base_engine):
         def calc_new(
@@ -238,10 +289,7 @@ def make_engine(
             child = ProgramInput.from_spec(
                 gradient_spec, updated, structures=structures
             )
-            output = compute_child(child, previous=last_step[-1] if last_step else None)
-            if not displacement or not output.success:
-                trajectory.append(Frame.from_output(output))
-                last_step[:] = [output]
+            output = recorder.compute(child, step=not displacement)
             if not output.success:
                 raise RuntimeError(
                     "A child calculation failed during geomeTRIC optimization."
@@ -267,21 +315,15 @@ def invoke_geometric(
     constraints: dict[str, Any] | None,
     keywords: dict[str, Any],
     geometry_file: str,
-    compute_child: ComputeChild,
-) -> GeometricOutcome:
+    compute: Compute | None = None,
+    compute_child: ComputeChild | None = None,
+) -> Outcome:
     """Run the optimizer, retaining its trajectory even when a child or optimizer fails."""
     import geometric
 
-    trajectory: list[Frame] = []
-    hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]] = []
+    recorder = Recorder("geometric", compute, compute_child)
     compute_hessian = None
-    outcome: GeometricOutcome = {
-        "trajectory": trajectory,
-        "path": [],
-        "ts_index": None,
-        "version": geometric.__version__,
-        "error": None,
-    }
+    result = outcome(geometric.__version__)
     optimizer = None
     try:
         molecule = geometric.molecule.Molecule(fnm=geometry_file)
@@ -306,8 +348,7 @@ def invoke_geometric(
             structure,
             structures,
             gradient_spec,
-            compute_child,
-            trajectory,
+            recorder,
         )
         # Record every Cartesian Hessian geomeTRIC computes, with its geometry.
         compute_hessian = geometric.optimize.calc_cartesian_hessian
@@ -317,7 +358,7 @@ def invoke_geometric(
         ) -> NDArray[np.float64]:
             """Compute the Hessian as geomeTRIC would and remember it."""
             hessian = compute_hessian(coords, *args, **kwargs)
-            hessians.append((np.array(coords, copy=True), np.array(hessian, copy=True)))
+            recorder.add_hessian(coords, hessian)
             return hessian
 
         geometric.optimize.calc_cartesian_hessian = recording_hessian
@@ -333,16 +374,17 @@ def invoke_geometric(
         )
         optimizer.optimizeGeometry()
     except Exception:
-        outcome["error"] = traceback.format_exc()
+        result["error"] = traceback.format_exc()
     finally:
         if compute_hessian is not None:
             geometric.optimize.calc_cartesian_hessian = compute_hessian
-        _attach_hessians(trajectory, hessians)
+        recorder.attach_hessians(recorder.frames)
+        result["frames"] = recorder.frames
         if keywords.get("irc") and optimizer is not None:
-            outcome["path"], outcome["ts_index"] = _irc_path(
-                optimizer, trajectory, structure
+            result["frames"], result["ts_index"] = _irc_path(
+                optimizer, recorder.frames, structure
             )
-    return outcome
+    return result
 
 
 def _irc_path(
@@ -381,35 +423,27 @@ def _irc_path(
     return align_path(path, ts_index), ts_index
 
 
-class NEBOutcome(TypedDict):
-    """The path at each iteration, geomeTRIC's version, and why it stopped, if failed."""
-
-    paths: list[tuple[list[Frame], int | None]]
-    version: str | None
-    error: str | None
-
-
 def invoke_geometric_neb(
     *,
     chain: list[Structure],
     structures: dict[str, Structure | list[Structure]],
     gradient_spec: ProgramSpec,
     keywords: dict[str, Any],
-    compute_child: ComputeChild,
-    compute_children: ComputeChildren | None = None,
-) -> NEBOutcome:
+    compute: Compute | None = None,
+    compute_child: ComputeChild | None = None,
+) -> Outcome:
     """Run geomeTRIC's NEB, computing each iteration's images together.
 
     geomeTRIC evaluates every image in ``Chain.ComputeEnergyGradient`` (its "parallel
-    point"); that method is replaced for the run so all images go to
-    ``compute_children`` at once, which a runner batches or runs side by side, or to
-    ``compute_child`` one by one if the runner has no ``compute_children``. The path is
+    point"); that method is replaced for the run so all images go to the runner's
+    ``compute`` at once, which batches them or runs them side by side. The path is
     recorded at each iteration geomeTRIC saves.
     """
     import geometric
     from geometric.neb import Chain, ElasticBand, OptimizeChain
 
-    outcome: NEBOutcome = {"paths": [], "version": geometric.__version__, "error": None}
+    recorder = Recorder("geometric", compute, compute_child)
+    report = outcome(geometric.__version__)
     template = chain[0]
     images: dict[int, list[Frame]] = {}  # id(chain object) -> its images' frames
 
@@ -428,15 +462,12 @@ def invoke_geometric_neb(
             )
             for s in band.Structures
         ]
-        if compute_children is not None:
-            outputs = compute_children(children)
-        else:
-            outputs = [compute_child(child) for child in children]
+        outputs = recorder.compute_images(children)
         frames = [Frame.from_output(output) for output in outputs]
         images[id(band)] = frames
         failed = [i for i, output in enumerate(outputs) if not output.success]
         if failed:
-            outcome["paths"].append((frames, None))
+            report["paths"].append((frames, None))
             raise RuntimeError(f"Child calculations failed for images {failed}.")
         results = []
         for frame in frames:
@@ -453,7 +484,7 @@ def invoke_geometric_neb(
         frames = images.get(id(band))
         if frames is None:
             return
-        outcome["paths"].append((frames, _highest_image(band, frames)))
+        report["paths"].append((frames, _highest_image(band, frames)))
 
     original = Chain.ComputeEnergyGradient
     Chain.ComputeEnergyGradient = evaluate  # type: ignore[method-assign]
@@ -479,16 +510,16 @@ def invoke_geometric_neb(
         )
         final, _ = OptimizeChain(band, engine, params, save_callback=record)
         if not (final.maxg < params.maxg and final.avgg < params.avgg):
-            outcome["error"] = (
+            report["error"] = (
                 f"geomeTRIC's NEB did not converge in {params.maxcyc} cycles "
                 f"(largest force {final.maxg:.3g}, average {final.avgg:.3g} eV/angstrom; "
                 f"targets {params.maxg}, {params.avgg})."
             )
     except Exception:
-        outcome["error"] = traceback.format_exc()
+        report["error"] = traceback.format_exc()
     finally:
         Chain.ComputeEnergyGradient = original  # type: ignore[method-assign]
-    return outcome
+    return report
 
 
 def _highest_image(band: Any, frames: list[Frame]) -> int | None:
@@ -502,60 +533,6 @@ def _highest_image(band: Any, frames: list[Frame]) -> int | None:
     return 1 + int(np.argmax(np.array(energies, dtype=float)))
 
 
-def _attach_hessians(
-    trajectory: list[Frame],
-    hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]],
-) -> None:
-    """Put each Hessian on the trajectory frame computed at the same geometry.
-
-    With ``hessian="first"`` (the default for transition states) that is the first
-    frame; ``"last"`` and ``"first+last"`` also give the final frame one.
-    """
-    for coords, hessian in hessians:
-        for i in range(len(trajectory) - 1, -1, -1):
-            frame = trajectory[i]
-            geometry = frame.structure.geometry.flatten()
-            if geometry.shape == coords.shape and np.allclose(geometry, coords):
-                results = frame.results.model_copy(update={"hessian": hessian})
-                trajectory[i] = frame.model_copy(update={"results": results})
-                break
-
-
-def decode(
-    inp: ProgramInput, out: NativeOutput
-) -> OptimizationData | PathData | PathOptimizationData:
-    """Wrap the recorded trajectory; raise with it attached if the optimizer failed."""
-    assert isinstance(out, PythonOutput)
-    native = out.value or {
-        "trajectory": [],
-        "path": [],
-        "ts_index": None,
-        "version": None,
-        "error": None,
-    }
-    provenance = Provenance(program="geometric", program_version=native["version"])
-    data: OptimizationData | PathData | PathOptimizationData
-    if inp.calctype == CalcType.path_optimization:
-        data = PathOptimizationData(
-            provenance=provenance,
-            paths=[
-                PathData(provenance=provenance, frames=frames, ts_index=ts_index)
-                for frames, ts_index in native.get("paths", [])
-            ],
-        )
-    elif inp.calctype == CalcType.irc:
-        data = PathData(
-            provenance=provenance,
-            frames=native.get("path", []),
-            ts_index=native.get("ts_index"),
-        )
-    else:
-        data = OptimizationData(provenance=provenance, frames=native["trajectory"])
-    if native["error"]:
-        raise CalculationError(native["error"], data=data)
-    return data
-
-
 codec = Codec(
     "geometric",
     calctypes={
@@ -565,5 +542,5 @@ codec = Codec(
         CalcType.path_optimization,
     },
     encode=encode,
-    decode=decode,
+    decode=driver_decoder("geometric"),
 )

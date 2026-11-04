@@ -25,9 +25,9 @@ from qcdata import (
     Structure,
 )
 
-from qccodec import get_codec
+from qccodec import get_codec, sequential
 from qccodec.exceptions import CalculationError, EncoderError
-from qccodec.native import PythonInput
+from qccodec.native import PythonInput, PythonOutput
 
 # Spring rest lengths (bohr): O-H 1.81, H-H 2.86, a water-like triangle.
 REST = {(0, 1): 1.81, (0, 2): 1.81, (1, 2): 2.86}
@@ -71,7 +71,7 @@ def springs_hessian(geometry: np.ndarray, h: float = 1e-5) -> np.ndarray:
 
 
 class Child:
-    """A compute_child stand-in that records its calls and can fail on one."""
+    """A one-input compute stand-in that records its calls and can fail on one."""
 
     def __init__(self, fail_at: int | None = None) -> None:
         self.inputs: list[ProgramInput] = []
@@ -121,9 +121,7 @@ def _run(inp: ProgramInput, child: Child) -> OptimizationData:
     """Run the encoded invocation with the stand-in child and decode it."""
     native = get_codec("sella").encode(inp)
     assert isinstance(native, PythonInput)
-    from qccodec.native import PythonOutput
-
-    value = native.function(*native.args, **native.kwargs, compute_child=child)
+    value = native.function(*native.args, **native.kwargs, compute=sequential(child))
     result = get_codec("sella").decode(inp, PythonOutput(value=value))
     assert isinstance(result, OptimizationData)
     return result
@@ -149,7 +147,8 @@ def test_encode_splits_run_and_constructor_keywords() -> None:
     minimization = get_codec("sella").encode(_input())
     assert isinstance(minimization, PythonInput)
     assert minimization.kwargs["order"] == 0
-    assert native.child_callback == "compute_child"
+    assert native.compute_callback == "compute"
+    assert native.child_callback == "compute_child"  # runners before qccompute 0.23
 
 
 @pytest.mark.parametrize(
@@ -165,7 +164,7 @@ def test_encode_splits_run_and_constructor_keywords() -> None:
                     GRADIENT.model_copy(update={"calctype": CalcType.energy}),
                 ]
             ),
-            "optionally a hessian",
+            "optionally one hessian",
         ),
         (_input(constraints={"fix_cartesian": [0]}), "Unknown Sella constraint"),
         (_input(constraints={"fix_bond": [[0, 3]]}), "0-based"),
@@ -263,6 +262,30 @@ def test_children_receive_the_previous_output() -> None:
     assert all(p is not None for p in child.previous[1:])
 
 
+def test_runners_before_qccompute_0_23_still_work() -> None:
+    """Their one-input compute_child computes the children when compute is missing."""
+    pytest.importorskip("sella")
+    inp = _input(fmax=1e-4, steps=100)
+    native = get_codec("sella").encode(inp)
+    assert isinstance(native, PythonInput)
+    value = native.function(**native.kwargs, compute_child=Child())
+    result = get_codec("sella").decode(inp, PythonOutput(value=value))
+    assert isinstance(result, OptimizationData)
+    assert result.energies[-1] < 1e-8
+
+
+def test_a_runner_without_a_compute_callback_fails_clearly() -> None:
+    """The run fails, naming the callback the runner did not provide."""
+    pytest.importorskip("sella")
+    inp = _input()
+    native = get_codec("sella").encode(inp)
+    assert isinstance(native, PythonInput)
+    with pytest.raises(RuntimeError, match="compute_callback") as raised:
+        native.function(**native.kwargs)
+    with pytest.raises(CalculationError, match="compute_callback"):
+        get_codec("sella").decode(inp, PythonOutput(error=raised.value))
+
+
 def test_calculator_converts_units_and_records_outputs() -> None:
     """Energies in eV and forces in eV/angstrom, from Hartree and Hartree/bohr."""
     ase = pytest.importorskip("ase")
@@ -325,6 +348,21 @@ def test_declares_the_resources_of_its_gradient_child() -> None:
     assert native.threads == 4
 
 
+def test_declares_the_most_either_child_declares() -> None:
+    """A Hessian child that needs more threads than the gradient child sets the total."""
+    gradient = ProgramSpec(
+        program="orca",
+        calctype=CalcType.gradient,
+        model=Model(method="hf", basis="sto-3g"),
+        keywords={"pal": 2},
+    )
+    hessian = gradient.model_copy(
+        update={"calctype": CalcType.hessian, "keywords": {"pal": 6}}
+    )
+    native = get_codec("sella").encode(_input(subprograms=[gradient, hessian]))
+    assert native.threads == 6
+
+
 def _irc(**keywords: Any) -> ProgramInput:
     subprograms = keywords.pop("subprograms", [GRADIENT])
     return ProgramInput(
@@ -385,7 +423,7 @@ def test_irc_branches_lose_their_rigid_drift() -> None:
     Alignment works outward from the transition state on both sides, rotating each
     frame's gradient and Hessian with it.
     """
-    from qccodec.programs._common import align_path
+    from qccodec.programs._driver import align_path
 
     g = WATER.geometry
     grad = np.arange(9.0).reshape(3, 3)

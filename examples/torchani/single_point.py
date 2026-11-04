@@ -11,8 +11,8 @@ How the codec talks to TorchANI (https://github.com/aiqm/torchani):
   H C N O F S Cl), "ANI1x", "ANI1ccx" (CCSD(T)/CBS; H C N O), "ANI2xr", "ANI2dr",
   "ANImbis", "SnnANI2xr". Case and dashes are ignored. There is no basis set.
 - ANI describes neutral closed-shell molecules only; the codec refuses anything else.
-- ``dtype`` is "float64" by default, for smooth gradients and Hessians; "float32" is
-  faster on GPUs.
+- ``dtype`` is "float32" by default, TorchANI's own; "float64" gives Hessians and
+  finite differences smooth to more digits, at some cost on GPUs.
 - ANI models are ensembles; ``model_index`` picks one member instead of the average.
 - Hessians come from automatic differentiation. Energies are in Hartree.
 """
@@ -37,7 +37,7 @@ prog_input = ProgramInput(
     model=Model(method="ANI2x"),  # or "ANI1ccx", "ANI1x", ...
     keywords={
         "device": "cpu",  # or "cuda"; leave out to use a GPU when present
-        "dtype": "float64",  # or "float32"
+        # "dtype": "float64",  # float32 by default
         # "model_index": 0,  # one member of the ensemble instead of its average
     },
 )

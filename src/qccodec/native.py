@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast, overload
 
 from qcdata import Data, ProgramInput, ProgramOutput
 
@@ -41,16 +42,13 @@ class PythonInput:
         args: Positional arguments.
         kwargs: Keyword arguments.
         files: Files written to the calculation directory before running.
-        child_callback: Keyword name into which the runner injects a function that
-            computes child calculations synchronously; only for integrations such
-            as optimizers that drive other programs.
-        children_callback: Keyword name into which the runner injects a function that
-            computes several independent child calculations at once and returns
-            their outputs in order (``ComputeChildren``), so a runner can batch or
-            parallelize them; for drivers that need many structures per step, such
-            as a path optimization's images. A runner that does not support it
-            leaves the keyword out, so the function should fall back to
-            ``child_callback`` one input at a time.
+        compute_callback: Keyword name into which the runner injects its ``Compute``,
+            which computes child calculations: one input, or a list computed
+            together (batched or side by side). For drivers, such as optimizers,
+            that run other programs.
+        child_callback: Deprecated; runners before qccompute 0.23 inject a
+            one-input ``ComputeChild`` here. Built-in drivers name it next to
+            ``compute_callback`` until those runners are no longer supported.
         loggers: Python logger names whose output should be captured.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the library.
@@ -63,13 +61,23 @@ class PythonInput:
     args: tuple[Any, ...] = ()
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     files: Mapping[str, str | bytes] = field(default_factory=dict)
+    compute_callback: str | None = None
     child_callback: str | None = None
-    children_callback: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
     threads: int = 1
     gpus: int = 0
+
+    def __post_init__(self) -> None:
+        """Warn when only the deprecated ``child_callback`` is named."""
+        if self.child_callback and not self.compute_callback:
+            warnings.warn(
+                "PythonInput.child_callback is deprecated; name compute_callback, "
+                "into which runners inject a Compute.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
 
 
 @dataclass
@@ -108,8 +116,39 @@ NativeInput = SubprocessInput | PythonInput
 NativeOutput = SubprocessOutput | PythonOutput
 
 
+class Compute(Protocol):
+    """Computes child calculations for a driver; a runner injects it.
+
+    The call takes what ``qccompute.compute`` takes: one input, or a list of
+    independent inputs that the runner may batch or run side by side. It returns
+    outputs, failed or not, and never raises for a failed calculation.
+
+    ``previous`` holds outputs whose wavefunctions start the children (one output for
+    one input; one output or ``None`` per input for a list). Runners use it only when
+    asked to propagate wavefunctions, such as qccompute's ``propagate_wfn=True``.
+    """
+
+    @overload
+    def __call__(
+        self,
+        inputs: ProgramInput,
+        /,
+        *,
+        previous: ProgramOutput[ProgramInput, Data] | None = None,
+    ) -> ProgramOutput[ProgramInput, Data]: ...
+
+    @overload
+    def __call__(
+        self,
+        inputs: Sequence[ProgramInput],
+        /,
+        *,
+        previous: Sequence[ProgramOutput[ProgramInput, Data] | None] | None = None,
+    ) -> list[ProgramOutput[ProgramInput, Data]]: ...
+
+
 class ComputeChild(Protocol):
-    """Runtime callback for integrations that request further calculations."""
+    """Deprecated one-input callback of runners before qccompute 0.23; see Compute."""
 
     def __call__(
         self,
@@ -122,14 +161,29 @@ class ComputeChild(Protocol):
         ...
 
 
-class ComputeChildren(Protocol):
-    """Runtime callback computing several independent child calculations at once."""
+def sequential(compute_one: ComputeChild) -> Compute:
+    """Make a ``Compute`` from a function that computes one input at a time.
 
-    def __call__(
-        self, inputs: Sequence[ProgramInput], /
-    ) -> list[ProgramOutput[ProgramInput, Data]]:
-        """Execute the children, batched or in parallel where possible.
+    For running a driver outside a runner, such as in tests, and for runners that
+    compute children one by one: the inputs of a list are computed in order.
+    """
 
-        Returns their outputs, failed or not, in input order.
-        """
-        ...
+    def compute(
+        inputs: ProgramInput | Sequence[ProgramInput],
+        /,
+        *,
+        previous: Any = None,
+    ) -> Any:
+        if isinstance(inputs, ProgramInput):
+            return compute_one(inputs, previous=previous)
+        starts = list(previous) if previous is not None else [None] * len(inputs)
+        if len(starts) != len(inputs):
+            raise ValueError(
+                f"previous holds {len(starts)} outputs for {len(inputs)} inputs."
+            )
+        return [
+            compute_one(inp, previous=start)
+            for inp, start in zip(inputs, starts, strict=True)
+        ]
+
+    return cast(Compute, compute)

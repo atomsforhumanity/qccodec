@@ -5,12 +5,13 @@ Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
 
 Notes for Psi4 transition-state searches:
 
-- The codec sets ``opt_type ts`` and, unless you set it, ``full_hess_every 0``: an
-  exact Hessian at the first step, which optking needs to find a saddle point.
+- The codec sets ``opt_type ts``; setting ``opt_type`` to anything else is an error
+  for this calculation type. Everything else is optking's default, including its
+  guess Hessian. This example asks for ``full_hess_every 0``, an exact Hessian at the
+  first step, which makes finding the saddle point far more reliable.
   Psi4 has analytic Hessians only for Hartree-Fock, so for DFT it takes finite
   differences of gradients, which it runs by calling ``psi4`` again: keep ``psi4``
   on PATH (not only in ``executables``).
-  Setting ``opt_type`` to anything else is an error for this calculation type.
 - Start close to the saddle point. This example starts from nearly planar ammonia;
   its inversion transition state is planar, with one imaginary frequency.
 - Check the result with a Hessian (single_point.py with CalcType.hessian): a
@@ -40,7 +41,7 @@ prog_input = ProgramInput(
     model=Model(method="wb97x-d", basis="def2-svp"),
     keywords={
         "geom_maxiter": 50,
-        # "full_hess_every": 3,  # recompute the exact Hessian every 3 steps
+        "full_hess_every": 0,  # exact Hessian at the first step; 3: every 3 steps
         # "step_type": "rs_i_rfo",  # optking's default for transition states
     },
     cmdline_args=["-n", "1", "--memory", "2GB"],

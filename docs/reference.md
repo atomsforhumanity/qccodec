@@ -32,6 +32,12 @@
 
 ::: qccodec.PythonOutput
 
+## Child calculations
+
+::: qccodec.Compute
+
+::: qccodec.sequential
+
 ## Parsing helpers
 
 ::: qccodec.re_search

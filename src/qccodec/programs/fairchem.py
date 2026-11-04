@@ -28,12 +28,17 @@ Inputs map to FAIR-Chem as follows:
     a GPU declares one for qccompute, which gives each calculation of a list its
     own; an explicit index such as ``"cuda:1"`` opts out of that.
   - ``inference_settings``: one of fairchem's presets by name (``"default"``,
-    ``"turbo"``, ``"batch"``, ...) or a dictionary of ``InferenceSettings`` fields. The
-    codec's default is ``{"compile": False, "merge_mole": False,
-    "activation_checkpointing": False}``: the model as trained, ready in seconds for any
-    molecule. fairchem's own ``"default"`` compiles the model, which pays off only for
-    long runs on one system: compiling takes tens of seconds in every process and again
-    for each new molecule size.
+    ``"nitro"``, ``"multigpu"``, ``"high-precision"``, ``"batch"``, ``"traineval"``)
+    or a dictionary of ``InferenceSettings`` fields. The codec's default is
+    ``{"compile": False, "merge_mole": False, "activation_checkpointing": False}``:
+    the model as trained, in full FP32 (``tf32`` off), ready in seconds for any
+    molecule. fairchem's own ``"default"`` is ``"nitro"``: TF32 matrix multiplies
+    (reduced precision; gradients differed from full FP32 by 3e-3 eV/angstrom for a
+    26-atom molecule), merged experts, and a compiled model. Compiling took about
+    50 s per process and again for each batch shape, and merging speeds up only the
+    first molecule's composition, so these pay off only for long runs on one system.
+    fairchem applies TF32 for each call only, so it does not leak into other
+    programs.
 
 - ``cmdline_args`` and ``files`` are not accepted.
 

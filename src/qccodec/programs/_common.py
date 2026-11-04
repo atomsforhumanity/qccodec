@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 import numpy as np
-from qcdata import Frame, ProgramInput
+from qcdata import ProgramInput
 from qcref import constants, periodic_table
 
 from ..codec import Context
@@ -157,53 +157,3 @@ def parse_g98_normal_modes(ctx: Context) -> list[list[list[float]]]:
     cartesian = modes / np.sqrt(masses)[None, :, None]
     rotation = rotation_onto(_g98_coordinates(contents), structure.geometry)
     return unit_modes(cartesian @ rotation.T)
-
-
-def align_path(frames: list[Frame], ts_index: int | None) -> list[Frame]:
-    """Remove a path's rigid drift: frames aligned outward from the transition state.
-
-    IRC programs step in Cartesian or internal coordinates without always removing
-    overall translation and rotation, so a branch can drift and, at its minimum, spin.
-    Working outward from ``ts_index`` (or the first frame), each frame is moved onto its
-    already-aligned neighbor by the mass-weighted best fit: centers of mass together,
-    then the rotation minimizing the mass-weighted displacement, as an IRC step has no
-    rigid part. Gradients and Hessians are rotated with their frames, so the path stays
-    in the transition state's frame, which is the input's.
-    """
-    if not frames:
-        return frames
-    start = ts_index if ts_index is not None else 0
-    backward = _align_branch(frames[start::-1])
-    forward = _align_branch(frames[start:])
-    return backward[:0:-1] + forward
-
-
-def _align_branch(branch: list[Frame]) -> list[Frame]:
-    """Align each frame of a branch onto the one before it (the first stays put)."""
-    masses = np.array(
-        [float(periodic_table[s].mass) for s in branch[0].structure.symbols]
-    )[:, None]
-    aligned = [branch[0]]
-    previous = np.asarray(branch[0].structure.geometry, dtype=float)
-    for frame in branch[1:]:
-        coords = np.asarray(frame.structure.geometry, dtype=float)
-        center = (masses * coords).sum(axis=0) / masses.sum()
-        target = (masses * previous).sum(axis=0) / masses.sum()
-        p = coords - center
-        u, _, vt = np.linalg.svd((masses * p).T @ (previous - target))
-        rotation = u @ np.diag([1.0, 1.0, np.sign(np.linalg.det(u @ vt))]) @ vt
-        previous = p @ rotation + target
-        update: dict[str, Any] = {}
-        if frame.results.gradient is not None:
-            update["gradient"] = np.asarray(frame.results.gradient) @ rotation
-        if frame.results.hessian is not None:
-            block = np.kron(np.eye(len(masses)), rotation)
-            update["hessian"] = block.T @ np.asarray(frame.results.hessian) @ block
-        structure = frame.structure.model_copy(update={"geometry": previous})
-        results = frame.results.model_copy(update=update)
-        aligned.append(
-            Frame.model_validate(
-                {**dict(frame), "structure": structure, "results": results}
-            )
-        )
-    return aligned

@@ -14,13 +14,13 @@ from .conftest import (
 
 pytestmark = [pytest.mark.integration, requires_modules("orb", "orb_models")]
 
-# orb-v3-conservative-omol (float32-high) on the shared distorted water, orb-models
-# 0.7.0 on a CPU.
-ENERGY = -76.43353424098667
+# orb-v3-conservative-omol (float32-highest) on the shared distorted water,
+# orb-models 0.7.0 on a CPU.
+ENERGY = -76.43353423770102
 GRADIENT = [
-    [-0.0069472726, -0.005334549009, 0.003513098738],
-    [0.002615951892, 0.005903477506, 0.000940681075],
-    [0.004331320709, -0.000568928352, -0.004453779741],
+    [-0.006947263327, -0.005334543213, 0.003513094681],
+    [0.002615948124, 0.005903472869, 0.00094068093],
+    [0.004331315203, -0.000568929221, -0.004453775394],
 ]
 
 

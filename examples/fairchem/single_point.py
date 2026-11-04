@@ -14,10 +14,11 @@ How the codec talks to FAIR-Chem (https://fair-chem.github.io/):
 - ``task`` picks the UMA head: "omol" (molecules, the default) reads charge and
   multiplicity from ``structure``; "omat", "oc20", "odac", and "omc" are for
   materials and catalysis.
-- ``inference_settings`` defaults to the uncompiled model, ready in seconds for any
-  molecule. fairchem's own "default" preset compiles the model, which takes tens of
-  seconds in every process and again for each new molecule size: worth it only for
-  long runs on one system.
+- ``inference_settings`` defaults to the uncompiled model in full FP32, ready in
+  seconds for any molecule. fairchem's own "default" preset ("nitro") uses TF32
+  (less accurate gradients) and compiles the model, which takes tens of seconds in
+  every process and again for each new batch shape: worth it only for long runs on
+  one system.
 - Hessians come from automatic differentiation.
 - Energies come back in Hartree and gradients in Hartree/bohr, converted from
   FAIR-Chem's eV and angstrom.
@@ -45,7 +46,7 @@ prog_input = ProgramInput(
         "task": "omol",
         "device": "cpu",  # or "cuda"; leave out to use a GPU when present
         # A fairchem preset by name, or InferenceSettings fields:
-        # "inference_settings": "turbo",
+        # "inference_settings": "nitro",
         # "inference_settings": {"compile": False, "base_precision_dtype": "float64"},
     },
 )
