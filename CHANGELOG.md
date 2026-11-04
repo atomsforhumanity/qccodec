@@ -8,20 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- `geometric` codec: `CalcType.path_optimization`, geomeTRIC's nudged elastic band over `structures["initial_chain"]`. Each iteration's images go to the runner's `compute_children` together (falling back to one at a time), so with qccompute 0.23 an AIMNet2 band is one batched call per iteration (42 iterations, 11 images each, no single calls on HCN ⇌ HNC) and program children run side by side. Returns `PathOptimizationData` with the chain at every iteration and the climbing image as each path's `ts_index`; an unconverged band fails with its paths. New example `examples/geometric/path_optimization.py`; on HCN ⇌ HNC with GFN2-xTB the climbing image gives 72.8 and 53.0 kcal/mol against the saddle's 73.2 and 53.2.
-
-### Added
-
+- `geometric` codec: `CalcType.path_optimization`, geomeTRIC's nudged elastic band over `structures["initial_chain"]`. Each iteration's images go to the runner's `compute` together, so with qccompute 0.23 an AIMNet2 band is one batched call per iteration (42 iterations, 11 images each, no single calls on HCN ⇌ HNC) and program children run side by side; with `propagate_wfn=True` each image starts from its own previous orbitals. Returns `PathOptimizationData` with the chain at every iteration and the climbing image as each path's `ts_index`; an unconverged band fails with its paths. New example `examples/geometric/path_optimization.py`; on HCN ⇌ HNC with GFN2-xTB the climbing image gives 72.8 and 53.0 kcal/mol against the saddle's 73.2 and 53.2.
 - `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.
-- `PythonInput.children_callback` and the `ComputeChildren` protocol (`qccodec.native`): a driver that needs many independent child calculations per step (a path optimization's images) names a keyword into which the runner injects `compute_children(inputs) -> outputs`, so the runner can batch machine-learned potentials and run programs side by side. Runners that do not support it leave the keyword out; drivers fall back to `child_callback`.
+- One callback for driver codecs: `PythonInput.compute_callback` names the keyword into which the runner injects its `qccodec.Compute`, which has the call shape of `qccompute.compute` (one input, or a list computed together, batched or side by side) plus `previous=` for wavefunction restarts. `qccodec.sequential` makes one from a function computing one input at a time, for tests and simple runners. It replaces `child_callback` and the `ComputeChild` protocol, which are deprecated: the built-in drivers still name `child_callback`, so runners before qccompute 0.23 keep working, one child at a time.
+- `programs/_driver.py`: what geomeTRIC and Sella share, for new drivers too. Subprograms by calculation type, refused owned and unknown keywords, the children's resources, a `Recorder` that computes children and keeps their frames (steps, failed probes, Hessians at their geometries), one `Outcome` shape, and `driver_decoder`. The "Writing a codec" guide has a new "Driver codecs" section.
+- `orb` codec: a `compile` keyword (default `False`).
 
 ### Changed
 
-- IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_common.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
+- **Breaking:** `orb` computes in full FP32 by default (`precision="float32-highest"`) and does not compile the model unless `compile=True`. Orb's own defaults, TF32 matrix multiplies and `torch.compile`, gave gradients 2e-3 eV/angstrom from float64 for a 26-atom molecule (full FP32: 2e-5), and compiling made each call slower (47 against 17 ms on an RTX 3050 Ti, orb-models 0.7) after 10 to 40 s of compilation per process. Defaults now follow one rule: a program's full precision unless a faster, less accurate mode is asked for.
+- **Breaking:** `torchani` uses TorchANI's own default dtype, `float32`, instead of `float64`; ask for `dtype="float64"` for finite differences or Hessians smooth to more digits.
+- **Breaking:** `psi4` transition-state searches no longer set `full_hess_every 0`; optking's own default (a guess Hessian) applies. Set `full_hess_every` for exact Hessians, as `examples/psi4/transition_state.py` now does.
+- **Breaking:** `crest` no longer sets `threads` (it used every core up to 16); CREST's own default, 1 thread, applies and is what the codec declares. Set `threads` to use more.
+- **Breaking:** the `geometric` codec refuses keywords geomeTRIC does not read (it ignores them, so a typo ran with the default), `transition` and `irc` (set from the calculation type, and overwritten before), `bigchem`, and `meci`. A `sella` or `geometric` input with subprograms of other calculation types is refused instead of ignoring them.
+- Each child of a driver starts from the wavefunction of the last successful child of the same program, the same for geomeTRIC and Sella (Sella used the last child of any program, so a Hessian program's output could reach a gradient program).
+- `sella` declares the most threads and GPUs either of its children declares, not only the gradient child's.
+- Sella IRC Hessians are attached before the path is aligned, so they are rotated with their frames.
+- IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_driver.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
 - Moved documentation from `qccodec.docs.atomsforhumanity.org` to `qccodec.docs.afh.org`.
 
 ### Fixed
 
+- `crest` energy calculations no longer carry the gradient CREST happened to write.
+- `orb` changed PyTorch's default dtype and float32 matrix-multiply precision for the whole process, so machine-learned potentials computed later in the same process (FAIR-Chem, MACE, TorchANI, AIMNet2) ran at Orb's precision. The codec now applies Orb's settings for each call only.
+- The `fairchem` docs named the removed `"turbo"` preset; fairchem's `"default"` is now `"nitro"` (TF32, merged experts, compiled).
 - geomeTRIC received its working directory as a `Path`, which its IRC edits as text between branches (`TypeError: Path.replace()`); it now gets a string.
 
 ## [0.21.0] - 2026-10-23
