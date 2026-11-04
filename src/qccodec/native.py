@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -44,6 +44,13 @@ class PythonInput:
         child_callback: Keyword name into which the runner injects a function that
             computes child calculations synchronously; only for integrations such
             as optimizers that drive other programs.
+        children_callback: Keyword name into which the runner injects a function that
+            computes several independent child calculations at once and returns
+            their outputs in order (``ComputeChildren``), so a runner can batch or
+            parallelize them; for drivers that need many structures per step, such
+            as a path optimization's images. A runner that does not support it
+            leaves the keyword out, so the function should fall back to
+            ``child_callback`` one input at a time.
         loggers: Python logger names whose output should be captured.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the library.
@@ -57,6 +64,7 @@ class PythonInput:
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     files: Mapping[str, str | bytes] = field(default_factory=dict)
     child_callback: str | None = None
+    children_callback: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
@@ -111,4 +119,17 @@ class ComputeChild(Protocol):
         previous: ProgramOutput[ProgramInput, Data] | None = None,
     ) -> ProgramOutput[ProgramInput, Data]:
         """Execute one child synchronously and return its output, failed or not."""
+        ...
+
+
+class ComputeChildren(Protocol):
+    """Runtime callback computing several independent child calculations at once."""
+
+    def __call__(
+        self, inputs: Sequence[ProgramInput], /
+    ) -> list[ProgramOutput[ProgramInput, Data]]:
+        """Execute the children, batched or in parallel where possible.
+
+        Returns their outputs, failed or not, in input order.
+        """
         ...

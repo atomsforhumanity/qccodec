@@ -429,3 +429,15 @@ def test_version_key_and_check_codec() -> None:
     blind.parser(target="energy", versions=">=2")(energy)
     with pytest.raises(AssertionError, match="no parser fills"):
         check_codec(blind)
+
+
+def test_python_input_names_an_optional_children_callback() -> None:
+    """Drivers can ask for a callback that computes several children at once."""
+    from qccodec.native import ComputeChildren, PythonInput
+
+    assert PythonInput(print).children_callback is None
+    request = PythonInput(
+        print, child_callback="compute_child", children_callback="compute_children"
+    )
+    assert request.children_callback == "compute_children"
+    assert ComputeChildren.__call__.__doc__
