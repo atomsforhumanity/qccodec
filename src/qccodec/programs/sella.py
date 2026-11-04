@@ -11,7 +11,7 @@ Inputs map to Sella as follows:
 
 - ``subprograms`` holds one ``ProgramSpec`` with ``calctype="gradient"``: the child
   program, its model, and its own keywords (passed to that program unchanged).
-  Optionally a second one with ``calctype="hessian"`` becomes Sella's
+  Optionally one with ``calctype="hessian"`` becomes Sella's
   ``hessian_function``: Sella then starts from that program's Hessian instead of
   estimating curvature from gradients, and recomputes it every ``diag_every_n`` steps
   if that keyword is set. The Hessian program needs analytic or cheap Hessians to pay
@@ -21,6 +21,7 @@ Inputs map to Sella as follows:
   ``internal``, ``delta0``, ``diag_every_n``, ``nsteps_per_diag``, ...) to the
   ``Sella`` constructor. Sella's defaults apply to anything left out, including
   ``fmax=0.05`` eV/angstrom and an effectively unlimited ``steps``, so set ``steps``.
+  Sella rejects names it does not know.
 - ``constraints`` maps Sella's ``Constraints`` methods to their calls:
   ``fix_translation``, ``fix_bond``, ``fix_angle``, ``fix_dihedral``. Each call is the
   first argument (atom indices) or a dictionary of keyword arguments, e.g.
@@ -52,10 +53,10 @@ fails. Each Hessian from the Hessian program is attached to the frame at its geo
 steps, so every frame stays in the input's frame. A run that uses up ``steps`` without
 meeting ``fmax`` fails, with its trajectory attached.
 
-With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.
+With qccompute, ``propagate_wfn=True`` starts each child calculation from the orbitals
+of the last successful calculation of the same program, when the child codec supports
+it (TeraChem). The optimization declares the most threads and GPUs either child
+declares, so lists of optimizations share the machine correctly.
 """
 
 from __future__ import annotations
@@ -63,40 +64,35 @@ from __future__ import annotations
 import traceback
 from copy import deepcopy
 from importlib import metadata
-from typing import Any, TypedDict
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 from qcdata import (
     CalcType,
-    Data,
     Frame,
-    OptimizationData,
-    PathData,
     ProgramInput,
-    ProgramOutput,
     ProgramSpec,
-    Provenance,
     SinglePointData,
     Structure,
 )
 from qcref import constants as c
 
 from ..codec import Codec
-from ..exceptions import CalculationError, EncoderError
-from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
-from ._common import align_path
-from .geometric import _attach_hessians, _child_resources
-
-
-class SellaOutcome(TypedDict):
-    """The recorded trajectory, Sella's version, and why it stopped, if not converged."""
-
-    trajectory: list[Frame]
-    ts_index: int | None
-    version: str | None
-    error: str | None
-
+from ..exceptions import EncoderError
+from ..native import Compute, ComputeChild, PythonInput
+from ._driver import (
+    COMPUTE,
+    COMPUTE_CHILD,
+    Outcome,
+    Recorder,
+    align_path,
+    check_keywords,
+    child_resources,
+    driver_decoder,
+    outcome,
+    subprograms,
+)
 
 # Arguments of Sella.run (IRC.run also takes fmax_inner); every other keyword goes to
 # the Sella or IRC constructor.
@@ -128,35 +124,20 @@ CONSTRAINT_METHODS: dict[str, tuple[str, int | None]] = {
 
 def encode(inp: ProgramInput) -> PythonInput:
     """Prepare Sella's arguments; the child programs come from ``subprograms``."""
-    try:
-        gradient_spec = inp.get_subprogram(CalcType.gradient)
-    except ValueError as exc:
-        raise EncoderError(str(exc)) from exc
-    hessian_spec = next(
-        (s for s in inp.subprograms if s.calctype == CalcType.hessian), None
-    )
-    others = [
-        s
-        for s in inp.subprograms
-        if s.calctype not in (CalcType.gradient, CalcType.hessian)
-    ]
-    if others:
-        raise EncoderError(
-            "Sella takes a gradient subprogram and optionally a hessian subprogram."
-        )
+    specs = subprograms(inp, CalcType.gradient, [CalcType.hessian])
+    gradient_spec = specs[CalcType.gradient]
+    hessian_spec = specs.get(CalcType.hessian)
     if inp.cmdline_args:
         raise EncoderError("Sella's Python interface takes no command-line arguments.")
     keywords = deepcopy(inp.keywords)
-    owned = sorted(OWNED_KEYWORDS & set(keywords))
-    if owned:
-        raise EncoderError(f"The sella codec sets these keywords itself: {owned}.")
+    check_keywords("sella", keywords, owned=OWNED_KEYWORDS)
     constraints = _constraints(
         keywords.pop("constraints", None), len(inp.require_structure().symbols)
     )
     irc = inp.calctype == CalcType.irc
     run_keywords = IRC_RUN_KEYWORDS if irc else RUN_KEYWORDS
     run_kwargs = {k: keywords.pop(k) for k in run_keywords & set(keywords)}
-    threads, gpus = _child_resources(gradient_spec, inp)
+    threads, gpus = child_resources(inp, specs.values())
     return PythonInput(
         function=invoke_sella,
         kwargs={
@@ -173,7 +154,8 @@ def encode(inp: ProgramInput) -> PythonInput:
             "run_kwargs": run_kwargs,
         },
         files=dict(inp.files),
-        child_callback="compute_child",
+        compute_callback=COMPUTE,
+        child_callback=COMPUTE_CHILD,
         threads=threads,
         gpus=gpus,
     )
@@ -218,7 +200,7 @@ def _constraints(value: Any, natoms: int) -> dict[str, list[dict[str, Any]]]:
 def invoke_sella(
     *,
     structure: Structure,
-    structures: dict[str, Structure],
+    structures: dict[str, Structure | list[Structure]],
     gradient_spec: ProgramSpec,
     hessian_spec: ProgramSpec | None,
     order: int,
@@ -226,41 +208,29 @@ def invoke_sella(
     constraints: dict[str, list[dict[str, Any]]],
     init_kwargs: dict[str, Any],
     run_kwargs: dict[str, Any],
-    compute_child: ComputeChild,
-) -> SellaOutcome:
+    compute: Compute | None = None,
+    compute_child: ComputeChild | None = None,
+) -> Outcome:
     """Run Sella, retaining its trajectory even when a child or Sella fails.
 
-    For an IRC, both directions run from the transition state with one Sella ``IRC``,
-    so the transition state is analyzed once; the trajectory is then the path from the
-    reverse end, through the transition state, to the forward end.
+    Every energy and force is a child computed by the runner's ``compute``; Sella's
+    accepted steps become frames, its curvature probes do not unless one fails. For an
+    IRC, both directions run from the transition state with one Sella ``IRC``, so the
+    transition state is analyzed once; the frames are then the path from the reverse
+    end, through the transition state, to the forward end.
     """
     from sella import IRC, Constraints, Sella
 
     from ..ase import ProgramCalculator, atoms_structure, hessian_to_ase
 
-    trajectory: list[Frame] = []
-    recorded: set[int] = set()  # ids of the outputs already in the trajectory
-    hessians: list[tuple[NDArray[np.float64], NDArray[np.float64]]] = []
-    # Where record_step adds frames: the trajectory, or an IRC's current branch.
-    target: list[list[Frame]] = [trajectory]
+    recorder = Recorder("sella", compute, compute_child)
     branches: dict[str, list[Frame]] = {}
-    outcome: SellaOutcome = {
-        "trajectory": trajectory,
-        "ts_index": None,
-        "version": metadata.version("sella"),
-        "error": None,
-    }
-    previous: list[ProgramOutput[ProgramInput, Data]] = []
-
-    def compute(child: ProgramInput) -> ProgramOutput[ProgramInput, Data]:
-        """Run a child, starting from the last one's wavefunction when propagating."""
-        output = compute_child(child, previous=previous[-1] if previous else None)
-        if output.success:
-            previous[:] = [output]
-        return output
-
+    result = outcome(metadata.version("sella"))
     calculator = ProgramCalculator(
-        gradient_spec, compute, structure=structure, structures=structures
+        gradient_spec,
+        lambda child: recorder.compute(child, step=False),
+        structure=structure,
+        structures=structures,
     )
     try:
         from ase import Atoms
@@ -283,21 +253,19 @@ def invoke_sella(
             child = ProgramInput.from_spec(
                 hessian_spec, atoms_structure(at, structure), structures=structures
             )
-            output = compute(child)
+            output = recorder.compute(child, step=False)
             data = output.results
             if (
                 not output.success
                 or not isinstance(data, SinglePointData)
                 or data.hessian is None
             ):
-                trajectory.append(Frame.from_output(output))
-                recorded.add(id(output))
+                if output.success:  # a failure is already a frame
+                    recorder.record(output)
                 raise RuntimeError(
                     f"The {hessian_spec.program} Hessian calculation failed."
                 )
-            hessians.append(
-                (child.require_structure().geometry.flatten(), np.array(data.hessian))
-            )
+            recorder.add_hessian(child.require_structure().geometry, data.hessian)
             return hessian_to_ase(data.hessian)
 
         hessian = hessian_function if hessian_spec else None
@@ -319,42 +287,35 @@ def invoke_sella(
             )
 
         def record_step() -> None:
-            """Add the calculation at Sella's current geometry to the trajectory."""
-            here = atoms.get_positions().flatten() * c.ANGSTROM_TO_BOHR
-            for output in reversed(calculator.outputs):
-                geometry = output.input_data.require_structure().geometry.flatten()
-                if np.allclose(geometry, here, atol=1e-8):
-                    target[0].append(Frame.from_output(output))
-                    recorded.add(id(output))
-                    return
+            """Add the calculation at Sella's current geometry to the frames."""
+            recorder.record_at(atoms.get_positions() * c.ANGSTROM_TO_BOHR)
 
         optimizer.attach(record_step, interval=1)
         if irc:
             for direction in ("reverse", "forward"):
-                target[0] = branches[direction] = []
+                recorder.frames = branches[direction] = []
                 if not optimizer.run(direction=direction, **run_kwargs):
-                    outcome["error"] = (
+                    result["error"] = (
                         f"Sella's IRC did not reach a minimum in the {direction} "
                         f"direction within {optimizer.nsteps} steps."
                     )
                     break
         elif not optimizer.run(**run_kwargs):
-            outcome["error"] = (
+            result["error"] = (
                 f"Sella did not converge to fmax={optimizer.fmax} eV/angstrom in "
                 f"{optimizer.nsteps} steps."
             )
     except Exception:
-        outcome["error"] = traceback.format_exc()
+        result["error"] = traceback.format_exc()
     finally:
-        # A failed gradient ends the run without becoming a step; keep it.
-        if calculator.outputs and not calculator.outputs[-1].success:
-            failed = calculator.outputs[-1]
-            if id(failed) not in recorded:
-                target[0].append(Frame.from_output(failed))
-        if irc:
-            trajectory[:], outcome["ts_index"] = _irc_path(branches)
-        _attach_hessians(trajectory, hessians)
-    return outcome
+        # Hessians go on frames before an IRC's alignment, which rotates them.
+        for frames in branches.values() or [recorder.frames]:
+            recorder.attach_hessians(frames)
+        if branches:
+            result["frames"], result["ts_index"] = _irc_path(branches)
+        else:  # not an IRC, or one that failed before its first branch
+            result["frames"] = recorder.frames
+    return result
 
 
 def _vibrational_irc(base: type[Any], *, constrained: bool) -> type[Any]:
@@ -410,33 +371,9 @@ def _irc_path(branches: dict[str, list[Frame]]) -> tuple[list[Frame], int | None
     return align_path(path, ts_index), ts_index
 
 
-def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData | PathData:
-    """Wrap the recorded trajectory; raise with it attached if Sella failed."""
-    assert isinstance(out, PythonOutput)
-    native = out.value or {
-        "trajectory": [],
-        "ts_index": None,
-        "version": None,
-        "error": None,
-    }
-    provenance = Provenance(program="sella", program_version=native["version"])
-    data: OptimizationData | PathData
-    if inp.calctype == CalcType.irc:
-        data = PathData(
-            provenance=provenance,
-            frames=native["trajectory"],
-            ts_index=native["ts_index"],
-        )
-    else:
-        data = OptimizationData(provenance=provenance, frames=native["trajectory"])
-    if native["error"]:
-        raise CalculationError(native["error"], data=data)
-    return data
-
-
 codec = Codec(
     "sella",
     calctypes={CalcType.optimization, CalcType.transition_state, CalcType.irc},
     encode=encode,
-    decode=decode,
+    decode=driver_decoder("sella"),
 )

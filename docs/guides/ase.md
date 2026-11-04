@@ -25,7 +25,8 @@ print(len(atoms.calc.outputs), "calculations")  # every ProgramOutput, in order
 ```
 
 - qccodec never runs programs, so you pass `compute`. Any function taking a
-  `ProgramInput` and returning a `ProgramOutput` works.
+  `ProgramInput` and returning a `ProgramOutput` works, including the `Compute` a
+  driver codec receives from its runner.
 - Units are converted at the boundary: positions in angstrom, energies in eV, forces
   in eV/angstrom, as ASE expects.
 - Charge and multiplicity come from `charge` and `multiplicity`, or from a

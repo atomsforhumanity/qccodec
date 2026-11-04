@@ -7,12 +7,14 @@ __version__ = metadata.version(__name__)
 from .codec import Codec, Context, ParserSpec
 from .model_cache import clear_model_cache
 from .native import (
+    Compute,
     NativeInput,
     NativeOutput,
     PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
+    sequential,
 )
 from .registry import (
     decode,
@@ -28,6 +30,8 @@ __all__ = [
     "Codec",
     "Context",
     "ParserSpec",
+    "Compute",
+    "sequential",
     "NativeInput",
     "NativeOutput",
     "PythonInput",
