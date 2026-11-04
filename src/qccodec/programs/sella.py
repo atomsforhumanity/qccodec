@@ -81,11 +81,11 @@ from qcdata import (
     Structure,
 )
 from qcref import constants as c
-from qcref import periodic_table
 
 from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
+from ._common import align_path
 from .geometric import _attach_hessians, _child_resources
 
 
@@ -405,49 +405,9 @@ def _irc_path(branches: dict[str, list[Frame]]) -> tuple[list[Frame], int | None
     ts = reverse[:1] or forward[:1]
     if not ts:
         return [], None
-    # Both branches align onto the same transition-state frame.
-    reverse = _aligned(ts + reverse[1:])
-    forward = _aligned(ts + forward[1:])
     path = reverse[:0:-1] + ts + forward[1:]
-    return path, len(reverse) - 1
-
-
-def _aligned(branch: list[Frame]) -> list[Frame]:
-    """Remove the rigid drift of an IRC branch: each frame onto the one before it.
-
-    Sella's IRC keeps overall translation and rotation, so a branch can drift and, at
-    its minimum, spin. Each frame is moved onto the previous (already aligned) frame
-    by the mass-weighted best fit (centers of mass together, then the rotation that
-    minimizes the mass-weighted displacement, as an IRC step has no rigid part), its
-    gradient rotated with it. The path then stays in the transition state's frame,
-    which is the input's.
-    """
-    if not branch:
-        return branch
-    masses = np.array(
-        [float(periodic_table[s].mass) for s in branch[0].structure.symbols]
-    )[:, None]
-    aligned = [branch[0]]
-    previous = np.asarray(branch[0].structure.geometry, dtype=float)
-    for frame in branch[1:]:
-        coords = np.asarray(frame.structure.geometry, dtype=float)
-        center = (masses * coords).sum(axis=0) / masses.sum()
-        target = (masses * previous).sum(axis=0) / masses.sum()
-        p = coords - center
-        u, _, vt = np.linalg.svd((masses * p).T @ (previous - target))
-        rotation = u @ np.diag([1.0, 1.0, np.sign(np.linalg.det(u @ vt))]) @ vt
-        previous = p @ rotation + target
-        results = frame.results
-        if results.gradient is not None:
-            gradient = np.asarray(results.gradient) @ rotation
-            results = results.model_copy(update={"gradient": gradient})
-        structure = frame.structure.model_copy(update={"geometry": previous})
-        aligned.append(
-            Frame.model_validate(
-                {**dict(frame), "structure": structure, "results": results}
-            )
-        )
-    return aligned
+    ts_index = len(reverse[1:])
+    return align_path(path, ts_index), ts_index
 
 
 def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData | PathData:

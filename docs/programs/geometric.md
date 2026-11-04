@@ -36,3 +36,11 @@ with `python script.py`. They live in the repository's
 ```python
 {!examples/geometric/many_calculations.py!}
 ```
+
+### IRC
+
+[`examples/geometric/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/irc.py)
+
+```python
+{!examples/geometric/irc.py!}
+```

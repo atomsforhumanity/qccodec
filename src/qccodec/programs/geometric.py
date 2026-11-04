@@ -1,4 +1,4 @@
-"""geomeTRIC: optimizations and transition-state searches driving another program.
+"""geomeTRIC: optimizations, transition-state searches, and IRCs driving another program.
 
 geomeTRIC runs in Python and asks for gradients through a callback: every step is a
 full ``gradient`` calculation of the program named in ``subprograms``, run by qccompute
@@ -17,8 +17,15 @@ Inputs map to geomeTRIC as follows:
   distances in bohr; scans are not supported).
 - ``cmdline_args`` are not accepted.
 
-Calculation types: ``optimization`` and ``transition_state`` (``transition=True``;
-geomeTRIC computes a starting Hessian from finite differences of child gradients).
+Calculation types: ``optimization``, ``transition_state`` (``transition=True``;
+geomeTRIC computes a starting Hessian from finite differences of child gradients), and
+``irc`` (``irc=True``, from the transition state in ``structure``; geomeTRIC computes
+its Hessian the same way). An IRC returns a ``PathData``: the path geomeTRIC accepted,
+from the end of its backward branch, through the transition state (``ts_index``), to
+the end of its forward branch, each frame the child calculation at that point. Its
+frames are the accepted points only; rejected trial steps are left out. geomeTRIC
+finishes each branch by optimizing to the minimum once the IRC has converged, so the
+ends are minima (its ``irc_direction`` keyword can limit the IRC to one branch).
 
 The trajectory holds one frame per optimizer step. Gradients at the displaced
 geometries of a finite-difference Hessian are not steps, so they are left out, unless
@@ -48,6 +55,7 @@ from qcdata import (
     Data,
     Frame,
     OptimizationData,
+    PathData,
     ProgramInput,
     ProgramOutput,
     ProgramSpec,
@@ -55,10 +63,12 @@ from qcdata import (
     SinglePointData,
     Structure,
 )
+from qcref import constants as c
 
 from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
+from ._common import align_path
 
 if TYPE_CHECKING:
     from geometric.engine import Engine as NativeEngine
@@ -69,6 +79,8 @@ class GeometricOutcome(TypedDict):
     """Optimizer completion state plus the independently recorded child outputs."""
 
     trajectory: list[Frame]
+    path: list[Frame]
+    ts_index: int | None
     version: str | None
     error: str | None
 
@@ -98,6 +110,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     keywords = deepcopy(inp.keywords)
     keywords["transition"] = inp.calctype == CalcType.transition_state
+    keywords["irc"] = inp.calctype == CalcType.irc
     coordsys = keywords.pop("coordsys", "tric")
     if coordsys not in COORDINATE_SYSTEMS:
         raise EncoderError(f"Unsupported coordinate system: {coordsys}")
@@ -213,9 +226,12 @@ def invoke_geometric(
     compute_hessian = None
     outcome: GeometricOutcome = {
         "trajectory": trajectory,
+        "path": [],
+        "ts_index": None,
         "version": geometric.__version__,
         "error": None,
     }
+    optimizer = None
     try:
         molecule = geometric.molecule.Molecule(fnm=geometry_file)
         class_name, connect, addcart = COORDINATE_SYSTEMS[coordsys]
@@ -259,7 +275,7 @@ def invoke_geometric(
             molecule,
             coords,
             engine=engine,
-            dirname=Path.cwd(),
+            dirname=str(Path.cwd()),  # geomeTRIC edits it as text between IRC branches
             params=geometric.params.OptParams(
                 **{"xyzout": "qcdata_optim.xyz", **keywords}
             ),
@@ -271,7 +287,47 @@ def invoke_geometric(
         if compute_hessian is not None:
             geometric.optimize.calc_cartesian_hessian = compute_hessian
         _attach_hessians(trajectory, hessians)
+        if keywords.get("irc") and optimizer is not None:
+            outcome["path"], outcome["ts_index"] = _irc_path(
+                optimizer, trajectory, structure
+            )
     return outcome
+
+
+def _irc_path(
+    optimizer: Any, trajectory: list[Frame], structure: Structure
+) -> tuple[list[Frame], int | None]:
+    """Return the IRC geomeTRIC accepted, as frames, and the transition state's index.
+
+    geomeTRIC's ``progress`` holds the accepted points: after both branches, the
+    forward branch reversed, the transition state, then the backward branch. Each point
+    is matched to the child calculation at its geometry; the path is returned from the
+    backward end to the forward end.
+    """
+    points = [
+        np.asarray(xyz, dtype=float).flatten() * c.ANGSTROM_TO_BOHR
+        for xyz in optimizer.progress.xyzs
+    ]
+    path: list[Frame] = []
+    for point in points:
+        for frame in reversed(trajectory):
+            geometry = frame.structure.geometry.flatten()
+            if geometry.shape == point.shape and np.allclose(
+                geometry, point, atol=1e-6
+            ):
+                path.append(frame)
+                break
+    path.reverse()
+    start = structure.geometry.flatten()
+    ts_index = next(
+        (
+            i
+            for i, f in enumerate(path)
+            if np.allclose(f.structure.geometry.flatten(), start, atol=1e-6)
+        ),
+        None,
+    )
+    return align_path(path, ts_index), ts_index
 
 
 def _attach_hessians(
@@ -293,14 +349,26 @@ def _attach_hessians(
                 break
 
 
-def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData:
+def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData | PathData:
     """Wrap the recorded trajectory; raise with it attached if the optimizer failed."""
     assert isinstance(out, PythonOutput)
-    native = out.value or {"trajectory": [], "version": None, "error": None}
-    data = OptimizationData(
-        provenance=Provenance(program="geometric", program_version=native["version"]),
-        frames=native["trajectory"],
-    )
+    native = out.value or {
+        "trajectory": [],
+        "path": [],
+        "ts_index": None,
+        "version": None,
+        "error": None,
+    }
+    provenance = Provenance(program="geometric", program_version=native["version"])
+    data: OptimizationData | PathData
+    if inp.calctype == CalcType.irc:
+        data = PathData(
+            provenance=provenance,
+            frames=native.get("path", []),
+            ts_index=native.get("ts_index"),
+        )
+    else:
+        data = OptimizationData(provenance=provenance, frames=native["trajectory"])
     if native["error"]:
         raise CalculationError(native["error"], data=data)
     return data
@@ -308,7 +376,7 @@ def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData:
 
 codec = Codec(
     "geometric",
-    calctypes={CalcType.optimization, CalcType.transition_state},
+    calctypes={CalcType.optimization, CalcType.transition_state, CalcType.irc},
     encode=encode,
     decode=decode,
 )

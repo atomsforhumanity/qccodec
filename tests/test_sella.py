@@ -380,16 +380,32 @@ def test_irc_branches_join_through_the_transition_state() -> None:
 
 
 def test_irc_branches_lose_their_rigid_drift() -> None:
-    """A frame that is only a rotated, shifted copy of the last aligns back onto it."""
-    from qccodec.programs.sella import _aligned
+    """Frames that are rotated, shifted copies align back onto the transition state.
+
+    Alignment works outward from the transition state on both sides, rotating each
+    frame's gradient and Hessian with it.
+    """
+    from qccodec.programs._common import align_path
 
     g = WATER.geometry
     grad = np.arange(9.0).reshape(3, 3)
     turn = _rotation(0.3)
     drifted = (g - g.mean(axis=0)) @ turn.T + np.array([1.0, -2.0, 0.5])
-    branch = [_frame(g, 0.0, grad), _frame(drifted, -1.0, grad @ turn.T)]
-    aligned = _aligned(branch)
-    assert np.allclose(aligned[1].structure.geometry, g, atol=1e-10)
-    gradient = aligned[1].results.gradient
-    assert gradient is not None and np.allclose(gradient, grad, atol=1e-10)
-    assert aligned[1].results.energy == -1.0
+    block = np.kron(np.eye(3), turn)
+    hessian = np.diag(np.arange(1.0, 10.0))
+    copy = _frame(drifted, -1.0, grad @ turn.T)
+    copy = copy.model_copy(
+        update={
+            "results": copy.results.model_copy(
+                update={"hessian": block @ hessian @ block.T}
+            )
+        }
+    )
+    path = align_path([copy, _frame(g, 0.0, grad), copy], ts_index=1)
+    for end in (path[0], path[2]):
+        assert np.allclose(end.structure.geometry, g, atol=1e-10)
+        assert end.results.gradient is not None and end.results.hessian is not None
+        assert np.allclose(end.results.gradient, grad, atol=1e-10)
+        assert np.allclose(end.results.hessian, hessian, atol=1e-10)
+        assert end.results.energy == -1.0
+    assert np.array_equal(path[1].structure.geometry, g)  # the transition state stays

@@ -320,3 +320,48 @@ def test_geometric_hessians_attach_to_the_frame_at_their_geometry() -> None:
     assert hessians[0] is not None and np.array_equal(hessians[0], first)
     assert hessians[1] is None
     assert hessians[2] is not None and np.array_equal(hessians[2], last)
+
+
+def test_geometric_irc_path_is_the_accepted_points_in_order() -> None:
+    """geomeTRIC's progress (forward reversed, TS, backward) becomes the path.
+
+    Rejected trial steps (frames not in progress) are left out; the path runs from the
+    backward end to the forward end with the transition state's index.
+    """
+    from types import SimpleNamespace
+
+    import numpy as np
+    from qcdata import Frame, SinglePointData, Structure
+    from qcref import constants as c
+
+    from qccodec.programs.geometric import _irc_path
+
+    def frame(x: float) -> Frame:
+        structure = Structure(
+            symbols=["H", "H"], geometry=np.array([[x, 0.0, 0.0], [x, 0.0, 1.4]])
+        )
+        return Frame(
+            structure=structure,
+            success=True,
+            results=SinglePointData.model_validate(
+                {"provenance": {"program": "test"}, "energy": -abs(x)}
+            ),
+        )
+
+    ts, f1, f2, rejected, b1 = (
+        frame(0.0),
+        frame(0.1),
+        frame(0.2),
+        frame(9.0),
+        frame(-0.1),
+    )
+    trajectory = [ts, f1, rejected, f2, b1]
+    progress = [f2, f1, ts, b1]  # geomeTRIC's order after both branches
+    optimizer = SimpleNamespace(
+        progress=SimpleNamespace(
+            xyzs=[f.structure.geometry * c.BOHR_TO_ANGSTROM for f in progress]
+        )
+    )
+    path, ts_index = _irc_path(optimizer, trajectory, ts.structure)
+    assert [f.results.energy for f in path] == [-0.1, 0.0, -0.1, -0.2]
+    assert ts_index == 1
