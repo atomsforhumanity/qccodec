@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- `geometric` codec: `CalcType.path_optimization`, geomeTRIC's nudged elastic band over `structures["initial_chain"]`. Each iteration's images go to the runner's `compute_children` together (falling back to one at a time), so with qccompute 0.23 an AIMNet2 band is one batched call per iteration (42 iterations, 11 images each, no single calls on HCN ⇌ HNC) and program children run side by side. Returns `PathOptimizationData` with the chain at every iteration and the climbing image as each path's `ts_index`; an unconverged band fails with its paths. New example `examples/geometric/path_optimization.py`; on HCN ⇌ HNC with GFN2-xTB the climbing image gives 72.8 and 53.0 kcal/mol against the saddle's 73.2 and 53.2.
+
+### Added
+
 - `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.
 - `PythonInput.children_callback` and the `ComputeChildren` protocol (`qccodec.native`): a driver that needs many independent child calculations per step (a path optimization's images) names a keyword into which the runner injects `compute_children(inputs) -> outputs`, so the runner can batch machine-learned potentials and run programs side by side. Runners that do not support it leave the keyword out; drivers fall back to `child_callback`.
 
