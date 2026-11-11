@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+### Fixed
+
+- Installed codecs are found from package metadata once per process instead of on every lookup. The scan cost about 1.3 ms per `compute` call, most of the per-step overhead of fast in-process programs: a g-xTB gradient through `qccompute.compute` drops from 1.7 to 0.5 ms. A codec package installed after the first lookup needs a new process.
+
 ### Added
 
 - `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.

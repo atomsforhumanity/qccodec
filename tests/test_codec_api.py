@@ -315,7 +315,9 @@ def test_file_input_resolves_to_file_codec() -> None:
     assert data.provenance.program == "/bin/echo"
 
 
-def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_entry_point_codecs_are_discovered(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
     """Codecs published under the qccodec.codecs entry point group resolve by name."""
     from types import SimpleNamespace
 
@@ -330,6 +332,10 @@ def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> N
         ]
 
     monkeypatch.setattr("qccodec.registry.entry_points", fake_entry_points)
+    qccodec.registry._plugin_entry_points.cache_clear()
+    request.addfinalizer(
+        qccodec.registry._plugin_entry_points.cache_clear
+    )  # forget fakes
     assert get_codec("plugprog") is plugin
     assert "plugprog" in qccodec.supported_programs()
     with pytest.raises(CodecNotFoundError, match="not a qccodec.Codec"):
@@ -339,6 +345,33 @@ def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> N
         assert get_codec("plugprog") is override  # registered beats installed
     finally:
         qccodec.unregister("plugprog")
+
+
+def test_installed_codecs_are_read_once_per_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Package metadata is scanned once, not on every lookup: the scan (about 1.3 ms)
+    dominated the cost of fast in-process programs computed step by step."""
+    from types import SimpleNamespace
+
+    plugin = Codec("plugprog", {CalcType.energy})
+    scans: list[str] = []
+
+    def fake_entry_points(*, group: str) -> list[SimpleNamespace]:
+        scans.append(group)
+        return [
+            SimpleNamespace(name="plugprog", value="plug:codec", load=lambda: plugin)
+        ]
+
+    monkeypatch.setattr("qccodec.registry.entry_points", fake_entry_points)
+    qccodec.registry._plugin_entry_points.cache_clear()
+    try:
+        for _ in range(5):
+            assert get_codec("plugprog") is plugin
+        assert "plugprog" in qccodec.supported_programs()
+        assert len(scans) == 1
+    finally:
+        qccodec.registry._plugin_entry_points.cache_clear()
 
 
 def versioned_codec() -> Codec:
