@@ -5,7 +5,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramError,
+    ProgramInput,
+    Structure,
+)
 
 from qccodec.testing import check_normal_modes
 
@@ -98,3 +105,62 @@ def test_optimization(run: Run, water: Structure) -> None:
     assert len(energies) > 1
     assert np.isclose(energies[-1], -74.965901192106, atol=1e-6)
     assert all(np.diff(energies) <= 1e-8)
+
+
+@pytest.mark.parametrize(
+    ("case", "model", "keywords", "code"),
+    [
+        ("unknown_keyword", None, {"tightscff": True}, "unknown_key"),
+        ("unknown_block", None, {"scff": {"maxiter": 100}}, "unknown_key"),
+        ("unknown_block_setting", None, {"scf": {"maxiterr": 100}}, "unknown_key"),
+        ("unknown_basis", Model(method="hf", basis="sto-3gg"), {}, None),
+    ],
+)
+def test_orca_refuses_unknown_input(
+    run: Run,
+    water: Structure,
+    case: str,
+    model: Model | None,
+    keywords: dict[str, object],
+    code: str | None,
+) -> None:
+    """ORCA refuses what it does not know before calculating; kind input."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"keywords": keywords, **({"model": model} if model else {})}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == ("input", code)
+
+
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """ORCA exits 0 when the SCF fails; the codec reports convergence."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"keywords": {"scf": {"maxiter": 2}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="scf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+
+
+def test_optimization_out_of_cycles_fails(run: Run, water: Structure) -> None:
+    """ORCA calls an optimization out of cycles a normal termination; it is not."""
+    inp = _input(water, CalcType.optimization).model_copy(
+        update={"keywords": {"geom": {"maxiter": 2}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="optimization_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == ("convergence", "max_iter")
+    assert e.value.output is not None
+    assert len(e.value.output.results.frames) == 2
+
+
+def test_impossible_multiplicity(run: Run, water: Structure) -> None:
+    """A multiplicity the electron count cannot have is kind input."""
+    doublet = water.model_copy(update={"multiplicity": 2})
+    with pytest.raises(ProgramError) as e:
+        run(_input(doublet, CalcType.energy), case="impossible_multiplicity")
+    assert e.value.error.kind == "input"

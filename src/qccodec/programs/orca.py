@@ -25,6 +25,18 @@ frequencies negative), ``optimization``, and ``transition_state`` (``OptTS``; gi
 starting Hessian, e.g. ``{"geom": {"calc_hess": True}}``). ORCA keeps the input's
 coordinates and atom order. No input field carries atom indices.
 
+Keywords are checked as far as the codec can: values must be ``True``, a dictionary,
+``False``/``None``, or ``maxcore``/``pal`` numbers. ORCA's simple-input words, blocks
+and block settings are too many to list, but ORCA refuses an unknown one itself before
+calculating anything, and the codec reports that as kind ``input``, code
+``unknown_key`` (a misspelled method or basis set is ``input`` without a code).
+
+Failures and their kinds: an SCF that does not converge is ``convergence`` (code
+``scf_not_converged``); an optimization that runs out of cycles is ``convergence``
+(``max_iter``), with its trajectory attached (ORCA itself reports it as a normal
+termination); a multiplicity the number of electrons cannot have is ``input``. Any
+other error termination is ``internal``, with ORCA's error line.
+
 Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 ``/usr/bin/orca`` is the GNOME screen reader. qccompute always runs the absolute path;
 put ORCA first on ``PATH`` or set ``QCCODEC_ORCA_EXECUTABLE``.
@@ -64,6 +76,15 @@ codec = Codec(
         CalcType.optimization,
         CalcType.transition_state,
     },
+    # Matched against the failure hook's messages below.
+    errors=[
+        (r"does not recognize the method or basis", "input", None),
+        (r"does not recognize the simple-input", "input", "unknown_key"),
+        (r"has no input block|has no setting", "input", "unknown_key"),
+        (r"the SCF did not converge", "convergence", "scf_not_converged"),
+        (r"optimization reached its maximum", "convergence", "max_iter"),
+        (r"multiplicity .* impossible", "input", None),
+    ],
 )
 
 XYZ_FILENAME = "geometry.xyz"
@@ -188,6 +209,65 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 
 
 # ------------------------------------------------------------------ decoding
+
+
+@codec.failure
+def failure(ctx: Context) -> str | None:
+    """Explain why ORCA stopped, including what it reports with exit status 0.
+
+    ORCA refuses unknown simple-input words, input blocks and block settings itself,
+    before calculating anything. It exits 0 when the SCF fails to converge and when
+    an optimization runs out of cycles (``ORCA TERMINATED NORMALLY`` after the
+    latter), so both are read from the output.
+    """
+    stdout = ctx.stdout or ""
+    words = re.search(
+        r"UNRECOGNIZED OR DUPLICATED KEYWORD\(S\) IN SIMPLE INPUT LINE\s*\n(.*?)\n\s*!{4,}",
+        stdout,
+        flags=re.DOTALL,
+    )
+    if words:
+        unknown = words.group(1).split()
+        model = ctx.input_data.model if ctx.input_data is not None else None
+        named = (
+            {w.upper() for w in f"{model.method} {model.basis or ''}".split()}
+            if model is not None
+            else set()
+        )
+        if named & set(unknown):
+            return (
+                "ORCA does not recognize the method or basis set word(s) "
+                f"{', '.join(unknown)} (or one is given twice)."
+            )
+        return (
+            "ORCA does not recognize the simple-input keyword(s) "
+            f"{', '.join(unknown)} (or one is given twice)."
+        )
+    block = re.search(r"ERROR: Unknown identifier % ?(\S+)", stdout)
+    if block:
+        return f"ORCA has no input block %{block.group(1).lower()}."
+    setting = re.search(
+        r"Unknown identifier in (\w+) block.*?\n\s*Last token : (\S+)", stdout
+    )
+    if setting:
+        return (
+            f"ORCA has no setting {setting.group(2).lower()} in the "
+            f"%{setting.group(1).lower()} block."
+        )
+    multiplicity = re.search(r"Error : (multiplicity .*? impossible)", stdout)
+    if multiplicity:
+        return f"ORCA: {multiplicity.group(1)}."
+    if re.search(r"The optimization did not converge but reached the maximum", stdout):
+        return "ORCA: the optimization reached its maximum number of cycles."
+    stopped = re.search(r"ORCA finished by error termination in (\w+)", stdout)
+    if stopped:
+        cycles = re.search(r"SCF NOT CONVERGED AFTER\s+(\d+) CYCLES", stdout)
+        if cycles:
+            return f"ORCA: the SCF did not converge in {cycles.group(1)} cycles."
+        errors = re.findall(r"^(?:\[file [^\]]*\]: )?\s*(Error.*\S)", stdout, re.M)
+        reason = f": {errors[0]}" if errors else ""
+        return f"ORCA stopped with an error in {stopped.group(1)}{reason}"
+    return None
 
 
 @codec.parser(
