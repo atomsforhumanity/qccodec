@@ -9,8 +9,8 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.24.0a3",
-    "qccompute>=0.23.0a2",
+    "qcdata>=0.24.0a4",
+    "qccompute>=0.23.0a3",
     "qcref>=0.4.0",
 ]
 
