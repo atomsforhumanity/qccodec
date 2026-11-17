@@ -236,7 +236,9 @@ def test_point_charges(run: Run, water: Structure) -> None:
             assert np.isclose(pc_gradient[i, k], numeric, atol=1e-6)
 
 
-def test_an_accuracy_target_is_refused_before_xtb_runs(water: Structure) -> None:
+def test_an_accuracy_target_is_refused_by_gfn2_and_met_by_gfnff(
+    water: Structure,
+) -> None:
     """GFN2's SCC has thresholds the codec cannot set from a target; GFN-FF has none."""
     from qccompute import compute
 
@@ -244,6 +246,11 @@ def test_an_accuracy_target_is_refused_before_xtb_runs(water: Structure) -> None
     with pytest.raises(ProgramError) as e:
         compute(_input(water, CalcType.gradient, accuracy=target))
     assert e.value.error.kind == "unsupported"
-    with pytest.raises(ProgramError) as e:
-        compute(_input(water, CalcType.gradient, "gfnff", accuracy=target))
-    assert (e.value.error.kind, e.value.error.code) == ("input", "no_effect")
+    met = compute(_input(water, CalcType.gradient, "gfnff", accuracy=target))
+    assert met.record["accuracy"] == {
+        "target": target,
+        "thresholds": {},
+        "estimate": {"gradient": 0.0},
+    }
+    plain = compute(_input(water, CalcType.gradient, "gfnff"))
+    assert met.results.energy == plain.results.energy

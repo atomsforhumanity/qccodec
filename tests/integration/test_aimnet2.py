@@ -77,3 +77,38 @@ def test_batch_matches_single(run: Run) -> None:
     """One batched pass gives each molecule what computing it alone gives."""
     inputs = [_input(m, CalcType.gradient) for m in batch_molecules(charged=True)]
     check_batch_matches_single(run, inputs, atol=1e-6)
+
+
+def test_the_device_follows_the_grant(water: Structure) -> None:
+    """No GPU granted: the CPU, quietly. A GPU granted: that GPU, as cuda."""
+    import torch
+    from qccompute import Runner
+
+    inp = _input(water, CalcType.gradient).model_copy(update={"keywords": {}})
+    with Runner(threads=2, gpus=()) as runner:
+        cpu = runner.compute(inp)
+    assert cpu.resolved is not None and cpu.resolved.settings["device"] == "cpu"
+    assert cpu.resolved.reasons == {"device": "auto: no GPU was granted"}
+    assert not cpu.warnings
+    if not torch.cuda.is_available():
+        return
+    with Runner(threads=2) as runner:
+        gpu = runner.compute(inp)
+    assert gpu.resolved is not None and gpu.resolved.settings["device"] == "cuda"
+    assert not gpu.warnings
+    assert np.allclose(gpu.results.gradient, cpu.results.gradient, atol=1e-5)
+
+
+def test_an_accuracy_target_is_met(run: Run, water: Structure) -> None:
+    """A model has nothing to converge: the target is recorded as met."""
+    inp = _input(water, CalcType.gradient)
+    target = {"gradient": 1e-6}
+    out = run(
+        inp.model_copy(update={"keywords": {"device": "cpu", "accuracy": target}})
+    )
+    assert out.record["accuracy"] == {
+        "target": target,
+        "thresholds": {},
+        "estimate": {"gradient": 0.0},
+    }
+    assert out.results.energy == run(inp).results.energy
