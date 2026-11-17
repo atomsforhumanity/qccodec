@@ -564,6 +564,22 @@ def test_one_worker_serves_calls_with_different_threads() -> None:
     assert [e["blas_threads"][0] for e in extras] == [1, 3, 2]
 
 
+def test_a_batch_output_reports_its_own_inputs_threads() -> None:
+    """Left to the runner, which gives each output its part of the batch's threads."""
+    import qccompute
+    from qccompute.program import register_program, unregister_program
+
+    library = CodecProgram(_device_library(gpus=0))
+    register_program(library)
+    try:
+        with qccompute.Runner(threads=6) as runner:
+            outs = runner.compute([_gpu_input(), _gpu_input(), _gpu_input()])
+    finally:
+        unregister_program("gpulib")
+    assert [o.execution.extras["batch_size"] for o in outs] == [3, 3, 3]
+    assert [o.execution.threads for o in outs] == [1, 1, 1]  # not the batch's 3
+
+
 def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:
     """The runner sizes a batch's grant as the sum of its inputs' threads."""
     outs: Any = program.compute_batch(

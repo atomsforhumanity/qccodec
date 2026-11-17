@@ -498,7 +498,10 @@ class CodecProgram:
         failure is reported with its own input. Failures, refused inputs included, are
         failed outputs in place. A batch runs with the whole grant, which the runner
         sized as the sum of its inputs' threads; an input run on its own gets its own
-        planned threads (`_own_share`).
+        planned threads (`_own_share`). A batch's outputs leave ``execution.threads``
+        to the runner, which gives each its own input's part of the grant, so that
+        ``wall_time * threads`` (the whole batch's wall time) adds up to the batch's
+        cost.
         """
         outputs: list[ProgramOutput[Any, Data] | None] = [None] * len(inputs)
         groups: dict[Hashable, list[int]] = {}
@@ -877,7 +880,6 @@ class CodecProgram:
             outputs: list[ProgramOutput[Any, Data]] = []
             for index, (inp, value) in enumerate(zip(inputs, values, strict=True)):
                 execution = ExecutionInfo(
-                    threads=threads,
                     timings={"total": wall},
                     extras={"batch_size": len(inputs), "batch_index": index},
                 )
