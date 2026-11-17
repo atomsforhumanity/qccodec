@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -103,6 +104,42 @@ def ctx(tmp_path: Path, **fields: Any) -> SimpleNamespace:
         # A worker's view: its CUDA_VISIBLE_DEVICES is the grant.
         device_ordinals=fields.get("device_ordinals", lambda: list(range(len(gpus)))),
     )
+
+
+class Asked:
+    """A stand-in ctx whose caller cancels the calculation (its time left reads 0) or
+    asks it to stop, ``after`` seconds from now."""
+
+    def __init__(self, tmp_path: Path, what: str, after: float = 0.3) -> None:
+        self.threads = 1
+        self.gpus = ()
+        self.scratch = tmp_path
+        self.device_ordinals = list
+        self._what = what
+        self._at = time.monotonic() + after
+
+    @property
+    def timeout(self) -> float | None:
+        if self._what == "cancel" and time.monotonic() >= self._at:
+            return 0.0
+        return None
+
+    def stop_requested(self) -> bool:
+        return self._what == "stop" and time.monotonic() >= self._at
+
+
+@pytest.mark.parametrize("what", ["cancel", "stop"])
+def test_a_cancel_or_a_stop_ends_the_program_within_about_a_second(
+    tmp_path: Path, what: str
+) -> None:
+    """The run checks its calculation about once a second, not only at its deadline."""
+    start = time.monotonic()
+    with pytest.raises(ProgramError) as e:
+        program.compute(inp(mode="sleep"), Asked(tmp_path, what))
+    assert time.monotonic() - start < 5  # the program sleeps for 30 s
+    kind = ErrorKind.stopped if what == "stop" else ErrorKind.timeout
+    assert e.value.error.kind is kind
+    assert e.value.output is not None and not e.value.output.success
 
 
 def test_compute_runs_the_command_and_keeps_its_logs(tmp_path: Path) -> None:

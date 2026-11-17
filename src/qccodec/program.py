@@ -31,7 +31,10 @@ What qccompute grants a calculation (its `RunContext`) reaches the program like 
   CPU-only PyTorch) runs on the CPU with a ``backend_fallback`` warning. The device
   it ran on is in the output's ``resolved.settings``.
 - ``timeout``: the program and every process it started are killed when it expires
-  (kind ``timeout``).
+  (kind ``timeout``). A program run as a subprocess also checks, about once a second,
+  whether its calculation was cancelled (its time left reads 0: killed, kind
+  ``timeout``) or asked to stop (``ctx.stop_requested()``: killed, kind ``stopped``,
+  with what the codec recovers from its output so far).
 - ``scratch``: the calculation directory.
 - ``compute``: the subprograms of geomeTRIC and Sella. Called directly
   (``ctx=None``), such a program hands itself to ``qccompute.compute``.
@@ -56,6 +59,7 @@ import tempfile
 import time
 import traceback
 from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -86,6 +90,7 @@ from .exceptions import (
     CalculationError,
     DependencyNotFoundError,
     EncoderError,
+    StoppedError,
 )
 from .native import (
     NativeInput,
@@ -672,7 +677,11 @@ class CodecProgram:
                     gpus=native.gpus,
                 )
                 out = run_subprocess(
-                    request, directory, environment=env, timeout=timeout
+                    request,
+                    directory,
+                    environment=env,
+                    timeout=timeout,
+                    interrupt=None if ctx is None else partial(_interrupted, ctx, name),
                 )
             else:
                 out = self._run_python(native, directory, env, ctx, threads)
@@ -694,7 +703,8 @@ class CodecProgram:
                     out.failed
                     and isinstance(exc, CalculationError)
                     and not isinstance(
-                        out.error, TimeoutError | DependencyNotFoundError
+                        out.error,
+                        TimeoutError | DependencyNotFoundError | StoppedError,
                     )
                 ):
                     # The codec explains the failure (an exit status, a library's
@@ -1092,6 +1102,22 @@ def _empty(inp: ProgramInput | FileInput) -> Data:
     return data_type(provenance=Provenance(program=inp.program))
 
 
+def _interrupted(ctx: Any, program: str) -> Exception | None:
+    """Why a running external program must end now, if it must.
+
+    Its calculation was asked to stop (``ctx.stop_requested()``), or was cancelled or
+    ran out of time (``ctx.timeout`` reads 0).
+    """
+    stop_requested = getattr(ctx, "stop_requested", None)
+    if stop_requested is not None and stop_requested():
+        return StoppedError(f"{program} was asked to stop and was killed.")
+    if ctx.timeout == 0:
+        return TimeoutError(
+            f"{program} was killed: its calculation was cancelled or out of time."
+        )
+    return None
+
+
 def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
     """The typed error of a failed run, from its primary failure.
 
@@ -1103,6 +1129,8 @@ def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
     """
     if isinstance(exc, TimeoutError):
         return ErrorInfo(kind=ErrorKind.timeout, message=str(exc))
+    if isinstance(exc, StoppedError):
+        return ErrorInfo(kind=ErrorKind.stopped, message=str(exc))
     if isinstance(exc, DependencyNotFoundError):
         return ErrorInfo(kind=ErrorKind.environment, message=str(exc))
     if isinstance(exc, EncoderError):

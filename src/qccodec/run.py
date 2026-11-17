@@ -74,6 +74,7 @@ def run_subprocess(
     update_func: Callable[[str, str], None] | None = None,
     update_interval: float | None = None,
     timeout: float | None = None,
+    interrupt: Callable[[], Exception | None] | None = None,
 ) -> SubprocessOutput:
     """Execute a native command and monitor its merged stdout/stderr.
 
@@ -100,6 +101,11 @@ def run_subprocess(
         timeout: Seconds the program may run. When exceeded, the program and every
             process it started are killed, and ``error`` holds a
             ``TimeoutError``; output produced so far is kept.
+        interrupt: Asked about once a second (`INTERRUPT_POLL`) while the program
+            runs: an exception when it must end now (its calculation was cancelled,
+            or asked to stop), else None. The program and every process it started
+            are then killed, and ``error`` holds that exception; output produced so
+            far is kept.
 
     Returns:
         Native execution observations with merged output in ``stdout``, the working directory, and the return code. Launch, reading,
@@ -114,8 +120,8 @@ def run_subprocess(
     """
     output = SubprocessOutput(directory=directory)
     proc = None
-    timer: threading.Timer | None = None
-    timed_out = threading.Event()
+    finished = threading.Event()
+    ended: list[Exception] = []  # why the watcher killed the program
     lines: list[str] = []
     try:
         proc = subprocess.Popen(
@@ -132,17 +138,12 @@ def run_subprocess(
         )
         with _running_lock:
             _running.add(proc)
-        if timeout is not None:
-            running = proc
-
-            def expire() -> None:
-                """Kill the program tree once the deadline passes."""
-                timed_out.set()
-                _kill_tree(running)
-
-            timer = threading.Timer(timeout, expire)
-            timer.daemon = True
-            timer.start()
+        if timeout is not None or interrupt is not None:
+            threading.Thread(
+                target=_watch,
+                args=(proc, finished, ended, request.command[0], timeout, interrupt),
+                daemon=True,
+            ).start()
         assert proc.stdout is not None
         last_update = monotonic()
         reported = 0
@@ -154,12 +155,11 @@ def run_subprocess(
                 reported = len(lines)
                 last_update = monotonic()
         output.returncode = proc.wait()
+        finished.set()
         if update_func and len(lines) > reported:
             update_func("".join(lines), "".join(lines[reported:]))
-        if timed_out.is_set():
-            output.error = TimeoutError(
-                f"{request.command[0]} exceeded the {timeout:g} s timeout and was killed."
-            )
+        if ended:
+            output.error = ended[0]
     except Exception as exc:
         output.error = exc
         output.traceback = traceback.format_exc()
@@ -172,8 +172,7 @@ def run_subprocess(
             output.error = DependencyNotFoundError(str(exc))
             output.error.__cause__ = exc
     finally:
-        if timer is not None:
-            timer.cancel()
+        finished.set()
         if proc is not None:
             if proc.poll() is None:
                 _kill_tree(proc)
@@ -189,6 +188,46 @@ def run_subprocess(
 # A new session gives the program its own process group, so the whole tree can be
 # killed together. Windows has no process groups in this sense.
 _GROUP_KILL = hasattr(os, "killpg")
+
+#: Seconds between a running program's checks of ``interrupt`` (`run_subprocess`).
+INTERRUPT_POLL = 1.0
+
+
+def _watch(
+    proc: subprocess.Popen[str],
+    finished: threading.Event,
+    ended: list[Exception],
+    command: str,
+    timeout: float | None,
+    interrupt: Callable[[], Exception | None] | None,
+) -> None:
+    """Kill a running program's tree at its deadline, or when ``interrupt`` says so.
+
+    Wakes at the deadline and at least every `INTERRUPT_POLL` seconds until the
+    program has ended (``finished``); the reason it killed the program goes in
+    ``ended``.
+    """
+    deadline = None if timeout is None else monotonic() + timeout
+    while True:
+        wait = INTERRUPT_POLL
+        if deadline is not None:
+            wait = min(wait, max(0.0, deadline - monotonic()))
+        if finished.wait(wait):
+            return
+        why: Exception | None = None
+        if deadline is not None and monotonic() >= deadline:
+            why = TimeoutError(
+                f"{command} exceeded the {timeout:g} s timeout and was killed."
+            )
+        elif interrupt is not None:
+            try:
+                why = interrupt()
+            except Exception:  # noqa: BLE001 - a broken check never ends a program
+                why = None
+        if why is not None:
+            ended.append(why)
+            _kill_tree(proc)
+            return
 
 
 def _kill_tree(proc: subprocess.Popen[str]) -> None:

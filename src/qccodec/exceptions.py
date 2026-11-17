@@ -117,3 +117,11 @@ class CalculationError(ParserError):
 
 class DependencyNotFoundError(BaseError):
     """A codec explicitly reports an unavailable execution dependency."""
+
+
+class StoppedError(BaseError):
+    """A program killed because its caller asked its calculation to stop.
+
+    Its calculation fails with kind ``stopped``, keeping what the codec recovers from
+    the program's output so far.
+    """

@@ -111,7 +111,8 @@ and codes the codecs use:
 | a subprogram failed (`error.cause` holds its error) | `program` | |
 | no usable GPU | `backend` | |
 | the program is not installed | `environment` | |
-| the deadline passed | `timeout` | |
+| the deadline passed, or the calculation was cancelled (an external program is killed within about a second) | `timeout` | |
+| the calculation was asked to stop (`runner.stop`): an external program is killed within about a second, keeping what was recovered | `stopped` | |
 
 Each program page lists its own. A failure keeps everything recovered so far
 (`exc.output.results`, an optimization's trajectory), the program's log
