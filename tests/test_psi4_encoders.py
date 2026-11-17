@@ -163,6 +163,16 @@ def test_point_charges_only_for_single_points(calctype: CalcType) -> None:
         _encode(calctype=calctype, keywords={"external_potentials": charges})
 
 
+@pytest.mark.parametrize("key", ["fd_project", "FINDIF__FD_PROJECT"])
+def test_projected_hessians_are_refused(key: str) -> None:
+    """fd_project would project rotations out of a finite-difference Hessian."""
+    with pytest.raises(EncoderError, match="fd_project") as e:
+        _encode(calctype=CalcType.hessian, keywords={key: True, "dertype": 1})
+    assert e.value.kind == "unsupported"
+    _encode(calctype=CalcType.hessian, keywords={key: False})
+    _encode(calctype=CalcType.transition_state, keywords={key: True})
+
+
 def test_driver_names_each_option_psi4_refuses() -> None:
     """Options are set one at a time; unknown ones come with Psi4's closest option."""
     from types import SimpleNamespace

@@ -12,7 +12,7 @@ from qcdata import (
     Structure,
 )
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("psi4")]
 
@@ -258,15 +258,33 @@ def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
 
 
 def test_projecting_rotations(run: Run, water: Structure) -> None:
-    """Away from a stationary point Psi4 keeps rotations unless told to project them."""
-    default = run(
-        _input(water, CalcType.hessian)
-    ).results.vibrational_analysis.frequencies
+    """Away from a stationary point Psi4 keeps rotations unless told to project them.
+
+    The analysis records what Psi4 did and flags the rotations it kept.
+    """
+    default = run(_input(water, CalcType.hessian)).results.vibrational_analysis
     projected = run(
         _input(water, CalcType.hessian, project_rot=True)
-    ).results.vibrational_analysis.frequencies
-    assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
-    assert len(projected) == 3  # 3N - 6
+    ).results.vibrational_analysis
+    # 3N - 3: rotations kept at this non-stationary geometry (imaginary here).
+    assert len(default.frequencies) == 6
+    assert default.projection == "translations"
+    assert default.external == [True, True, True, False, False, False]
+    assert len(default.vibrational_frequencies) == 3
+    assert len(projected.frequencies) == 3  # 3N - 6
+    assert projected.projection == "translations_rotations"
+    assert not projected.external
+
+
+@pytest.mark.parametrize("dertype", [None, "gradient"])
+def test_hessian_is_not_projected(
+    run: Run, water: Structure, dertype: str | None
+) -> None:
+    """Analytic and finite-difference Hessians agree with differences of gradients."""
+    keywords = {"dertype": dertype} if dertype else {}
+    finite_difference_check(
+        run, _input(water, CalcType.gradient, **keywords), atol=2e-5, hessian=True
+    )
 
 
 def test_memory_below_psis_minimum_is_host_memory(run: Run, water: Structure) -> None:

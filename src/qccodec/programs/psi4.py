@@ -35,6 +35,16 @@ the driver sets them one at a time before calculating and reports each one Psi4 
 not know (kind ``input``, code ``unknown_key``, with the closest option Psi4 has) and
 each value it does not take (kind ``input``).
 
+Hessians are the full Cartesian second derivative: analytic, or from finite
+differences of gradients (or energies) in which Psi4 projects out only translations,
+as the codec leaves its ``fd_project`` unset. Setting ``fd_project`` true, which
+projects rotations out too, is refused for Hessians (kind ``unsupported``). Psi4's
+harmonic analysis projects out rotations only where it judges the geometry
+stationary (gradient rms below 1e-2 Eh/bohr; ``project_rot`` overrides that);
+elsewhere it keeps the rotations among the modes, and the codec records
+``projection`` as ``translations`` and flags them in ``external``: the modes with
+the largest share in the mass-weighted rotational space.
+
 The molecule keeps the input's frame (``no_com``, ``no_reorient``): Psi4 never moves
 or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
 input's coordinates, and symmetry detection only finds symmetry the frame already
@@ -81,6 +91,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
@@ -93,6 +104,7 @@ from qcdata import (
     Structure,
     Wavefunction,
 )
+from qcref import periodic_table
 
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
@@ -183,6 +195,13 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         else:
             options[key] = value
     _optimizer_options(inp.calctype, options)
+    if inp.calctype == CalcType.hessian and _projects_hessian(options):
+        raise EncoderError(
+            "fd_project makes Psi4 project translations and rotations out of a "
+            "finite-difference Hessian; results.hessian is the full second "
+            "derivative, so leave fd_project unset (or false).",
+            kind="unsupported",
+        )
     if "external_potentials" in kwargs and inp.calctype not in (
         CalcType.energy,
         CalcType.gradient,
@@ -227,6 +246,15 @@ def _threads(cmdline_args: list[str]) -> int | None:
         if arg.startswith("--nthread="):
             return int(arg.split("=", 1)[1])
     return None
+
+
+def _projects_hessian(options: dict[str, Any]) -> bool:
+    """Whether ``fd_project`` (or ``findif__fd_project``) is set true."""
+    return any(
+        key.lower().split("__")[-1] == "fd_project"
+        and str(value).lower() in {"true", "1", "on", "yes"}
+        for key, value in options.items()
+    )
 
 
 def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:
@@ -338,12 +366,66 @@ def parse_single_point(ctx: Context) -> dict[str, Any]:
     if results.get("frequencies") and results.get("normal_modes"):
         if ctx.input_data is None:
             raise ParserError("Vibrational analysis parsing requires input_data.")
+        structure = ctx.input_data.require_structure()
+        modes = unit_modes(results["normal_modes"])
         fields["vibrational_analysis"] = vibrations(
             results["frequencies"],
-            unit_modes(results["normal_modes"]),
-            ctx.input_data.require_structure(),
+            modes,
+            structure,
+            *_projection(np.asarray(modes), structure),
         )
     return fields
+
+
+def _projection(modes: np.ndarray, structure: Structure) -> tuple[str, list[bool]]:
+    """What Psi4's harmonic analysis projected out, and which modes are external.
+
+    Psi4 projects rotations out only at what it calls a stationary point (gradient
+    rms below 1e-2 Eh/bohr, unless ``project_rot`` says otherwise) and translations
+    unless something breaks translational invariance, and it returns every mode it
+    did not project. So the number of modes tells the projection. Modes it left in
+    that are rotations (or translations) are flagged: those with the largest share
+    in the mass-weighted rigid-body space, as many as that space has dimensions.
+
+    Args:
+        modes: Unit-length Cartesian displacements, n_modes x n_atoms x 3.
+        structure: The input structure.
+
+    Raises:
+        ParserError: The number of modes fits no projection.
+    """
+    masses = np.array([float(periodic_table[s].mass) for s in structure.symbols])
+    weights = np.repeat(np.sqrt(masses), 3)
+    geometry = np.asarray(structure.geometry, dtype=float)
+    center = masses @ geometry / masses.sum()
+    translations = [np.tile(e, len(masses)) for e in np.eye(3)]
+    rotations = [np.cross(e, geometry - center).ravel() for e in np.eye(3)]
+    rotation_space = _basis(np.array(rotations).T * weights[:, None])
+    rigid = 3 + rotation_space.shape[1]  # 3 for an atom, 5 for a linear molecule
+    projected = 3 * len(masses) - len(modes)
+    if projected >= rigid:
+        return "translations_rotations", []
+    if projected == 3:
+        projection, space = "translations", rotation_space
+    elif projected == 0:
+        projection = "none"
+        space = _basis(np.array(translations + rotations).T * weights[:, None])
+    else:
+        raise ParserError(
+            f"Psi4 returned {len(modes)} modes for {len(masses)} atoms, which no "
+            "projection of translations and rotations leaves."
+        )
+    weighted = modes.reshape(len(modes), -1) * weights
+    weighted /= np.linalg.norm(weighted, axis=1)[:, None]
+    share = np.linalg.norm(weighted @ space, axis=1)
+    external = set(np.argsort(-share)[: space.shape[1]].tolist())
+    return projection, [i in external for i in range(len(modes))]
+
+
+def _basis(vectors: np.ndarray) -> np.ndarray:
+    """An orthonormal basis (columns) of the space the columns of ``vectors`` span."""
+    u, s, _ = np.linalg.svd(vectors, full_matrices=False)
+    return u[:, s > 1e-8 * s.max()]
 
 
 def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:

@@ -241,7 +241,7 @@
       1.008,
       1.008
     ],
-    "projection": "translations_rotations",
+    "projection": "translations",
     "frequencies": [
       -752.2711091170162,
       -591.2995806251664,
@@ -250,7 +250,14 @@
       4358.252411177063,
       4653.081833537187
     ],
-    "external": [],
+    "external": [
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ],
     "normal_modes_cartesian": [
       [
         [

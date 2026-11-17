@@ -151,22 +151,32 @@ def _g98_coordinates(contents: str) -> np.ndarray:
     return np.array(rows, dtype=float) * constants.ANGSTROM_TO_BOHR
 
 
-def vibrations(frequencies: Any, modes: Any, structure: Structure) -> dict[str, Any]:
+def vibrations(
+    frequencies: Any,
+    modes: Any,
+    structure: Structure,
+    projection: str = "translations_rotations",
+    external: list[bool] | None = None,
+) -> dict[str, Any]:
     """The `VibrationalAnalysis` fields of a program's printed vibrations.
 
-    Every codec reads the vibrations a program printed after projecting out
-    translations and rotations, so the modes are the vibrations only and the masses
-    are the standard atomic masses of the input structure's elements.
+    Programs print the vibrations after projecting translations and rotations out of
+    the mass-weighted Hessian, so by default the modes are the vibrations only. The
+    masses are the standard atomic masses of the input structure's elements.
 
     Args:
         frequencies: Wavenumbers (cm^-1), negative for imaginary modes.
         modes: Unit-length Cartesian displacements, n_modes x n_atoms x 3.
         structure: The input structure.
+        projection: What the program projected out (a `qcdata.Projection` value).
+        external: Per mode, whether it is a translation or rotation the program left
+            among the modes; None when it left none.
     """
     return {
         "masses": [float(periodic_table[s].mass) for s in structure.symbols],
-        "projection": "translations_rotations",
+        "projection": projection,
         "frequencies": list(frequencies),
+        "external": external or [],
         "normal_modes_cartesian": modes,
     }
 
