@@ -8,6 +8,7 @@ any program's conventions.
 
 from __future__ import annotations
 
+import contextvars
 import ctypes
 import logging
 import os
@@ -317,7 +318,8 @@ def run_python(
         directory: Calculation directory, with input files already staged.
         environment: Overrides applied after the invocation's environment defaults.
         compute_child: Synchronous calculation callback injected into the keyword
-            named by request.child_callback, when requested by the integration.
+            named by request.child_callback, when requested by the integration. The
+            calculation directory goes into ``request.directory_keyword``, if named.
         compute_children: Callback for several independent children at once,
             injected into the keyword named by request.children_callback.
         update_func: Optional callback receiving the completed log twice, as both
@@ -342,18 +344,9 @@ def run_python(
             try:
                 with _python_context(directory, overrides, request.loggers, capture):
                     try:
-                        kwargs = dict(request.kwargs)
-                        if request.child_callback:
-                            if (
-                                request.child_callback in kwargs
-                                or compute_child is None
-                            ):
-                                raise ValueError(
-                                    "Missing or conflicting child calculation callback."
-                                )
-                            kwargs[request.child_callback] = compute_child
-                        if request.children_callback and compute_children is not None:
-                            kwargs[request.children_callback] = compute_children
+                        kwargs = _call_kwargs(
+                            request, directory, compute_child, compute_children
+                        )
                         output.value = request.function(*request.args, **kwargs)
                     except Exception as exc:
                         output.error = exc
@@ -367,6 +360,115 @@ def run_python(
         if output.error is None:
             output.error = exc
             output.traceback = traceback.format_exc()
+    return output
+
+
+def _call_kwargs(
+    request: PythonInput,
+    directory: Path,
+    compute_child: ComputeChild | None,
+    compute_children: ComputeChildren | None,
+) -> dict[str, object]:
+    """The keyword arguments of a call: the request's, and what the runner injects.
+
+    Raises:
+        ValueError: The function needs a child callback and none was given, or one
+            of the injected keywords is already among its arguments.
+    """
+    kwargs = dict(request.kwargs)
+    injected = (
+        request.child_callback,
+        request.children_callback,
+        request.directory_keyword,
+    )
+    if any(name in kwargs for name in injected if name):
+        raise ValueError("An injected keyword is already among the arguments.")
+    if request.child_callback:
+        if compute_child is None:
+            raise ValueError("Missing child calculation callback.")
+        kwargs[request.child_callback] = compute_child
+    if request.children_callback and compute_children is not None:
+        kwargs[request.children_callback] = compute_children
+    if request.directory_keyword:
+        kwargs[request.directory_keyword] = directory.resolve()
+    return kwargs
+
+
+# The log of the in-process call running in this context, if any.
+_log_capture: contextvars.ContextVar[list[str] | None] = contextvars.ContextVar(
+    "qccodec_log_capture", default=None
+)
+_routed: set[str] = set()
+_routed_lock = threading.Lock()
+
+
+class _RouteToCall(logging.Filter):
+    """Send a logger's records to the in-process call of this context, if any.
+
+    Installed once per logger and left in place: outside a call it passes every record
+    through untouched; inside one it keeps the record in that call's log and stops it,
+    so a program's log reaches its output, not the caller's handlers. Each thread and
+    context has its own call, so calls in several threads keep their logs apart.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        captured = _log_capture.get()
+        if captured is None:
+            return True
+        captured.append(record.getMessage())
+        return False
+
+
+def _route(names: tuple[str, ...]) -> None:
+    """Install the routing filter on each named logger, once per process."""
+    with _routed_lock:
+        for name in names:
+            if name not in _routed:
+                logging.getLogger(name).addFilter(_RouteToCall())
+                _routed.add(name)
+
+
+def call_python(
+    request: PythonInput,
+    directory: Path,
+    *,
+    compute_child: ComputeChild | None = None,
+    compute_children: ComputeChildren | None = None,
+) -> PythonOutput:
+    """Call a function in this process without touching process-wide state.
+
+    For functions that write their files in the directory injected through
+    ``request.directory_keyword`` and report through Python loggers: the working
+    directory, environment, standard streams and file descriptors stay as they are,
+    and no lock is taken, so calls in several threads run side by side. The records
+    of ``request.loggers`` emitted in this context become the log, joined as logged
+    (the library ends its own lines, as geomeTRIC does); anything the function
+    prints goes to the caller's streams. ``request.environment`` is not applied.
+
+    Args:
+        request: The callable, its arguments, and the loggers to capture.
+        directory: The calculation directory, with input files already staged.
+        compute_child: Injected into the keyword named by ``request.child_callback``.
+        compute_children: Injected into the keyword named by
+            ``request.children_callback``.
+
+    Returns:
+        The callable's value, the captured log in ``stdout``, or the exception with
+        its traceback.
+    """
+    output = PythonOutput(directory=directory)
+    captured: list[str] = []
+    _route(request.loggers)
+    token = _log_capture.set(captured)
+    try:
+        kwargs = _call_kwargs(request, directory, compute_child, compute_children)
+        output.value = request.function(*request.args, **kwargs)
+    except Exception as exc:
+        output.error = exc
+        output.traceback = traceback.format_exc()
+    finally:
+        _log_capture.reset(token)
+        output.stdout = "".join(captured)
     return output
 
 

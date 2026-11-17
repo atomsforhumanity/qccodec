@@ -1,7 +1,8 @@
 """Keep loaded machine-learned models in memory between calculations.
 
 qccompute runs codecs for Python libraries (tblite and the machine-learned potentials)
-in the calling process, so a model loaded for one calculation can serve the next one.
+in a worker process that stays up between calculations, so a model loaded for one
+calculation can serve the next one.
 Loading weights takes seconds, and often a download the first time; an optimization or
 reaction path pays it once instead of for every gradient.
 

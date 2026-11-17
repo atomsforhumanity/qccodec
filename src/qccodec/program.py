@@ -70,6 +70,7 @@ from .native import (
     SubprocessInput,
 )
 from .run import (
+    call_python,
     collect_files,
     resolve_executable,
     run_python,
@@ -451,7 +452,13 @@ class CodecProgram:
     def _run_python(
         self, native: PythonInput, directory: Path, env: dict[str, str], ctx: Any
     ) -> PythonOutput:
-        """Call a Python library, with subprograms through the runner's ctx."""
+        """Call a Python library, with subprograms through the runner's ctx.
+
+        A function that takes its directory (``directory_keyword``) is called as is
+        (`qccodec.run.call_python`); any other runs with the process's working
+        directory, environment and output redirected (`qccodec.run.run_python`),
+        which is why such codecs run in a worker process.
+        """
 
         def compute_child(
             child: ProgramInput, *, previous: Any = None
@@ -463,12 +470,19 @@ class CodecProgram:
         ) -> list[ProgramOutput[ProgramInput, Data]]:
             return ctx.compute(list(children), raise_exc=False)  # type: ignore[no-any-return]
 
+        child = compute_child if ctx is not None else None
+        children = compute_children if ctx is not None else None
+        if native.directory_keyword is not None:
+            # Written to run in the caller's process: nothing process-wide changes.
+            return call_python(
+                native, directory, compute_child=child, compute_children=children
+            )
         return run_python(
             native,
             directory,
             environment=env,
-            compute_child=compute_child if ctx is not None else None,
-            compute_children=compute_children if ctx is not None else None,
+            compute_child=child,
+            compute_children=children,
         )
 
     def _batch(

@@ -53,7 +53,15 @@ class PythonInput:
             as a path optimization's images. A runner that does not support it
             leaves the keyword out, so the function should fall back to
             ``child_callback`` one input at a time.
-        loggers: Python logger names whose output should be captured.
+        directory_keyword: Keyword name into which the runner injects the calculation
+            directory (an absolute ``Path``). Naming it declares that the function
+            writes its files there and reports only through ``loggers``, so the
+            runner calls it without changing the working directory, environment or
+            output streams (`qccodec.run.call_python`), and it may run in the
+            caller's process; ``environment`` is then not applied.
+        loggers: Python logger names whose output should be captured: the loggers
+            that emit the records, since a logger's own filters do not see its
+            children's.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the library.
         threads: CPU threads the calculation requests; None: the runner's grant.
@@ -66,6 +74,7 @@ class PythonInput:
     files: Mapping[str, str | bytes] = field(default_factory=dict)
     child_callback: str | None = None
     children_callback: str | None = None
+    directory_keyword: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)

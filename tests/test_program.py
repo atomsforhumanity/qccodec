@@ -203,3 +203,51 @@ def test_numerics_is_the_executables_digest(tmp_path: Path) -> None:
     assert CodecProgram(codec, executable=str(script)).numerics(inp()) == expected
     assert CodecProgram(codec, library="numpy").numerics(inp()).startswith("numpy ")
     assert CodecProgram(codec, executable="/no/such").numerics(None) == "not installed"
+
+
+def _logs_and_writes(name: str, *, directory: Path) -> str:
+    import logging
+
+    logging.getLogger("qccodec.test.library").info(f"working on {name}\n")
+    (directory / "out.txt").write_text(name)
+    return name
+
+
+def test_call_python_changes_no_process_state(tmp_path: Path) -> None:
+    """A function taking its directory runs as is; each thread keeps its own log."""
+    import logging
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+
+    from qccodec.run import call_python
+
+    library = logging.getLogger("qccodec.test.library")
+    library.setLevel(logging.INFO)
+    seen: list[str] = []
+
+    class Keep(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            seen.append(record.getMessage())
+
+    library.addHandler(Keep())
+    cwd = os.getcwd()
+
+    def one(i: int) -> Any:
+        directory = tmp_path / str(i)
+        directory.mkdir()
+        request = PythonInput(
+            _logs_and_writes,
+            args=(f"job {i}",),
+            directory_keyword="directory",
+            loggers=("qccodec.test.library",),
+        )
+        return call_python(request, directory)
+
+    with ThreadPoolExecutor(4) as pool:
+        outputs = list(pool.map(one, range(8)))
+    for i, out in enumerate(outputs):
+        assert out.value == f"job {i}" and out.stdout == f"working on job {i}\n"
+        assert (tmp_path / str(i) / "out.txt").read_text() == f"job {i}"
+    assert os.getcwd() == cwd and not seen  # the caller's handlers saw nothing
+    library.info("after\n")
+    assert seen == ["after\n"]  # outside a call, records pass through
