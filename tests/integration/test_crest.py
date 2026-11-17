@@ -7,6 +7,7 @@ from qcdata import (
     ConformerSearchData,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
@@ -107,3 +108,11 @@ def test_conformer_search_with_solvent(run: Run, water: Structure) -> None:
     assert np.isclose(output.results.conformer_energies[0], -0.33568982, atol=1e-5)
     assert output.logs is not None
     assert "alpb" in output.logs and "acetonitrile" in output.logs
+
+
+def test_a_failed_single_point_says_so(run: Run, water: Structure) -> None:
+    """CREST exits 0 with a zero energy after a failed calculation; the codec fails."""
+    inp = _input(water, CalcType.gradient, calculation={"level": [{"maxscc": 2}]})
+    with pytest.raises(ProgramError) as e:
+        run(inp)
+    assert "exited with an error" in e.value.error.message

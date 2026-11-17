@@ -34,7 +34,9 @@ the codec refuses those itself, naming the closest table (CREST 3.0.2 reads
 ``calculation`` with ``level``, ``mecp``, ``scans`` and ``constraints``, ``dynamics``
 with ``meta``, ``cregen``, ``confsolv``, ``thermo``, ``protonation`` and ``lwoniom``). A
 value CREST does not accept is ``input``; anything else CREST reports as FAILED is
-``internal``.
+``internal``, and so is a single point whose calculation "exited with error", since
+CREST 3.0.2 does not say why (it prints a zero energy and exits 0): an SCF that does
+not converge cannot be told from other errors, so it is not ``scf_not_converged``.
 
 CREST computes GFN-xTB and GFN-FF with its built-in tblite and gfnff libraries, so it
 needs no separate xtb. Use the official static build: conda-forge's CREST 3.0.2 crashes
@@ -242,6 +244,12 @@ def failure(ctx: Context) -> str | None:
         return f"CREST does not accept the value(s) {', '.join(map(repr, values))}."
     if "FAILED" in stdout:
         return "CREST reported FAILED. See calculation logs."
+    if "Calculation exited with error!" in stdout:
+        # CREST 3.0.2 says no more, and still reports a zero energy and exits 0.
+        return (
+            "CREST's calculation exited with an error and CREST does not say why "
+            "(with GFN-xTB it is often an SCF that did not converge)."
+        )
     return None
 
 
