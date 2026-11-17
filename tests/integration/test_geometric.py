@@ -172,3 +172,108 @@ def test_irc_with_crest(run: Run) -> None:
     masses = np.array([float(periodic_table[s].mass) for s in ts.symbols])[:, None]
     centers = [(masses * f.structure.geometry).sum(axis=0) for f in path.frames]
     assert np.abs(np.array(centers) - centers[path.ts_index]).max() < 1e-6
+
+
+def _morse(positions: np.ndarray) -> tuple[float, np.ndarray]:
+    """A Morse bond between two atoms (Eh, Eh/bohr), minimum at 1.4 bohr."""
+    d, a, r0 = 0.17, 1.0, 1.4
+    vector = positions[1] - positions[0]
+    r = float(np.linalg.norm(vector))
+    decay = np.exp(-a * (r - r0))
+    energy = d * (1 - decay) ** 2
+    dr = 2 * d * a * decay * (1 - decay)
+    gradient = np.array([-vector, vector]) * dr / r
+    return energy, gradient
+
+
+def test_runs_in_process_with_a_registered_subprogram(
+    run: Run, hydrogen: Structure, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """geomeTRIC runs in the caller's process, so it finds programs registered there.
+
+    Its log is in the output, not on the caller's streams, and the finite-difference
+    gradients of a Hessian log nothing about scratch files.
+    """
+    from qccompute.program import (
+        FunctionProgram,
+        capabilities_of,
+        find_program,
+        register_program,
+        unregister_program,
+    )
+
+    geometric = find_program("geometric")
+    assert geometric is not None and capabilities_of(geometric).in_process
+    stretched = hydrogen.model_copy(update={"geometry": hydrogen.geometry * 1.3})
+    register_program(FunctionProgram("morse", _morse))
+    try:
+        inp = ProgramInput(
+            program="geometric",
+            calctype=CalcType.optimization,
+            structure=stretched,
+            keywords={"hessian": "first", "coordsys": "cart"},
+            subprograms=[ProgramSpec(program="morse", calctype=CalcType.gradient)],
+        )
+        output = run(inp)
+    finally:
+        unregister_program("morse")
+    assert isinstance(output.results, OptimizationData)
+    frames = output.results.frames
+    assert frames[0].results.hessian is not None
+    bond = np.linalg.norm(np.diff(frames[-1].structure.geometry, axis=0))
+    assert np.isclose(bond, 1.4, atol=1e-3)
+    assert output.logs is not None and "Converged!" in output.logs
+    assert "copy_scratch" not in output.logs
+    printed = capfd.readouterr()
+    assert "Converged!" not in printed.out + printed.err
+
+
+@requires("xtb")
+def test_failures_have_kinds(run: Run, water: Structure) -> None:
+    """Running out of iterations is convergence (max_iter), trajectory attached; an
+    IRC from a minimum is input (not_first_order_saddle)."""
+    from qcdata import ProgramError
+
+    inp = _input(water, CalcType.optimization, "xtb", Model(method="gfn2"))
+    with pytest.raises(ProgramError) as e:
+        run(inp.model_copy(update={"keywords": {"maxiter": 1}}))
+    assert (e.value.error.kind, e.value.error.code) == ("convergence", "max_iter")
+    assert e.value.output is not None and len(e.value.output.results.frames) == 2
+    assert "GeomOptNotConvergedError" in str(e.value.output.traceback)
+    minimum = run(inp).results.frames[-1].structure
+    with pytest.raises(ProgramError) as e:
+        run(_input(minimum, CalcType.irc, "xtb", Model(method="gfn2")))
+    assert (e.value.error.kind, e.value.error.code) == (
+        "input",
+        "not_first_order_saddle",
+    )
+
+
+@requires("xtb")
+def test_optimizations_side_by_side(water: Structure) -> None:
+    """In-process geomeTRIC runs in threads keep their Hessians and logs apart."""
+    from qccompute import Runner
+
+    rng = np.random.default_rng(1)
+    structures = [
+        water.model_copy(
+            update={"geometry": water.geometry + rng.normal(0, 0.05, (3, 3))}
+        )
+        for _ in range(4)
+    ]
+    inputs = [
+        _input(s, CalcType.optimization, "xtb", Model(method="gfn2")).model_copy(
+            update={"keywords": {"hessian": "first"}}
+        )
+        for s in structures
+    ]
+    with Runner(threads=4) as runner:
+        outputs = runner.compute(inputs)
+    for inp, out in zip(inputs, outputs, strict=True):
+        frames = out.results.frames
+        assert np.allclose(
+            frames[0].structure.geometry, inp.require_structure().geometry
+        )
+        assert frames[0].results.hessian is not None
+        assert [f.results.hessian is not None for f in frames].count(True) == 1
+        assert out.logs is not None and out.logs.count("Step    0") == 1
