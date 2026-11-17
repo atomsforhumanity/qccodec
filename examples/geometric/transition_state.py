@@ -10,7 +10,7 @@ Notes for geomeTRIC transition-state searches (https://geometric.readthedocs.io/
   geomeTRIC needs a starting Hessian, which it builds by finite differences of child
   gradients (two per Cartesian coordinate). Those displaced gradients are not
   optimizer steps, so ``results.frames`` leaves them out: it holds one frame per
-  step, and each Hessian geomeTRIC computes is attached to the frame at its
+  structure the optimizer evaluated, the starting structure first, and each Hessian geomeTRIC computes is attached to the frame at its
   geometry (``frame.results.hessian``).
 - ``"hessian"`` chooses when: ``"first"`` (the default) at the start,
   ``"first+last"`` also at the end, which is how this example checks its result,
@@ -79,7 +79,7 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Transition-state energy (Hartree):", results.energies[-1])
 print("Transition-state structure (bohr):\n", results.final_structure.geometry)
 

@@ -69,7 +69,7 @@ output = compute(
 )
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

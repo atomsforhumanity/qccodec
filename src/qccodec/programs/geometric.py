@@ -27,7 +27,8 @@ frames are the accepted points only; rejected trial steps are left out. geomeTRI
 finishes each branch by optimizing to the minimum once the IRC has converged, so the
 ends are minima (its ``irc_direction`` keyword can limit the IRC to one branch).
 
-The trajectory holds one frame per optimizer step. Gradients at the displaced
+The trajectory holds one frame per structure the optimizer evaluated, the starting
+structure first, so n steps give n + 1 frames. Gradients at the displaced
 geometries of a finite-difference Hessian are not steps, so they are left out, unless
 one fails. Each Hessian geomeTRIC computes is attached to the frame at its geometry
 (``frame.results.hessian``): the first frame for ``hessian="first"``, the default for

@@ -45,7 +45,8 @@ Hessian, whose near-zero rigid-motion eigenvalues noise can push negative (Sella
 would otherwise keep rotating the molecule until ``steps`` runs out). With
 constraints, Sella's own test applies.
 
-The trajectory holds one frame per optimizer step. Gradients Sella evaluates at
+The trajectory holds one frame per structure the optimizer evaluated, the starting
+structure first, so n steps give n + 1 frames. Gradients Sella evaluates at
 displaced geometries to probe the curvature are not steps and are left out, unless one
 fails. Each Hessian from the Hessian program is attached to the frame at its geometry
 (``frame.results.hessian``). Sella removes overall translation and rotation from its
