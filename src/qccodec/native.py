@@ -59,6 +59,12 @@ class PythonInput:
             runner calls it without changing the working directory, environment or
             output streams (`qccodec.run.call_python`), and it may run in the
             caller's process; ``environment`` is then not applied.
+        device_keyword: Keyword name into which the runner injects the device it
+            granted a calculation that uses GPUs (``gpus``): ``cuda:N``, the first
+            granted GPU as this process's CUDA device (`RunContext.device_ordinals
+            <qccompute.program.RunContext.device_ordinals>`), or ``cpu`` when it
+            granted none. Left out when the function is called without a runner,
+            so the library chooses.
         loggers: Python logger names whose output should be captured: the loggers
             that emit the records, since a logger's own filters do not see its
             children's.
@@ -75,6 +81,7 @@ class PythonInput:
     child_callback: str | None = None
     children_callback: str | None = None
     directory_keyword: str | None = None
+    device_keyword: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)

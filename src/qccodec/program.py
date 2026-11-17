@@ -20,12 +20,13 @@ What qccompute grants a calculation (its `RunContext`) reaches the program like 
   it (the codec's ``cap_threads``), the others with it in ``OMP_NUM_THREADS`` and the
   other numerical libraries' variables; a request larger than the grant is lowered
   with a ``resource_capped`` warning.
-- ``gpus``: a program that uses GPUs sees the granted ones in ``CUDA_VISIBLE_DEVICES``.
-  A library that planned a GPU with its device left to it (the ML potentials) runs on
-  the CPU when it sees none: quietly when it was granted none (a machine without a
-  GPU, or a runner with none to give), with a ``backend_fallback`` warning when it was
-  granted one and still ran on the CPU. The device it ran on is in the output's
-  ``resolved.settings``.
+- ``gpus``: a program run as a subprocess (TeraChem) sees the granted GPUs in
+  ``CUDA_VISIBLE_DEVICES``. A Python library (the ML potentials) is handed the first
+  granted GPU as this process's CUDA device, ``cuda:N`` from ``ctx.device_ordinals()``,
+  or ``cpu`` when it was granted none (a machine without a GPU, a runner with none to
+  give). With its device left to it, a library that cannot use the granted GPU (a
+  CPU-only PyTorch) runs on the CPU with a ``backend_fallback`` warning. The device
+  it ran on is in the output's ``resolved.settings``.
 - ``timeout``: the program and every process it started are killed when it expires
   (kind ``timeout``).
 - ``scratch``: the calculation directory.
@@ -166,7 +167,6 @@ class CodecProgram:
         in_process: Whether it may share the runner's process. Codecs that call a
             Python library capture the process's output streams and change its
             directory while they run, so they say False and run in a worker process.
-        gpu: Whether the program uses GPUs.
         executable: The executable to run, instead of ``QCCODEC_<NAME>_EXECUTABLE`` or
             the codec's command on ``PATH``.
         environment: Environment variables for the program, over every default.
@@ -195,7 +195,6 @@ class CodecProgram:
         *,
         name: str | None = None,
         in_process: bool = True,
-        gpu: bool = False,
         executable: str | None = None,
         environment: Mapping[str, str] | None = None,
         command: str | None = None,
@@ -209,7 +208,6 @@ class CodecProgram:
         self.codec = codec
         self.name: str = name or codec.program
         self.in_process = in_process
-        self.gpu = gpu
         self.executable = executable
         self.environment = dict(environment or {})
         self.command = command or self.name
@@ -362,7 +360,6 @@ class CodecProgram:
             "batches": self.codec.max_batch > 1 and self.codec._batch_key is not None,
             "in_process": self.in_process,
             "thread_safe": self.in_process,
-            "gpu": self.gpu,
         }
 
     def settings_schema(self, calctype: CalcType) -> dict[str, Any]:
@@ -622,7 +619,9 @@ class CodecProgram:
         env: dict[str, str] = {}
         if threads is not None:
             env.update({name: str(threads) for name in THREAD_VARIABLES})
-        if native.gpus and ctx is not None and ctx.gpus:
+        if isinstance(native, SubprocessInput) and native.gpus and ctx and ctx.gpus:
+            # A Python library is handed its device instead (`_granted_device`):
+            # CUDA reads this variable once per process.
             env["CUDA_VISIBLE_DEVICES"] = ",".join(ctx.gpus[: native.gpus])
         env.update(native.environment)  # the codec knows its program (CREST: 1)
         env.update(self.environment)  # the adapter's configuration wins
@@ -773,6 +772,8 @@ class CodecProgram:
             return None
         reasons: dict[str, str] = {}
         granted = tuple(ctx.gpus) if ctx is not None else ()
+        if inp.keywords.get("device") in (None, "cuda"):
+            device = device.split(":")[0]  # the granted ordinal is this process's
         if native.gpus and device == "cpu" and granted:
             reasons["device"] = "auto: the granted GPU was not usable"
             warnings.append(
@@ -813,10 +814,15 @@ class CodecProgram:
 
         child = compute_child if ctx is not None else None
         children = compute_children if ctx is not None else None
+        device = _granted_device(native, ctx)
         if native.directory_keyword is not None:
             # Written to run in the caller's process: nothing process-wide changes.
             return call_python(
-                native, directory, compute_child=child, compute_children=children
+                native,
+                directory,
+                compute_child=child,
+                compute_children=children,
+                device=device,
             )
         return run_python(
             native,
@@ -824,6 +830,7 @@ class CodecProgram:
             environment=env,
             compute_child=child,
             compute_children=children,
+            device=device,
         )
 
     def _batch(
@@ -839,7 +846,12 @@ class CodecProgram:
         directory = Path(tempfile.mkdtemp(prefix="qccodec-batch-"))
         try:
             stage_files(directory, request.files)
-            native = run_python(request, directory, environment=env)
+            native = run_python(
+                request,
+                directory,
+                environment=env,
+                device=_granted_device(request, ctx),
+            )
             values = native.value
             if (
                 native.error is not None
@@ -902,6 +914,25 @@ class _Share:
     def __getattr__(self, name: str) -> Any:
         """Read every other field (scratch, timeout, gpus, compute) from the grant."""
         return getattr(self._ctx, name)
+
+
+def _granted_device(native: PythonInput, ctx: Any) -> str | None:
+    """The device a runner granted a library that uses GPUs, for its device keyword.
+
+    Returns:
+        ``cuda:N``, the first granted GPU as this process's CUDA ordinal
+        (``ctx.device_ordinals()``, so every program maps a grant alike), ``cpu``
+        when the runner granted none, or None (no keyword) when called directly or
+        for a calculation that uses no GPU.
+
+    Raises:
+        ProgramError: Kind ``environment``: a granted GPU is not one this process
+            can see.
+    """
+    if native.device_keyword is None or not native.gpus or ctx is None:
+        return None
+    ordinals = ctx.device_ordinals()
+    return f"cuda:{ordinals[0]}" if ordinals else "cpu"
 
 
 _DIGESTS: dict[tuple[str, int, int], str] = {}
@@ -1056,6 +1087,8 @@ def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
         return ErrorInfo(kind=ErrorKind.environment, message=str(exc))
     if isinstance(exc, EncoderError):
         return ErrorInfo(kind=ErrorKind(exc.kind), message=str(exc), code=exc.code)
+    if isinstance(exc, ProgramError):  # from the runner's grant (device_ordinals)
+        return exc.error
     frames: list[Frame] = []
     if isinstance(results, OptimizationData):
         frames = list(results.frames)

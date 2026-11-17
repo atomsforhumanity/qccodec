@@ -28,9 +28,11 @@ Inputs map to MACE as follows:
   otherwise: float64 for MACE-OFF and MACE-OMOL, float32 for MACE-MP). Nothing else is
   accepted. A model on a GPU declares one for qccompute, which gives each calculation
   of a list its own; an explicit index such as ``"cuda:1"`` opts out of that.
-  Unset, it runs on a GPU when one is visible, else on the CPU; it warns
-  ``backend_fallback`` only when qccompute granted it a GPU and it still ran
-  on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -60,6 +62,7 @@ from ..native import PythonInput
 from ..program import CodecProgram
 from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -144,6 +147,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_mace,
         kwargs={
             "loader": FAMILIES[family] if family else None,
@@ -178,9 +182,10 @@ def invoke_mace(
     positions: list[list[float]],
     forces: bool,
     hessian: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one MACE single point on the cached raw model."""
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     network = _network(loader, model, device, default_dtype)
     graph = _graph(network, loader, numbers, positions, charge_and_spin)
     out = _evaluate(network, [graph], device, forces=forces or hessian, hessian=hessian)
@@ -204,6 +209,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_mace_batch,
         kwargs={
             **{k: first[k] for k in ("loader", "model", "device", "default_dtype")},
@@ -223,9 +229,10 @@ def invoke_mace_batch(
     default_dtype: str | None,
     forces: bool,
     molecules: list[tuple[list[int], list[list[float]], tuple[int, int] | None]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one MACE pass, as one batch of graphs."""
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     network = _network(loader, model, device, default_dtype)
     graphs = [_graph(network, loader, n, p, cs) for n, p, cs in molecules]
     out = _evaluate(network, graphs, device, forces=forces, hessian=False)
@@ -367,7 +374,6 @@ codec = Codec(
 program = CodecProgram(
     codec,
     in_process=False,
-    gpu=True,
     library="mace-torch",
     weights=model_file,
     keywords=KEYWORDS,

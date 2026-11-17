@@ -116,13 +116,37 @@ def gpu_count(device: str | None) -> int:
     return 0
 
 
-def resolve_device(device: str | None) -> str:
-    """Return ``device``, or CUDA when PyTorch sees a GPU and CPU otherwise."""
+#: The keyword into which the adapter hands a library the device qccompute granted.
+GRANTED = "granted"
+
+
+def resolve_device(device: str | None, granted: str | None = None) -> str:
+    """Return the device a library runs on.
+
+    Args:
+        device: The ``device`` keyword (``"cpu"``, ``"cuda"``, ``"cuda:1"``), or None
+            to leave it to the codec.
+        granted: The device qccompute granted the calculation (``cuda:N``, its GPU
+            as this process's CUDA device, or ``cpu`` when it granted none), injected
+            through ``PythonInput.device_keyword``; None when called directly.
+
+    Returns:
+        ``device`` as given, except that ``cuda`` runs on the granted GPU. Left to
+        the codec, the granted device, or the CPU when PyTorch cannot use the
+        granted GPU (the adapter warns ``backend_fallback``); called directly, CUDA
+        when PyTorch sees a GPU and the CPU otherwise.
+    """
+    if device == "cuda" and granted is not None and granted != "cpu":
+        return granted
     if device:
         return device
+    if granted == "cpu":
+        return granted
     import torch
 
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    if not torch.cuda.is_available():
+        return "cpu"
+    return granted or "cuda"
 
 
 def model_file(spec: Any) -> Path | None:

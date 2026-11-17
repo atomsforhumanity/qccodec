@@ -27,9 +27,11 @@ Inputs map to FAIR-Chem as follows:
   - ``device``: ``"cpu"`` or ``"cuda"`` (CUDA when available by default). A model on
     a GPU declares one for qccompute, which gives each calculation of a list its
     own; an explicit index such as ``"cuda:1"`` opts out of that.
-    Unset, it runs on a GPU when one is visible, else on the CPU; it warns
-    ``backend_fallback`` only when qccompute granted it a GPU and it still ran
-    on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
+    Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+    process's CUDA device, and on the CPU when it granted none; called
+    directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+    CPU-only build) leaves an unset device on the CPU, with a
+    ``backend_fallback`` warning. ``resolved.settings`` names the device used.
   - ``inference_settings``: one of fairchem's presets by name (``"default"``,
     ``"turbo"``, ``"batch"``, ...) or a dictionary of ``InferenceSettings`` fields. The
     codec's default is ``{"compile": False, "merge_mole": False,
@@ -68,6 +70,7 @@ from ..native import PythonInput
 from ..program import CodecProgram
 from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -117,6 +120,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_fairchem,
         kwargs={
             "model": model,
@@ -145,9 +149,10 @@ def invoke_fairchem(
     multiplicity: int,
     forces: bool,
     hessian: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one FAIR-Chem single point with a cached predict unit."""
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
 
     def predict_unit(hessian_task: str | None) -> Any:
         return _predict_unit(model, device, inference_settings, hessian_task)
@@ -226,7 +231,11 @@ def _predict_unit(
     inference_settings: str | dict[str, Any],
     hessian_task: str | None,
 ) -> Any:
-    """Return the cached predict unit, with a Hessian head for ``hessian_task`` if given."""
+    """Return the cached predict unit, with a Hessian head for ``hessian_task`` if given.
+
+    fairchem takes ``cpu`` or ``cuda`` and runs on the current CUDA device, so a
+    device such as ``cuda:1`` (a granted GPU) becomes the current device first.
+    """
     import os
 
     from fairchem.core.calculate import pretrained_mlip
@@ -235,7 +244,13 @@ def _predict_unit(
         guess_inference_settings,
     )
 
+    kind, _, index = device.partition(":")
+
     def load() -> Any:
+        if index:
+            import torch
+
+            torch.cuda.set_device(int(index))
         if isinstance(inference_settings, dict):
             settings = InferenceSettings(**inference_settings)
         else:
@@ -244,11 +259,11 @@ def _predict_unit(
             settings.predict_untrained_hessian = {hessian_task}
         if model in pretrained_mlip.available_models:
             return pretrained_mlip.get_predict_unit(
-                model, inference_settings=settings, device=device
+                model, inference_settings=settings, device=kind
             )
         if os.path.isfile(model):
             return pretrained_mlip.load_predict_unit(
-                model, inference_settings=settings, device=device
+                model, inference_settings=settings, device=kind
             )
         raise ValueError(
             f"{model!r} is neither a FAIR-Chem model name "
@@ -273,6 +288,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_fairchem_batch,
         kwargs={
             **{k: first[k] for k in ("model", "task", "device", "inference_settings")},
@@ -293,11 +309,12 @@ def invoke_fairchem_batch(
     inference_settings: str | dict[str, Any],
     forces: bool,
     molecules: list[tuple[list[int], list[list[float]], int, int]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one FAIR-Chem prediction (one batched graph)."""
     from fairchem.core.datasets.atomic_data import atomicdata_list_to_batch
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     unit = _predict_unit(model, device, inference_settings, None)
     task = task or default_task(list(unit.dataset_to_tasks))
     wanted = ["energy"] + (["forces"] if forces else [])
@@ -363,7 +380,6 @@ codec = Codec(
 program = CodecProgram(
     codec,
     in_process=False,
-    gpu=True,
     library="fairchem-core",
     weights=model_file,
     keywords=KEYWORDS,

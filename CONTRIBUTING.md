@@ -185,7 +185,9 @@ the program for several CPU threads (ORCA `pal`, Psi4 `-n`, CREST `threads`), an
 `gpus=1` (or more) for GPU programs. qccompute packs lists of calculations by these
 without oversubscribing cores or sharing a GPU. Without a request (`threads=None`, the
 default) the program runs with the runner's grant through `OMP_NUM_THREADS` and is packed
-as one thread.
+as one thread. A subprocess sees its granted GPUs in `CUDA_VISIBLE_DEVICES`; a Python
+library names a keyword with `PythonInput(..., device_keyword="granted")` and is handed
+its GPU there as this process's CUDA device (`cuda:N`, or `cpu` when none was granted).
 
 Keep the input's frame. Many programs move the molecule to its center of mass, rotate
 it to a standard orientation, or symmetrize it, which leaves gradients, Hessians, and
@@ -316,9 +318,8 @@ import time, and `loggers` for Python loggers whose output should be captured.
   `{"output": {"rotamers": True}}`), which parsers read from `ctx.input_data`.
 - Add the program to `_BUILTIN` in `src/qccodec/registry.py` so `get_codec("myprog")`
   finds it, and make it a program qccompute runs: `program = CodecProgram(codec)` at the
-  end of the module (`in_process=False` for a codec that calls a Python library,
-  `gpu=True` for a GPU program) and an entry under `[project.entry-points."qccompute.programs"]`
-  in `pyproject.toml`.
+  end of the module (`in_process=False` for a codec that calls a Python library) and an
+  entry under `[project.entry-points."qccompute.programs"]` in `pyproject.toml`.
 
 ### 7. Tests
 

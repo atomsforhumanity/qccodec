@@ -83,11 +83,14 @@ def inp(**keywords: Any) -> ProgramInput:
 
 
 def ctx(tmp_path: Path, **fields: Any) -> SimpleNamespace:
+    gpus = fields.get("gpus", ("1", "0"))
     return SimpleNamespace(
         threads=fields.get("threads", 4),
-        gpus=fields.get("gpus", ("1", "0")),
+        gpus=gpus,
         timeout=fields.get("timeout"),
         scratch=tmp_path,
+        # A worker's view: its CUDA_VISIBLE_DEVICES is the grant.
+        device_ordinals=fields.get("device_ordinals", lambda: list(range(len(gpus)))),
     )
 
 
@@ -173,9 +176,12 @@ def test_plans_declare_the_requested_resources() -> None:
     assert program.plan(inp(threads=3))["resources"] == {"threads": 3, "gpus": 1}
     assert program.plan(inp())["resources"]["threads"] == 1  # packs as one thread
     caps = program.capabilities()
-    assert (
-        caps["in_process"] and caps["thread_safe"] and caps["calctypes"] == ["energy"]
-    )
+    assert caps == {
+        "calctypes": ["energy"],
+        "batches": False,
+        "in_process": True,
+        "thread_safe": True,
+    }
 
 
 def test_file_inputs_return_every_file_written(tmp_path: Path) -> None:
@@ -410,6 +416,96 @@ def test_a_gpu_library_on_the_cpu_warns_only_when_granted_a_gpu(tmp_path: Path) 
         )
         assert [[w.code for w in out.warnings] for out in batched] == [warned] * 2
         assert all(out.resolved is not None for out in batched)
+
+
+def _seen_device(granted: str | None = None) -> dict[str, Any]:
+    """Report the device handed in and the CUDA_VISIBLE_DEVICES the library saw."""
+    return {
+        "energy": -1.0,
+        "version": "1.0",
+        "device": granted or "auto",
+        "extras": {"visible": os.environ.get("CUDA_VISIBLE_DEVICES")},
+    }
+
+
+def _device_library(gpus: int = 1) -> Codec:
+    from qccodec.programs._python import single_point_decoder
+
+    return Codec(
+        "gpulib",
+        calctypes={CalcType.energy},
+        encode=lambda inp: PythonInput(
+            _seen_device, gpus=gpus, device_keyword="granted"
+        ),
+        decode=single_point_decoder("gpulib"),
+        encode_batch=lambda inputs: PythonInput(
+            lambda granted=None: [_seen_device(granted)] * len(inputs),
+            gpus=gpus,
+            device_keyword="granted",
+        ),
+        batch_key=lambda inp: "all",
+    )
+
+
+def test_a_library_is_handed_its_granted_gpu_as_a_cuda_ordinal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ctx.device_ordinals maps the grant; CUDA_VISIBLE_DEVICES stays as it is."""
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    library = CodecProgram(_device_library())
+    granted: Any = library.compute(
+        _gpu_input(), ctx(tmp_path, gpus=("3",), device_ordinals=lambda: [3])
+    )
+    assert granted.results.extras == {"visible": None}  # not narrowed in process
+    assert granted.resolved.settings == {"device": "cuda"}  # the ordinal is local
+    none: Any = library.compute(_gpu_input(), ctx(tmp_path, gpus=()))
+    assert none.resolved.settings == {"device": "cpu"}  # the runner gave none
+    direct: Any = library.compute(_gpu_input())
+    assert direct.resolved.settings == {"device": "auto"}  # left to the library
+    batched: Any = library.compute_batch(
+        [_gpu_input(), _gpu_input()], ctx(tmp_path, gpus=("0",))
+    )
+    assert [o.resolved.settings for o in batched] == [{"device": "cuda"}] * 2
+    on_cpu: Any = CodecProgram(_device_library(gpus=0)).compute(
+        _gpu_input("cpu"), ctx(tmp_path)
+    )
+    assert on_cpu.resolved.settings == {"device": "auto"}  # no GPU: nothing handed
+    assert on_cpu.results.extras == {"visible": None}
+
+
+def test_a_granted_gpu_this_process_cannot_see_is_an_environment_failure(
+    tmp_path: Path,
+) -> None:
+    def unseen() -> list[int]:
+        raise ProgramError.of("environment", "The granted GPU 'GPU-x' is not here.")
+
+    with pytest.raises(ProgramError) as e:
+        CodecProgram(_device_library()).compute(
+            _gpu_input(), ctx(tmp_path, gpus=("GPU-x",), device_ordinals=unseen)
+        )
+    assert e.value.error.kind is ErrorKind.environment
+    assert "GPU-x" in e.value.error.message
+
+
+def test_resolve_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Given, granted, or the library's choice; a granted GPU PyTorch can't use: CPU."""
+    import sys
+
+    from qccodec.programs._python import resolve_device
+
+    cuda = SimpleNamespace(available=True)
+    torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: cuda.available))
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    assert resolve_device("cuda:1", "cuda:0") == "cuda:1"  # an index is the caller's
+    assert resolve_device("cuda", "cuda:2") == "cuda:2"  # a GPU: the granted one
+    assert resolve_device("cuda", "cpu") == "cuda"
+    assert resolve_device("cpu", "cuda:0") == "cpu"
+    assert resolve_device(None, "cuda:2") == "cuda:2"
+    assert resolve_device(None, "cpu") == "cpu"  # granted none, though one is visible
+    assert resolve_device(None) == "cuda"  # called directly
+    cuda.available = False
+    assert resolve_device(None, "cuda:2") == "cpu"  # the adapter warns
+    assert resolve_device(None) == "cpu"
 
 
 def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:

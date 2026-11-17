@@ -26,7 +26,10 @@ def parse_energy(stdout: str) -> float:
 
 If the input asks for several CPU threads or a GPU, say so in the native input:
 `SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute packs
-lists of calculations by these and gives each GPU calculation its own device. Leave
+lists of calculations by these and gives each GPU calculation its own device: a
+subprocess sees it in `CUDA_VISIBLE_DEVICES`, and a Python library is handed it as this
+process's CUDA device (`cuda:N`) in the keyword `PythonInput(device_keyword=...)` names
+(`cpu` when the runner granted none; left out when called directly). Leave
 `threads` out when the input asks for none: the program then plans one thread, or
 all the runner has with `CodecProgram(codec, threads=None)` for a program that scales
 with threads, and runs with the runner's grant, through `OMP_NUM_THREADS` or, when the

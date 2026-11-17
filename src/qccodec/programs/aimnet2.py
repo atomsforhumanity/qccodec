@@ -20,9 +20,11 @@ Inputs map to AIMNet2 as follows:
   or charges a model was not trained on). Nothing else is accepted. A model on a GPU
   declares one for qccompute, which gives each calculation of a list its own; an
   explicit index such as ``"cuda:1"`` opts out of that.
-  Unset, it runs on a GPU when one is visible, else on the CPU; it warns
-  ``backend_fallback`` only when qccompute granted it a GPU and it still ran
-  on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -62,6 +64,7 @@ from ..native import PythonInput
 from ..program import CodecProgram
 from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -96,6 +99,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     reject_unknown("aimnet2", keywords, KEYWORDS)
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_aimnet2,
         kwargs={
             "model": model,
@@ -122,11 +126,12 @@ def invoke_aimnet2(
     forces: bool,
     hessian: bool,
     validate_species: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one AIMNet2 single point with a cached model."""
     from aimnet.calculators import AIMNet2Calculator
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     calculator = cached_model(
         ("aimnet2", model, device), lambda: AIMNet2Calculator(model, device=device)
     )
@@ -162,6 +167,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_aimnet2_batch,
         kwargs={
             "model": first["model"],
@@ -183,12 +189,13 @@ def invoke_aimnet2_batch(
     forces: bool,
     validate_species: bool,
     molecules: list[tuple[list[int], list[list[float]], int, int]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one AIMNet2 pass: atoms concatenated, mol_idx."""
     import numpy as np
     from aimnet.calculators import AIMNet2Calculator
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     calculator = cached_model(
         ("aimnet2", model, device), lambda: AIMNet2Calculator(model, device=device)
     )
@@ -287,7 +294,6 @@ codec = Codec(
 program = CodecProgram(
     codec,
     in_process=False,
-    gpu=True,
     library="aimnet",
     weights=weights,
     keywords=KEYWORDS,

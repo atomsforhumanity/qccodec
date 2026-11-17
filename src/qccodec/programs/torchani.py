@@ -18,9 +18,11 @@ Inputs map to TorchANI as follows:
   its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
-  Unset, it runs on a GPU when one is visible, else on the CPU; it warns
-  ``backend_fallback`` only when qccompute granted it a GPU and it still ran
-  on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -50,6 +52,7 @@ from ..native import PythonInput
 from ..program import CodecProgram
 from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -115,6 +118,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(f"model_index must be an integer, not {model_index!r}.")
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_torchani,
         kwargs={
             "model": model,
@@ -139,12 +143,13 @@ def invoke_torchani(
     positions: list[list[float]],
     forces: bool,
     hessian: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one TorchANI single point with a cached model."""
     import torch
     import torchani
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     torch_dtype = getattr(torch, dtype)
     network = cached_model(
         ("torchani", model, model_index, device, dtype),
@@ -186,6 +191,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_torchani_batch,
         kwargs={
             **{k: first[k] for k in ("model", "model_index", "device", "dtype")},
@@ -203,6 +209,7 @@ def invoke_torchani_batch(
     dtype: str,
     forces: bool,
     molecules: list[tuple[list[int], list[list[float]]]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one TorchANI pass, padded to the largest.
 
@@ -211,7 +218,7 @@ def invoke_torchani_batch(
     import torch
     import torchani
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     torch_dtype = getattr(torch, dtype)
     network = cached_model(
         ("torchani", model, model_index, device, dtype),
@@ -265,6 +272,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'torchani').
-program = CodecProgram(
-    codec, in_process=False, gpu=True, library="torchani", keywords=KEYWORDS
-)
+program = CodecProgram(codec, in_process=False, library="torchani", keywords=KEYWORDS)

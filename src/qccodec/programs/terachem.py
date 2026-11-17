@@ -585,4 +585,4 @@ def parse_calctype(stdout: str) -> CalcType:
 
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'terachem').
-program = CodecProgram(codec, gpu=True)
+program = CodecProgram(codec)

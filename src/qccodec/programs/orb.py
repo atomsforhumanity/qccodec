@@ -21,9 +21,11 @@ Inputs map to Orb as follows:
   ``"float64"``). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
-  Unset, it runs on a GPU when one is visible, else on the CPU; it warns
-  ``backend_fallback`` only when qccompute granted it a GPU and it still ran
-  on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy`` and ``gradient``. Orb provides no Hessian; use
@@ -52,6 +54,7 @@ from ..native import PythonInput
 from ..program import CodecProgram
 from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -93,6 +96,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_orb,
         kwargs={
             "model": model,
@@ -117,6 +121,7 @@ def invoke_orb(
     charge: int,
     multiplicity: int,
     forces: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one Orb single point on the cached model and its graph adapter."""
     return invoke_orb_batch(
@@ -125,6 +130,7 @@ def invoke_orb(
         precision=precision,
         forces=forces,
         molecules=[(symbols, positions, charge, multiplicity)],
+        granted=granted,
     )[0]
 
 
@@ -138,6 +144,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_orb_batch,
         kwargs={
             **{k: first[k] for k in ("model", "device", "precision", "forces")},
@@ -156,6 +163,7 @@ def invoke_orb_batch(
     precision: str,
     forces: bool,
     molecules: list[tuple[list[str], list[list[float]], int, int]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate molecules in one Orb pass, as one batched graph."""
     from ase import Atoms
@@ -167,7 +175,7 @@ def invoke_orb_batch(
             f"Unknown Orb model {model!r}; use one of "
             f"{sorted(pretrained.ORB_PRETRAINED_MODELS)}."
         )
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
 
     def load() -> Any:
         return pretrained.ORB_PRETRAINED_MODELS[model](
@@ -229,6 +237,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'orb').
-program = CodecProgram(
-    codec, in_process=False, gpu=True, library="orb-models", keywords=KEYWORDS
-)
+program = CodecProgram(codec, in_process=False, library="orb-models", keywords=KEYWORDS)

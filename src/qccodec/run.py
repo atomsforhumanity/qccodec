@@ -309,6 +309,7 @@ def run_python(
     environment: Mapping[str, str] | None = None,
     compute_child: ComputeChild | None = None,
     compute_children: ComputeChildren | None = None,
+    device: str | None = None,
     update_func: Callable[[str, str], None] | None = None,
 ) -> PythonOutput:
     """Invoke a callable and retain its return value, merged logs, or failure.
@@ -322,6 +323,8 @@ def run_python(
             calculation directory goes into ``request.directory_keyword``, if named.
         compute_children: Callback for several independent children at once,
             injected into the keyword named by request.children_callback.
+        device: The device granted, injected into the keyword named by
+            ``request.device_keyword``; None leaves it out.
         update_func: Optional callback receiving the completed log twice, as both
             all output and new output. Called once for nonempty logs after capture
             is restored; Python execution does not provide live updates.
@@ -345,7 +348,7 @@ def run_python(
                 with _python_context(directory, overrides, request.loggers, capture):
                     try:
                         kwargs = _call_kwargs(
-                            request, directory, compute_child, compute_children
+                            request, directory, compute_child, compute_children, device
                         )
                         output.value = request.function(*request.args, **kwargs)
                     except Exception as exc:
@@ -368,6 +371,7 @@ def _call_kwargs(
     directory: Path,
     compute_child: ComputeChild | None,
     compute_children: ComputeChildren | None,
+    device: str | None = None,
 ) -> dict[str, object]:
     """The keyword arguments of a call: the request's, and what the runner injects.
 
@@ -380,6 +384,7 @@ def _call_kwargs(
         request.child_callback,
         request.children_callback,
         request.directory_keyword,
+        request.device_keyword,
     )
     if any(name in kwargs for name in injected if name):
         raise ValueError("An injected keyword is already among the arguments.")
@@ -391,6 +396,8 @@ def _call_kwargs(
         kwargs[request.children_callback] = compute_children
     if request.directory_keyword:
         kwargs[request.directory_keyword] = directory.resolve()
+    if request.device_keyword and device is not None:
+        kwargs[request.device_keyword] = device
     return kwargs
 
 
@@ -434,6 +441,7 @@ def call_python(
     *,
     compute_child: ComputeChild | None = None,
     compute_children: ComputeChildren | None = None,
+    device: str | None = None,
 ) -> PythonOutput:
     """Call a function in this process without touching process-wide state.
 
@@ -451,6 +459,8 @@ def call_python(
         compute_child: Injected into the keyword named by ``request.child_callback``.
         compute_children: Injected into the keyword named by
             ``request.children_callback``.
+        device: Injected into the keyword named by ``request.device_keyword``;
+            None leaves it out.
 
     Returns:
         The callable's value, the captured log in ``stdout``, or the exception with
@@ -461,7 +471,9 @@ def call_python(
     _route(request.loggers)
     token = _log_capture.set(captured)
     try:
-        kwargs = _call_kwargs(request, directory, compute_child, compute_children)
+        kwargs = _call_kwargs(
+            request, directory, compute_child, compute_children, device
+        )
         output.value = request.function(*request.args, **kwargs)
     except Exception as exc:
         output.error = exc

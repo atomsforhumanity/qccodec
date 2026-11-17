@@ -89,9 +89,5 @@ codecs: dict[str, Codec] = {
 }
 
 #: The programs qccompute runs (the ``qccompute.programs`` entry points).
-terachem_fe = CodecProgram(
-    codecs["terachem-fe"], in_process=False, gpu=True, library="tcpb"
-)
-terachem_pbs = CodecProgram(
-    codecs["terachem-pbs"], in_process=False, gpu=True, library="tcpb"
-)
+terachem_fe = CodecProgram(codecs["terachem-fe"], in_process=False, library="tcpb")
+terachem_pbs = CodecProgram(codecs["terachem-pbs"], in_process=False, library="tcpb")
