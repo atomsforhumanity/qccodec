@@ -49,8 +49,11 @@ optimization trajectory holds each step's structure and energy; the last step al
 carries the gradient.
 
 DFTB+ never moves or reorients the molecule, so results are in the input's frame.
-DFTB+ stops on any keyword it does not recognize, and the codec reports its error
-message.
+DFTB+ stops on any keyword it does not recognize, before calculating, and the codec
+reports its message naming the input it ignored (kind ``input``, code
+``unknown_key``). An SCC that does not converge is ``convergence``
+(``scf_not_converged``), an optimization that runs out of steps ``convergence``
+(``max_iter``); other errors DFTB+ reports are ``internal``.
 """
 
 from __future__ import annotations
@@ -91,6 +94,12 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's message, which quotes DFTB+'s error lines.
+    errors=[
+        (r"Unrecognized input:", "input", "unknown_key"),
+        (r"SCC is NOT converged", "convergence", "scf_not_converged"),
+        (r"geometry optimization did not converge", "convergence", "max_iter"),
+    ],
 )
 
 DFTB_METHODS = {"dftb3": "DFTB3", "scc-dftb": "SCC-DFTB", "dftb": "DFTB"}

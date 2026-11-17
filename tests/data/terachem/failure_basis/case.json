@@ -1,3 +1,5 @@
 {
-  "raises": "CalculationError"
+  "raises": "CalculationError",
+  "kind": "input",
+  "code": null
 }

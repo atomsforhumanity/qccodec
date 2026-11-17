@@ -189,3 +189,24 @@ def test_failure_names_unrecognized_input() -> None:
         )
     assert "Code halting" in str(error.value)
     assert "Hamiltonian/DFTB/NotAnOption" in str(error.value)
+    assert (error.value.kind, error.value.code) == ("input", "unknown_key")
+
+
+@pytest.mark.parametrize(
+    ("stdout", "kind", "code"),
+    [
+        (
+            "ERROR!\n-> SCC is NOT converged, maximal SCC iterations exceeded\n",
+            "convergence",
+            "scf_not_converged",
+        ),
+        ("Geometry did NOT converge!\n", "convergence", "max_iter"),
+    ],
+)
+def test_failures_have_kinds(stdout: str, kind: str, code: str) -> None:
+    """DFTB+'s non-convergence messages map to convergence."""
+    with pytest.raises(CalculationError) as error:
+        get_codec("dftbplus").parse(
+            CalcType.energy, stdout=stdout, failed=True, report_failure=True
+        )
+    assert (error.value.kind, error.value.code) == (kind, code)

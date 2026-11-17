@@ -31,7 +31,9 @@ supported. ``indices`` is the only input field that carries atom indices.
 
 The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another input as
 its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
-stdout ends with ``Job finished:``.
+stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
+``input``; no usable GPU is ``backend``; any other unfinished job is ``internal``.
+TeraChem's keywords are passed through unchecked.
 """
 
 from __future__ import annotations
@@ -65,6 +67,11 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's messages below.
+    errors=[
+        (r"TeraChem has no basis set", "input", None),
+        (r"TeraChem could not use a GPU", "backend", None),
+    ],
 )
 
 
@@ -266,10 +273,21 @@ codec.propagate_wfn = propagate_wfn
 
 @codec.failure
 def failure(ctx: Context) -> str | None:
-    """TeraChem prints ``Job finished:`` only when a calculation completed."""
-    if ctx.stdout is not None and not calculation_succeeded(ctx.stdout):
-        return "TeraChem did not finish: no 'Job finished:' line in its output."
-    return None
+    """TeraChem prints ``Job finished:`` only when a calculation completed.
+
+    A missing basis set file and an unusable GPU are named; anything else is reported
+    as an unfinished job.
+    """
+    stdout = ctx.stdout
+    if stdout is None or calculation_succeeded(stdout):
+        return None
+    basis = re.search(r"Unable to open file \S*/basis/(\S+)", stdout)
+    if basis:
+        return f"TeraChem has no basis set {basis.group(1)!r}."
+    cuda = re.search(r"CUDA error: ([^,\n]+)", stdout)
+    if cuda:
+        return f"TeraChem could not use a GPU: {cuda.group(1)}."
+    return "TeraChem did not finish: no 'Job finished:' line in its output."
 
 
 @codec.parser(
