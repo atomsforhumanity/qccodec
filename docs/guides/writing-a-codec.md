@@ -284,4 +284,4 @@ matching slice of `expected.json`. `check_codec` verifies the structural contrac
 targets name real result fields, decoding nothing yields typed empty data in recovery
 mode and typed partial data on error, and encoded files stay inside the directory.
 
-[CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md) walks through adding a program to qccodec step by step, including the example scripts every program needs.
+[CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md) walks through adding a program to qccodec step by step, including the example scripts every program needs.

@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
 
 ### Optimization
 
-[`examples/geometric/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/optimization.py)
+[`examples/geometric/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/geometric/optimization.py)
 
 ```python
 {!examples/geometric/optimization.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Transition state
 
-[`examples/geometric/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/transition_state.py)
+[`examples/geometric/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/geometric/transition_state.py)
 
 ```python
 {!examples/geometric/transition_state.py!}
@@ -31,7 +31,7 @@ with `python script.py`. They live in the repository's
 
 ### Many calculations at once
 
-[`examples/geometric/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/many_calculations.py)
+[`examples/geometric/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/geometric/many_calculations.py)
 
 ```python
 {!examples/geometric/many_calculations.py!}
@@ -39,7 +39,7 @@ with `python script.py`. They live in the repository's
 
 ### IRC
 
-[`examples/geometric/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/irc.py)
+[`examples/geometric/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/geometric/irc.py)
 
 ```python
 {!examples/geometric/irc.py!}

@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/dftbplus/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/dftbplus/single_point.py)
+[`examples/dftbplus/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/dftbplus/single_point.py)
 
 ```python
 {!examples/dftbplus/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Optimization
 
-[`examples/dftbplus/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/dftbplus/optimization.py)
+[`examples/dftbplus/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/dftbplus/optimization.py)
 
 ```python
 {!examples/dftbplus/optimization.py!}

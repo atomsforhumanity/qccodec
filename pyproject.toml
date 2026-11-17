@@ -42,7 +42,7 @@ keywords = [
 Homepage = 'https://github.com/atomsforhumanity/qccodec'
 Documentation = 'https://github.com/atomsforhumanity/qccodec#readme'
 Source = 'https://github.com/atomsforhumanity/qccodec'
-Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md'
+Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md'
 "Bug Tracker" = 'https://github.com/atomsforhumanity/qccodec/issues'
 
 [project.optional-dependencies]

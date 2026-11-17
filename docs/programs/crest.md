@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/crest/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/crest/single_point.py)
+[`examples/crest/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/crest/single_point.py)
 
 ```python
 {!examples/crest/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Optimization
 
-[`examples/crest/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/crest/optimization.py)
+[`examples/crest/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/crest/optimization.py)
 
 ```python
 {!examples/crest/optimization.py!}
@@ -31,7 +31,7 @@ with `python script.py`. They live in the repository's
 
 ### Conformer search
 
-[`examples/crest/conformer_search.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/crest/conformer_search.py)
+[`examples/crest/conformer_search.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/crest/conformer_search.py)
 
 ```python
 {!examples/crest/conformer_search.py!}

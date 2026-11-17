@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/terachem/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/terachem/single_point.py)
+[`examples/terachem/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/terachem/single_point.py)
 
 ```python
 {!examples/terachem/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Optimization
 
-[`examples/terachem/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/terachem/optimization.py)
+[`examples/terachem/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/terachem/optimization.py)
 
 ```python
 {!examples/terachem/optimization.py!}

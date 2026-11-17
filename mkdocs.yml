@@ -43,7 +43,7 @@ theme:
     repo: fontawesome/brands/github-alt
 
 repo_url: https://github.com/atomsforhumanity/qccodec
-edit_uri: edit/master/docs/
+edit_uri: edit/next/docs/
 site_author: Colton Hicks
 plugins:
   - search
@@ -115,8 +115,8 @@ nav:
       - Writing a codec: guides/writing-a-codec.md
       - ASE workflows: guides/ase.md
   - API reference: reference.md
-  - Contributing: https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md
-  - Changelog: https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md
+  - Contributing: https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md
+  - Changelog: https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md
 
 # Internal design notes, not part of the site.
 exclude_docs: |
