@@ -21,6 +21,9 @@ What qccompute grants a calculation (its `RunContext`) reaches the program like 
   other numerical libraries' variables; a request larger than the grant is lowered
   with a ``resource_capped`` warning.
 - ``gpus``: a program that uses GPUs sees the granted ones in ``CUDA_VISIBLE_DEVICES``.
+  A library that planned a GPU with its device left to it (the ML potentials) and saw
+  none runs on the CPU, with a ``backend_fallback`` warning; the device it ran on is
+  in the output's ``resolved.settings``.
 - ``timeout``: the program and every process it started are killed when it expires
   (kind ``timeout``).
 - ``scratch``: the calculation directory.
@@ -63,6 +66,7 @@ from qcdata import (
     ProgramOutput,
     ProgramWarning,
     Provenance,
+    Resolved,
     get_data_type,
 )
 
@@ -457,6 +461,7 @@ class CodecProgram:
         """Run an encoded input in its directory and build the output."""
         failures: list[tuple[Exception, str]] = []
         results: Data = _empty(inp)
+        resolved: Resolved | None = None
         logs: str | None = None
         executable: str | None = None
         env, threads = self._environment(native, ctx)
@@ -510,6 +515,8 @@ class CodecProgram:
                     # The codec explains the failure (an exit status, a library's
                     # exception): lead with its reason, which carries the kind.
                     failures.insert(0, failures.pop())
+            if isinstance(out, PythonOutput):
+                resolved = self._device(inp, native, out.value, warnings)
             if not isinstance(inp, ProgramInput):
                 results = FileData.model_validate(
                     {
@@ -529,6 +536,7 @@ class CodecProgram:
                 input_data=inp,
                 success=True,
                 results=results,
+                resolved=resolved,
                 logs=logs,
                 warnings=warnings,
                 execution=execution,
@@ -555,6 +563,43 @@ class CodecProgram:
                 execution=execution,
             )
         raise ProgramError(info, output=output) from failures[0][0]
+
+    def _device(
+        self,
+        inp: ProgramInput | FileInput,
+        native: NativeInput,
+        value: Any,
+        warnings: list[ProgramWarning],
+    ) -> Resolved | None:
+        """The device a library reports it ran on, as a resolved setting.
+
+        A calculation that planned a GPU (``native.gpus``: its ``device`` left to
+        the library, or ``cuda``) and ran on the CPU saw no GPU: the runner granted
+        none, or the machine has none. An explicit ``cuda`` fails instead, so this
+        is the automatic choice falling back, warned as ``backend_fallback``.
+
+        Returns:
+            The input's keywords with the device it ran on, or None when the value
+            names no device.
+        """
+        device = value.get("device") if isinstance(value, Mapping) else None
+        if not isinstance(device, str) or not isinstance(inp, ProgramInput):
+            return None
+        reasons: dict[str, str] = {}
+        if native.gpus and device == "cpu":
+            reasons["device"] = "auto: no GPU was visible"
+            warnings.append(
+                ProgramWarning(
+                    code="backend_fallback",
+                    message=f"{self.name} ran on the CPU: it planned a GPU, but none "
+                    "was visible to it (the runner granted none, or the machine has "
+                    "none).",
+                    path="device",
+                )
+            )
+        elif inp.keywords.get("device") is None:
+            reasons["device"] = "auto: a GPU was visible"
+        return Resolved(settings={**inp.keywords, "device": device}, reasons=reasons)
 
     def _run_python(
         self, native: PythonInput, directory: Path, env: dict[str, str], ctx: Any
@@ -628,12 +673,15 @@ class CodecProgram:
                             value=value, stdout=native.stdout, directory=directory
                         ),
                     )
+                    warnings: list[ProgramWarning] = []
                     outputs.append(
                         ProgramOutput(
                             input_data=inp,
                             success=True,
                             results=results,
+                            resolved=self._device(inp, request, value, warnings),
                             logs=native.stdout,
+                            warnings=warnings,
                             execution=execution,
                         )
                     )

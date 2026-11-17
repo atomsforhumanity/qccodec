@@ -18,6 +18,9 @@ Inputs map to TorchANI as follows:
   its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
+  Unset, the device falls back to the CPU when no GPU is visible (none
+  granted), with a ``backend_fallback`` warning; ``resolved.settings``
+  names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -165,6 +168,7 @@ def invoke_torchani(
     if "atomic_charges" in out:
         result["atomic_charges"] = out["atomic_charges"][0].detach().cpu().tolist()
     result["version"] = package_version("torchani")
+    result["device"] = device
     return result
 
 
@@ -228,7 +232,11 @@ def invoke_torchani_batch(
     results: list[SinglePoint] = []
     for i, (numbers, _) in enumerate(molecules):
         n = len(numbers)
-        result: SinglePoint = {"energy": out["energies"][i].item(), "version": version}
+        result: SinglePoint = {
+            "energy": out["energies"][i].item(),
+            "version": version,
+            "device": device,
+        }
         if forces:
             gradient = (
                 -out["forces"][i, :n].detach().cpu().double() / c.ANGSTROM_TO_BOHR

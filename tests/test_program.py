@@ -278,3 +278,61 @@ def test_call_python_changes_no_process_state(tmp_path: Path) -> None:
     assert os.getcwd() == cwd and not seen  # the caller's handlers saw nothing
     library.info("after\n")
     assert seen == ["after\n"]  # outside a call, records pass through
+
+
+def _on(device: str) -> dict[str, Any]:
+    return {"energy": -1.0, "version": "1.0", "device": device}
+
+
+def _gpu_library(device: str | None, ran_on: str) -> Codec:
+    """A library that plans a GPU unless told the CPU, and reports where it ran."""
+    from qccodec.programs._python import single_point_decoder
+
+    def encode(inp: ProgramInput) -> PythonInput:
+        return PythonInput(_on, args=(ran_on,), gpus=0 if device == "cpu" else 1)
+
+    return Codec(
+        "gpulib",
+        calctypes={CalcType.energy},
+        encode=encode,
+        decode=single_point_decoder("gpulib"),
+        encode_batch=lambda inputs: PythonInput(
+            lambda: [_on(ran_on)] * len(inputs), gpus=1
+        ),
+        batch_key=lambda inp: "all",
+    )
+
+
+def _gpu_input(device: str | None = None) -> ProgramInput:
+    keywords = {} if device is None else {"device": device}
+    return ProgramInput(
+        program="gpulib", calctype=CalcType.energy, structure=H2, keywords=keywords
+    )
+
+
+def test_a_gpu_library_on_the_cpu_warns_backend_fallback(tmp_path: Path) -> None:
+    """No GPU visible (none granted): the automatic device falls back, with a warning."""
+    fell_back: Any = CodecProgram(_gpu_library(None, "cpu")).compute(
+        _gpu_input(), ctx(tmp_path, gpus=())
+    )
+    assert [w.code for w in fell_back.warnings] == ["backend_fallback"]
+    assert fell_back.warnings[0].path == "device"
+    assert fell_back.resolved.settings == {"device": "cpu"}
+    assert fell_back.resolved.reasons == {"device": "auto: no GPU was visible"}
+    on_gpu: Any = CodecProgram(_gpu_library(None, "cuda")).compute(
+        _gpu_input(), ctx(tmp_path)
+    )
+    assert not on_gpu.warnings and on_gpu.resolved.settings == {"device": "cuda"}
+    assert on_gpu.resolved.reasons == {"device": "auto: a GPU was visible"}
+    asked: Any = CodecProgram(_gpu_library("cpu", "cpu")).compute(
+        _gpu_input("cpu"), ctx(tmp_path)
+    )
+    assert not asked.warnings and asked.resolved.settings == {"device": "cpu"}
+    assert asked.resolved.reasons == {}
+    batched = CodecProgram(_gpu_library(None, "cpu")).compute_batch(
+        [_gpu_input(), _gpu_input()], ctx(tmp_path, gpus=())
+    )
+    assert [[w.code for w in out.warnings] for out in batched] == [
+        ["backend_fallback"]
+    ] * 2
+    assert all(out.resolved is not None for out in batched)

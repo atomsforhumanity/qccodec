@@ -20,6 +20,9 @@ Inputs map to AIMNet2 as follows:
   or charges a model was not trained on). Nothing else is accepted. A model on a GPU
   declares one for qccompute, which gives each calculation of a list its own; an
   explicit index such as ``"cuda:1"`` opts out of that.
+  Unset, the device falls back to the CPU when no GPU is visible (none
+  granted), with a ``backend_fallback`` warning; ``resolved.settings``
+  names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -131,6 +134,7 @@ def invoke_aimnet2(
     )
     result["atomic_charges"] = out["charges"].detach().cpu().numpy().ravel().tolist()
     result["version"] = package_version("aimnet")
+    result["device"] = device
     return result
 
 
@@ -203,6 +207,7 @@ def invoke_aimnet2_batch(
         result = from_ev(float(energy), f)
         result["atomic_charges"] = q.tolist()
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 

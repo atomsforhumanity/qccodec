@@ -28,6 +28,9 @@ Inputs map to MACE as follows:
   otherwise: float64 for MACE-OFF and MACE-OMOL, float32 for MACE-MP). Nothing else is
   accepted. A model on a GPU declares one for qccompute, which gives each calculation
   of a list its own; an explicit index such as ``"cuda:1"`` opts out of that.
+  Unset, the device falls back to the CPU when no GPU is visible (none
+  granted), with a ``backend_fallback`` warning; ``resolved.settings``
+  names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -182,6 +185,7 @@ def invoke_mace(
         out["hessian"].detach().cpu().double().numpy() if hessian else None,
     )
     snapshot["version"] = package_version("mace-torch")
+    snapshot["device"] = device
     return snapshot
 
 
@@ -232,6 +236,7 @@ def invoke_mace_batch(
     for energy, f in zip(energies, per_forces, strict=True):
         result = from_ev(float(energy), f)
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 

@@ -24,6 +24,8 @@ class SinglePoint(TypedDict, total=False):
     """What an in-process single point returns, in atomic units.
 
     ``energy`` and ``version`` are always present; the rest only when computed.
+    ``device`` is where a GPU-capable library ran (``cuda``, ``cpu``): the adapter
+    warns ``backend_fallback`` when a calculation that planned a GPU ran on the CPU.
     """
 
     energy: float
@@ -33,6 +35,7 @@ class SinglePoint(TypedDict, total=False):
     dipole_moment: list[float]
     extras: dict[str, Any]
     version: str | None
+    device: str
 
 
 def positions_angstrom(structure: Structure) -> list[list[float]]:

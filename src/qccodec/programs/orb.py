@@ -21,6 +21,9 @@ Inputs map to Orb as follows:
   ``"float64"``). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
+  Unset, the device falls back to the CPU when no GPU is visible (none
+  granted), with a ``backend_fallback`` warning; ``resolved.settings``
+  names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy`` and ``gradient``. Orb provides no Hessian; use
@@ -204,6 +207,7 @@ def invoke_orb_batch(
     for energy, f in zip(energies, per_forces, strict=True):
         result = from_ev(float(energy), f)
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 

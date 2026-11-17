@@ -27,6 +27,9 @@ Inputs map to FAIR-Chem as follows:
   - ``device``: ``"cpu"`` or ``"cuda"`` (CUDA when available by default). A model on
     a GPU declares one for qccompute, which gives each calculation of a list its
     own; an explicit index such as ``"cuda:1"`` opts out of that.
+    Unset, the device falls back to the CPU when no GPU is visible (none
+    granted), with a ``backend_fallback`` warning; ``resolved.settings``
+    names the device used.
   - ``inference_settings``: one of fairchem's presets by name (``"default"``,
     ``"turbo"``, ``"batch"``, ...) or a dictionary of ``InferenceSettings`` fields. The
     codec's default is ``{"compile": False, "merge_mole": False,
@@ -171,6 +174,7 @@ def invoke_fairchem(
     )
     snapshot["extras"] = {"fairchem_task": task}
     snapshot["version"] = package_version("fairchem-core")
+    snapshot["device"] = device
     return snapshot
 
 
@@ -319,6 +323,7 @@ def invoke_fairchem_batch(
         result = from_ev(float(energy), f)
         result["extras"] = {"fairchem_task": task}
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 
