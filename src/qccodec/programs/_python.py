@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Hashable, Sequence
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from qcdata import CalcType, ProgramInput, Provenance, SinglePointData, Structure
@@ -116,6 +117,27 @@ def resolve_device(device: str | None) -> str:
     import torch
 
     return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def model_file(spec: Any) -> Path | None:
+    """The model file a spec's ``model.method`` names, when it is a path to one.
+
+    For the numerics identity of ML potentials that load a model from a path
+    (`qccodec.CodecProgram` ``weights``): the file's digest tells a retrained
+    checkpoint from the one before it.
+
+    Args:
+        spec: A `qcdata.ProgramInput` or `qcdata.ProgramSpec`.
+
+    Returns:
+        The file's absolute path, or None when the method names no existing file.
+    """
+    model = getattr(spec, "model", None)
+    method = getattr(model, "method", None)
+    if not method:
+        return None
+    path = Path(method).expanduser()
+    return path.resolve() if path.is_file() else None
 
 
 def require_model(inp: ProgramInput, example: str) -> str:

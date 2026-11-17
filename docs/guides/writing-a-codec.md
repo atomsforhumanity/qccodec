@@ -70,6 +70,14 @@ point (below) to be found everywhere. `CodecProgram(codec, executable=...,
 environment=...)` configures where the program is and what it runs with;
 `QCCODEC_<PROGRAM>_EXECUTABLE` does the first without code.
 
+A store reuses a result only while the program's numerics identity is unchanged
+(`CodecProgram.numerics`): the executable's version and sha256, or, for a launcher
+of a container, the image's digest (`CodecProgram(codec, image=...)` or
+`QCCODEC_<PROGRAM>_IMAGE`). A codec that calls a library gives the library's version
+and, for an ML potential, the digest of its model's weights file:
+`CodecProgram(codec, library=..., weights=...)` takes a function of the input that
+returns the file, or None when it is not on disk yet.
+
 ## Parsers
 
 A parser is a plain function from file contents to a value. The decorator records

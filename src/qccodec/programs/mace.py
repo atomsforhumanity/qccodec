@@ -65,6 +65,7 @@ from ._python import (
     cached_model,
     from_ev,
     gpu_count,
+    model_file,
     package_version,
     pop_device,
     positions_angstrom,
@@ -359,4 +360,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'mace').
-program = CodecProgram(codec, in_process=False, gpu=True, library="mace-torch")
+program = CodecProgram(
+    codec, in_process=False, gpu=True, library="mace-torch", weights=model_file
+)

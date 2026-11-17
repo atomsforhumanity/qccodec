@@ -33,6 +33,12 @@ forces and Hessian, to Hartree and bohr.
 AIMNet2 does not move the molecule, so results are in the input's frame. No input
 field carries atom indices.
 
+The numerics identity of a calculation is aimnet's version and the sha256 of the
+model's weights file: the file given as ``model.method``, or the one a registry name
+(aimnet 0.2's ``model_registry.yaml``, aliases included) names in aimnet's cache
+(``AIMNET_CACHE_DIR``, else ``~/.cache/aimnet``) once it is downloaded. Before the
+first download, and for Hugging Face repositories, aimnet's version stands alone.
+
 Energies and gradients of several structures can be computed as one batch:
 ``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
 calculation type, evaluating them in one pass instead of one call each. Hessians are
@@ -41,7 +47,11 @@ computed one structure at a time.
 
 from __future__ import annotations
 
+import functools
+import importlib.util
+import os
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -57,6 +67,7 @@ from ._python import (
     cached_model,
     from_ev,
     gpu_count,
+    model_file,
     package_version,
     pop_device,
     positions_angstrom,
@@ -212,6 +223,51 @@ def invoke_aimnet2_batch(
     return results
 
 
+def weights(spec: Any) -> Path | None:
+    """The file of a spec's model weights on disk, for its numerics identity.
+
+    Args:
+        spec: A `qcdata.ProgramInput` or `qcdata.ProgramSpec`.
+
+    Returns:
+        The model file given as ``model.method``; else the file a registry name or
+        alias names in aimnet's cache, once downloaded; else None.
+    """
+    path = model_file(spec)
+    if path is not None or spec.model is None:
+        return path
+    registry = _registry()
+    name = registry.get("aliases", {}).get(spec.model.method, spec.model.method)
+    entry = registry.get("models", {}).get(name)
+    if not isinstance(entry, dict) or not entry.get("file"):
+        return None
+    cache = os.environ.get("AIMNET_CACHE_DIR") or Path.home() / ".cache" / "aimnet"
+    path = Path(cache) / str(entry["file"])
+    return path if path.is_file() else None
+
+
+@functools.cache
+def _registry() -> dict[str, Any]:
+    """Aimnet's model registry, read without importing aimnet (and PyTorch).
+
+    Empty when aimnet is not installed or has no ``calculators/model_registry.yaml``
+    (versions before 0.2).
+    """
+    found = importlib.util.find_spec("aimnet")
+    if found is None or not found.submodule_search_locations:
+        return {}
+    path = Path(
+        found.submodule_search_locations[0], "calculators", "model_registry.yaml"
+    )
+    try:
+        import yaml  # an aimnet dependency
+
+        loaded = yaml.safe_load(path.read_text())
+    except Exception:  # noqa: BLE001 - no PyYAML, no file or bad YAML: no registry
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
 codec = Codec(
     "aimnet2",
     calctypes={CalcType.energy, CalcType.gradient, CalcType.hessian},
@@ -225,4 +281,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'aimnet2').
-program = CodecProgram(codec, in_process=False, gpu=True, library="aimnet")
+program = CodecProgram(
+    codec, in_process=False, gpu=True, library="aimnet", weights=weights
+)

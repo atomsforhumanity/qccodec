@@ -32,8 +32,10 @@ What qccompute grants a calculation (its `RunContext`) reaches the program like 
 
 An adapter's own configuration is its executable and environment: the variable
 ``QCCODEC_<PROGRAM>_EXECUTABLE`` (``QCCODEC_ORCA_EXECUTABLE``), or an adapter made with
-``executable=`` and registered with ``qccompute.register_program``. Keywords stay the
-program's own and pass through unchanged.
+``executable=`` and registered with ``qccompute.register_program``. An executable that
+launches a container (a Docker wrapper for TeraChem) names its image with
+``QCCODEC_<PROGRAM>_IMAGE`` or ``image=``, so the image identifies the program's numerics
+rather than the launcher. Keywords stay the program's own and pass through unchanged.
 """
 
 from __future__ import annotations
@@ -41,12 +43,13 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import time
 import traceback
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -97,8 +100,10 @@ from .run import (
 __all__ = [
     "CodecProgram",
     "THREAD_VARIABLES",
-    "executable_digest",
     "executable_version",
+    "file_digest",
+    "image_digest",
+    "image_variable",
 ]
 
 #: Thread counts of numerical libraries; a calculation's threads go into these.
@@ -131,10 +136,17 @@ class CodecProgram:
         environment: Environment variables for the program, over every default.
         command: The program's command, when it is not its name (``dftb+``).
         library: For a codec that calls a Python library: its distribution name,
-            whose version is the program's numerics identity.
+            whose version is the program's numerics identity, with its model's
+            weights where ``weights`` names them.
         threads: The threads the program plans when its input requests none: 1, or
             None for all the runner grants, for a program that scales with threads.
             The codec writes the grant into the input with ``cap_threads``.
+        image: The container image the executable runs, when it is a launcher
+            (a Docker wrapper): its digest identifies the program's numerics instead
+            of the launcher's. ``QCCODEC_<NAME>_IMAGE`` sets it without code.
+        weights: For a library's ML potential: a function of the input or
+            subprogram spec giving the file of its model's weights on disk, or None
+            when it cannot name one (a model not downloaded yet).
     """
 
     def __init__(
@@ -149,6 +161,8 @@ class CodecProgram:
         command: str | None = None,
         library: str | None = None,
         threads: int | None = 1,
+        image: str | None = None,
+        weights: Callable[[Any], Path | None] | None = None,
     ) -> None:
         """Wrap a codec."""
         self.codec = codec
@@ -160,6 +174,8 @@ class CodecProgram:
         self.command = command or self.name
         self.library = library
         self.threads = threads
+        self.image = image
+        self.weights = weights
 
     def __repr__(self) -> str:
         """Show the program."""
@@ -191,33 +207,61 @@ class CodecProgram:
         return executable_version(executable, self.codec)
 
     def numerics(self, spec: Any = None) -> str:
-        """What produces the numbers: the program's version and its executable's sha256.
+        """What produces the numbers: the program's version and a digest of its code.
 
         A version is not enough for an executable (the g-xTB build of xtb prints the
         version of upstream xtb 6.7.1), so the executable file itself identifies the
-        program, hashed once per process per path. The file is not enough either when
-        it is a launcher (Psi4's ``psi4`` is a Python script that stays the same
-        while the library behind it changes), so the version comes first. A codec
-        that calls a Python library gives the library's version, as ``version()``.
+        program (`file_digest`). The file is not enough either when it is a launcher
+        (Psi4's ``psi4`` is a Python script that stays the same while the library
+        behind it changes), so the version comes first. A launcher of a container
+        names its ``image``, whose digest (`image_digest`) stands for the code in
+        place of the launcher's. A codec that calls a Python library gives the
+        library's version and, for an ML potential whose ``weights`` file is on
+        disk, that file's digest: a model file can change under one name and library
+        version (a retrained checkpoint, a re-uploaded model).
 
         Args:
-            spec: The input or subprogram spec; every spec of an external program
-                runs the same executable.
+            spec: The input or subprogram spec. Every spec of an external program
+                runs the same executable; an ML potential's spec names its model.
 
         Returns:
             ``<version> sha256:<64 hex digits>`` for an executable (``6.7.1
-            sha256:cab4...``), the version for a library (``0.7.0``) or for FileInputs
-            (qccodec's), or ``not installed``.
+            sha256:cab4...``), ``<version> image sha256:<64 hex digits>`` for a
+            container image, ``<library version> sha256:<64 hex digits>`` for a model
+            file, the version alone for a library without one (``0.7.0``) or for
+            FileInputs (qccodec's), or ``not installed``.
         """
-        if self.library is not None or self.name == "files":
+        if self.library is not None:
+            version = self.version()
+            path = self.weights(spec) if self.weights is not None and spec else None
+            if path is None or version == "not installed":
+                return version
+            digest = file_digest(path)
+            return version if digest == "not installed" else f"{version} {digest}"
+        if self.name == "files":
             return self.version()
         executable = self._executable()
         if executable is None:
             return "not installed"
-        digest = executable_digest(executable)
+        image = self._image()
+        if image is not None:
+            digest = image_digest(image)
+            if digest == "not installed":
+                return digest
+            return f"{executable_version(executable, self.codec)} image {digest}"
+        digest = file_digest(executable)
         if digest == "not installed":
             return digest
         return f"{executable_version(executable, self.codec)} {digest}"
+
+    def _image(self) -> str | None:
+        """The container image the executable runs, if it is a launcher."""
+        return (
+            self.image
+            or self.environment.get(image_variable(self.name))
+            or os.environ.get(image_variable(self.name))
+            or None
+        )
 
     def _executable(self) -> str | None:
         """The executable that would run, or None when there is none."""
@@ -700,7 +744,8 @@ class CodecProgram:
             shutil.rmtree(directory, ignore_errors=True)
 
 
-_DIGESTS: dict[str, str] = {}
+_DIGESTS: dict[tuple[str, int, int], str] = {}
+_IMAGES: dict[str, str] = {}
 _VERSIONS: dict[str, str] = {}
 
 
@@ -746,23 +791,74 @@ def executable_version(executable: str, codec: Codec) -> str:
     return _VERSIONS[executable]
 
 
-def executable_digest(executable: str) -> str:
-    """The sha256 of an executable file (symbolic links followed), once per path.
+def file_digest(path: str | Path) -> str:
+    """The sha256 of a file (symbolic links followed): an executable, a model's weights.
+
+    Hashed once per process while the file keeps its size and modification time, so a
+    file replaced in place (a rebuilt executable, a retrained checkpoint) is hashed
+    again.
 
     Args:
-        executable: The executable's path.
+        path: The file's path.
 
     Returns:
         ``sha256:<hex>``, or ``not installed`` when the file cannot be read.
     """
-    if executable not in _DIGESTS:
+    real = os.path.realpath(path)
+    try:
+        stat = os.stat(real)
+    except OSError:
+        return "not installed"
+    key = (real, stat.st_size, stat.st_mtime_ns)
+    if key not in _DIGESTS:
         try:
-            with open(os.path.realpath(executable), "rb") as f:
+            with open(real, "rb") as f:
                 digest = "sha256:" + hashlib.file_digest(f, "sha256").hexdigest()
         except OSError:
             return "not installed"
-        _DIGESTS[executable] = digest
-    return _DIGESTS[executable]
+        _DIGESTS[key] = digest
+    return _DIGESTS[key]
+
+
+def image_variable(program: str) -> str:
+    """The environment variable naming the container image a program's launcher runs.
+
+    ``QCCODEC_<PROGRAM>_IMAGE``, spelled like ``QCCODEC_<PROGRAM>_EXECUTABLE``
+    (``QCCODEC_TERACHEM_IMAGE``).
+    """
+    return f"QCCODEC_{re.sub(r'[^A-Z0-9]', '_', program.upper())}_IMAGE"
+
+
+def image_digest(image: str) -> str:
+    """The content digest of a local container image, once per image per process.
+
+    Docker's image ID (``docker image inspect --format {{.Id}}``): a digest of the
+    image's content, the same for one image under any tag or registry name, so the
+    names (which may carry registry hosts) never enter an identity.
+
+    Args:
+        image: The image's name or ID, as the launcher runs it.
+
+    Returns:
+        ``sha256:<hex>``, or ``not installed`` when Docker is missing or does not have
+        the image.
+    """
+    if image not in _IMAGES:
+        try:
+            answer = subprocess.run(
+                ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return "not installed"
+        digest = answer.stdout.strip()
+        if answer.returncode != 0 or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            return "not installed"
+        _IMAGES[image] = digest
+    return _IMAGES[image]
 
 
 def _empty(inp: ProgramInput | FileInput) -> Data:

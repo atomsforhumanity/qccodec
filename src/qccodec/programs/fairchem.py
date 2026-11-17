@@ -73,6 +73,7 @@ from ._python import (
     cached_model,
     from_ev,
     gpu_count,
+    model_file,
     package_version,
     pop_device,
     positions_angstrom,
@@ -355,4 +356,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'fairchem').
-program = CodecProgram(codec, in_process=False, gpu=True, library="fairchem-core")
+program = CodecProgram(
+    codec, in_process=False, gpu=True, library="fairchem-core", weights=model_file
+)

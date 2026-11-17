@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,6 +14,7 @@ from qcdata import (
     CalcType,
     ErrorKind,
     FileInput,
+    Model,
     ProgramError,
     ProgramInput,
     Structure,
@@ -20,7 +22,7 @@ from qcdata import (
 
 from qccodec import Codec, CodecProgram, PythonInput, SubprocessInput, re_search
 from qccodec.exceptions import CalculationError, EncoderError
-from qccodec.program import executable_digest
+from qccodec.program import file_digest, image_digest
 
 H2 = Structure(
     symbols=["H", "H"], geometry=np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]])
@@ -199,7 +201,7 @@ def test_numerics_is_the_version_and_the_executables_digest(tmp_path: Path) -> N
     script.write_text("#!/bin/sh\necho 'prog version 6.7.1'\n")
     script.chmod(0o755)
     expected = "sha256:" + hashlib.sha256(script.read_bytes()).hexdigest()
-    assert executable_digest(str(script)) == expected
+    assert file_digest(str(script)) == expected
     program = CodecProgram(codec, executable=str(script))
     assert program.numerics(inp()) == f"prog version 6.7.1 {expected}"
     import numpy
@@ -207,6 +209,70 @@ def test_numerics_is_the_version_and_the_executables_digest(tmp_path: Path) -> N
     library = CodecProgram(codec, library="numpy")
     assert library.numerics(inp()) == library.version() == numpy.__version__
     assert CodecProgram(codec, executable="/no/such").numerics(None) == "not installed"
+
+
+def test_a_file_replaced_in_place_is_hashed_again(tmp_path: Path) -> None:
+    import os
+
+    path = tmp_path / "model.pt"
+    path.write_bytes(b"weights 1")
+    first = file_digest(path)
+    path.write_bytes(b"weights 22")  # retrained: another size and time
+    os.utime(path, ns=(1, 1))
+    assert file_digest(path) != first
+    assert file_digest(tmp_path / "missing.pt") == "not installed"
+
+
+def test_an_ml_potential_is_identified_by_its_weights(tmp_path: Path) -> None:
+    """The library's version and its model file's digest, when the file is on disk."""
+    import hashlib
+
+    import numpy
+
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"weights")
+    digest = "sha256:" + hashlib.sha256(b"weights").hexdigest()
+    program = CodecProgram(
+        codec,
+        library="numpy",
+        weights=lambda spec: model if spec.model.method == "local" else None,
+    )
+    local = inp().model_copy(update={"model": Model(method="local")})
+    named = inp().model_copy(update={"model": Model(method="not-downloaded")})
+    assert program.numerics(local) == f"{numpy.__version__} {digest}"
+    assert program.numerics(named) == numpy.__version__  # the version stands in
+    assert program.numerics(None) == numpy.__version__
+
+
+def test_a_launchers_image_identifies_the_program(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Docker launcher's numerics are its image's digest, not the launcher's."""
+    from qccodec import program as adapter
+
+    image_id = "sha256:" + "ab" * 32
+    docker = tmp_path / "bin" / "docker"
+    docker.parent.mkdir()
+    docker.write_text(
+        "#!/bin/sh\n"
+        f'[ "$5" = "tc:1.9" ] && echo {image_id} && exit 0\n'
+        "echo 'Error: No such image' >&2; exit 1\n"
+    )
+    docker.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{docker.parent}:{os.environ['PATH']}")
+    monkeypatch.setattr(adapter, "_IMAGES", {})
+    launcher = tmp_path / "terachem"
+    launcher.write_text("#!/bin/sh\necho 'prog version 1.9'\n")
+    launcher.chmod(0o755)
+    assert image_digest("tc:1.9") == image_id
+    assert image_digest("tc:missing") == "not installed"
+    configured = CodecProgram(codec, executable=str(launcher), image="tc:1.9")
+    assert configured.numerics(inp()) == f"prog version 1.9 image {image_id}"
+    monkeypatch.setenv("QCCODEC_FAKE_IMAGE", "tc:1.9")
+    by_variable = CodecProgram(codec, executable=str(launcher))
+    assert by_variable.numerics(inp()) == f"prog version 1.9 image {image_id}"
+    missing = CodecProgram(codec, executable=str(launcher), image="tc:missing")
+    assert missing.numerics(inp()) == "not installed"
 
 
 def test_version_is_the_programs(tmp_path: Path) -> None:

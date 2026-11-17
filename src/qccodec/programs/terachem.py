@@ -35,6 +35,12 @@ stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
 ``input``; no usable GPU is ``backend``; any other unfinished job is ``internal``.
 TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
 work is on the GPUs it declares, so several can share a machine's GPUs.
+
+TeraChem often runs from a container image through a launcher script named
+``terachem``. Name the image with ``QCCODEC_TERACHEM_IMAGE`` (the image the launcher
+runs, such as ``mtzgroup/terachem:1.9-2026.10-dev``): the numerics identity of every
+result is then TeraChem's version and the image's digest, not the launcher's, which
+stays the same while the image behind it changes.
 """
 
 from __future__ import annotations

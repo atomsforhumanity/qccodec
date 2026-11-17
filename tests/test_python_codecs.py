@@ -6,7 +6,10 @@ fairchem-core) are exercised by the integration tests; here they are absent or f
 
 from __future__ import annotations
 
+import importlib
 import sys
+from collections.abc import Iterator
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
@@ -476,3 +479,70 @@ def test_ml_encode_batch(program: str) -> None:
         codec.encode_batch([])
     with pytest.raises(EncoderError, match="1 to"):
         codec.encode_batch([_input(program)] * (codec.max_batch + 1))
+
+
+# ------------------------------------------------------------------ numerics
+
+
+@pytest.fixture
+def aimnet_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    """A stand-in aimnet package holding only its model registry; returns its cache."""
+    from qccodec.programs import aimnet2
+
+    package = tmp_path / "site" / "aimnet"
+    (package / "calculators").mkdir(parents=True)
+    (package / "__init__.py").write_text("raise ImportError('never imported')\n")
+    (package / "calculators" / "model_registry.yaml").write_text(
+        "models:\n"
+        "  aimnet2-wb97m-d3_0:\n"
+        "    file: aimnet2_wb97m_d3_0.pt\n"
+        "    url: https://example.org/aimnet2_wb97m_d3_0.pt\n"
+        "aliases:\n"
+        "  aimnet2: aimnet2-wb97m-d3_0\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path / "site"))
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setenv("AIMNET_CACHE_DIR", str(cache))
+    aimnet2._registry.cache_clear()
+    yield cache
+    aimnet2._registry.cache_clear()
+
+
+def test_aimnet2_weights_are_the_registry_file_in_the_cache(
+    aimnet_registry: Path, tmp_path: Path
+) -> None:
+    """Read from aimnet's registry without importing aimnet; None until downloaded."""
+    from qccodec.programs.aimnet2 import weights
+
+    spec = _input("aimnet2", method="aimnet2")  # an alias
+    assert weights(spec) is None  # not downloaded yet
+    (aimnet_registry / "aimnet2_wb97m_d3_0.pt").write_bytes(b"weights")
+    assert weights(spec) == aimnet_registry / "aimnet2_wb97m_d3_0.pt"
+    member = _input("aimnet2", method="aimnet2-wb97m-d3_0")
+    assert weights(member) == weights(spec)
+    own = tmp_path / "mine.pt"
+    own.write_bytes(b"retrained")
+    assert weights(_input("aimnet2", method=str(own))) == own
+    assert weights(_input("aimnet2", method="aimnet2-unknown")) is None
+
+
+@pytest.mark.parametrize("program", ["mace", "fairchem"])
+def test_ml_potentials_given_a_model_file_are_identified_by_it(
+    program: str, tmp_path: Path
+) -> None:
+    from qccodec.program import file_digest
+    from qccodec.programs._python import model_file
+
+    own = tmp_path / "model.pt"
+    own.write_bytes(b"checkpoint")
+    spec = _input(program, method=str(own))
+    assert model_file(spec) == own
+    assert model_file(_input(program)) is None  # a name, not a file
+    adapter = importlib.import_module(f"qccodec.programs.{program}").program
+    assert adapter.weights is model_file
+    version = adapter.version()
+    expected = (
+        version if version == "not installed" else f"{version} {file_digest(own)}"
+    )
+    assert adapter.numerics(spec) == expected
