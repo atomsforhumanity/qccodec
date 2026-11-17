@@ -91,6 +91,7 @@ from .native import (
 from .run import (
     call_python,
     collect_files,
+    executable_variable,
     resolve_executable,
     run_python,
     run_subprocess,
@@ -203,6 +204,7 @@ class CodecProgram:
         An executable is asked once per process (``<executable> --version``, read
         with the codec's version parser); a Python library's version is its
         distribution's. FileInputs run any command, so qccodec's version stands in.
+        Every answer is cached per process (`numerics` explains why).
 
         Returns:
             The version as the program prints it (``6.7.1``, ``1.11``, ``0.7.0``),
@@ -234,39 +236,56 @@ class CodecProgram:
         disk, that file's digest: a model file can change under one name and library
         version (a retrained checkpoint, a re-uploaded model).
 
+        The runner asks for every output it returns, so each part is found once per
+        process: the executable for its configuration and ``PATH``, its version and
+        digest per path, an image's digest per name, a library's version. Only a
+        model's weights file is checked on every call (hashed again when its size or
+        modification time changes), since a checkpoint may be retrained in place.
+
+        A FileInput's command can be anything, so it is identified by its
+        executable's digest alone (resolved as it runs, on ``PATH`` or through
+        ``QCCODEC_<COMMAND>_EXECUTABLE``): asking an arbitrary command for its
+        version could run anything.
+
         Args:
             spec: The input or subprogram spec. Every spec of an external program
-                runs the same executable; an ML potential's spec names its model.
+                runs the same executable; an ML potential's spec names its model; a
+                FileInput names its command.
 
         Returns:
             ``<version> sha256:<64 hex digits>`` for an executable (``6.7.1
             sha256:cab4...``), ``<version> image sha256:<64 hex digits>`` for a
             container image, ``<library version> sha256:<64 hex digits>`` for a model
-            file, the version alone for a library without one (``0.7.0``) or for
-            FileInputs (qccodec's), or ``not installed``.
+            file, the version alone for a library without one (``0.7.0``),
+            ``sha256:<64 hex digits>`` for a FileInput's command, or ``not
+            installed``.
         """
         if self.library is not None:
             version = self.version()
-            path = self.weights(spec) if self.weights is not None and spec else None
-            if path is None or version == "not installed":
+            if version == "not installed" or self.weights is None or not spec:
+                return version
+            path = self.weights(spec)
+            if path is None:
                 return version
             digest = file_digest(path)
             return version if digest == "not installed" else f"{version} {digest}"
         if self.name == "files":
-            return self.version()
+            command = getattr(spec, "program", None)
+            if not command:
+                return self.version()
+            executable = self._resolve(command, command, None)
+            return "not installed" if executable is None else _digest(executable)
         executable = self._executable()
         if executable is None:
             return "not installed"
         image = self._image()
-        if image is not None:
-            digest = image_digest(image)
-            if digest == "not installed":
-                return digest
-            return f"{executable_version(executable, self.codec)} image {digest}"
-        digest = file_digest(executable)
+        digest = image_digest(image) if image is not None else _digest(executable)
         if digest == "not installed":
             return digest
-        return f"{executable_version(executable, self.codec)} {digest}"
+        version = executable_version(executable, self.codec)
+        return (
+            f"{version} image {digest}" if image is not None else f"{version} {digest}"
+        )
 
     def _image(self) -> str | None:
         """The container image the executable runs, if it is a launcher."""
@@ -279,15 +298,35 @@ class CodecProgram:
 
     def _executable(self) -> str | None:
         """The executable that would run, or None when there is none."""
-        try:
-            return resolve_executable(
-                self.name,
-                self.command,
-                {**os.environ, **self.environment},
-                self.executable,
-            )
-        except DependencyNotFoundError:
-            return None
+        return self._resolve(self.name, self.command, self.executable)
+
+    def _resolve(self, name: str, command: str, configured: str | None) -> str | None:
+        """Resolve an executable as `resolve_executable` would, once per setting.
+
+        Cached by everything that decides it (the configured executable, the
+        ``QCCODEC_<NAME>_EXECUTABLE`` override, ``PATH``, and the working directory
+        for a relative path); a miss is never cached, so a program installed later is
+        found.
+        """
+        variable = executable_variable(name)
+        key = (
+            name,
+            command,
+            configured,
+            self.environment.get(variable, os.environ.get(variable)),
+            self.environment.get("PATH", os.environ.get("PATH")),
+            os.getcwd(),
+        )
+        found = _RESOLVED.get(key)
+        if found is None:
+            try:
+                found = resolve_executable(
+                    name, command, {**os.environ, **self.environment}, configured
+                )
+            except DependencyNotFoundError:
+                return None
+            _RESOLVED[key] = found
+        return found
 
     def capabilities(self) -> dict[str, Any]:
         """The codec's calctypes; batches when the codec batches; where it may run."""
@@ -409,7 +448,9 @@ class CodecProgram:
         Inputs the codec batches together (same batch key) go in batches of at most
         ``codec.max_batch``; a batch that fails runs its inputs one at a time, so each
         failure is reported with its own input. Failures, refused inputs included, are
-        failed outputs in place.
+        failed outputs in place. A batch runs with the whole grant, which the runner
+        sized as the sum of its inputs' threads; an input run on its own gets its own
+        planned threads (`_own_share`).
         """
         outputs: list[ProgramOutput[Any, Data] | None] = [None] * len(inputs)
         groups: dict[Hashable, list[int]] = {}
@@ -437,10 +478,26 @@ class CodecProgram:
                         outputs[i] = out
         for i in sorted(alone):
             try:
-                outputs[i] = self.compute(inputs[i], ctx)
+                outputs[i] = self.compute(inputs[i], self._own_share(inputs[i], ctx))
             except ProgramError as e:
                 outputs[i] = e.output or ProgramOutput.failure(inputs[i], e.error)
         return [o for o in outputs if o is not None]
+
+    def _own_share(self, inp: ProgramInput, ctx: Any) -> Any:
+        """The batch's grant with one input's own threads, for running it alone.
+
+        Its threads are its request (``threads``, or the program's own setting),
+        else what the program plans, at most the batch's grant; a plan of None takes
+        the whole grant, as the runner does for one input.
+        """
+        if ctx is None or not ctx.threads:
+            return ctx
+        try:
+            planned = self.plan(inp)["resources"]["threads"]
+        except ProgramError:
+            return ctx  # computing it reports the refusal
+        threads = ctx.threads if planned is None else max(1, min(planned, ctx.threads))
+        return ctx if threads == ctx.threads else _Share(ctx, threads)
 
     # ------------------------------------------------------------------ running
 
@@ -775,9 +832,34 @@ class CodecProgram:
             shutil.rmtree(directory, ignore_errors=True)
 
 
+class _Share:
+    """A runner's grant with fewer threads; everything else is the grant's own."""
+
+    def __init__(self, ctx: Any, threads: int) -> None:
+        """Keep the grant and the threads."""
+        self._ctx = ctx
+        self.threads = threads
+
+    def __getattr__(self, name: str) -> Any:
+        """Read every other field (scratch, timeout, gpus, compute) from the grant."""
+        return getattr(self._ctx, name)
+
+
 _DIGESTS: dict[tuple[str, int, int], str] = {}
+_EXECUTABLE_DIGESTS: dict[str, str] = {}
 _IMAGES: dict[str, str] = {}
+_RESOLVED: dict[tuple[str | None, ...], str] = {}
 _VERSIONS: dict[str, str] = {}
+
+
+def _digest(executable: str) -> str:
+    """An executable's `file_digest`, once per path per process."""
+    digest = _EXECUTABLE_DIGESTS.get(executable)
+    if digest is None:
+        digest = file_digest(executable)
+        if digest != "not installed":
+            _EXECUTABLE_DIGESTS[executable] = digest
+    return digest
 
 
 def executable_version(executable: str, codec: Codec) -> str:

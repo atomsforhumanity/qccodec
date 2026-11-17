@@ -402,3 +402,42 @@ def test_a_gpu_library_on_the_cpu_warns_backend_fallback(tmp_path: Path) -> None
         ["backend_fallback"]
     ] * 2
     assert all(out.resolved is not None for out in batched)
+
+
+def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:
+    """The runner sizes a batch's grant as the sum of its inputs' threads."""
+    outs: Any = program.compute_batch(
+        [inp(), inp(threads=2), inp(threads=8)], ctx(tmp_path, threads=4)
+    )
+    assert [o.execution.threads for o in outs] == [1, 2, 4]  # planned; capped
+    assert "threads 1 " in str(outs[0].logs)
+    assert [w.code for w in outs[2].warnings] == ["resource_capped"]
+
+
+def test_a_file_inputs_command_is_identified_by_its_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hashed as resolved on PATH; no version, since any command may run."""
+    import hashlib
+
+    from qccodec.programs.file import program as files
+
+    with open(os.path.realpath(sys.executable), "rb") as f:
+        expected = "sha256:" + hashlib.file_digest(f, "sha256").hexdigest()
+    command = FileInput(program=os.path.basename(sys.executable), cmdline_args=["-V"])
+    monkeypatch.setenv(
+        "PATH", f"{os.path.dirname(sys.executable)}:{os.environ['PATH']}"
+    )
+    assert files.numerics(command) == expected
+    missing = FileInput(program="no-such-command-anywhere")
+    assert files.numerics(missing) == "not installed"
+
+
+def test_numerics_inputs_are_read_once_per_process() -> None:
+    from qccodec.programs._python import package_version
+
+    package_version.cache_clear()
+    library = CodecProgram(codec, library="numpy")
+    for _ in range(3):
+        library.numerics(inp())
+    assert package_version.cache_info().misses == 1

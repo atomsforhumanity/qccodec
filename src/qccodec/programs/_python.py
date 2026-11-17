@@ -8,6 +8,7 @@ inside the function so encoding and decoding work, and are testable, without the
 
 from __future__ import annotations
 
+import functools
 import json
 from collections.abc import Callable, Hashable, Sequence
 from pathlib import Path
@@ -75,8 +76,13 @@ def from_ev(
     return result
 
 
+@functools.cache
 def package_version(distribution: str) -> str | None:
-    """Return an installed distribution's version, or None if it is not installed."""
+    """Return an installed distribution's version, or None if it is not installed.
+
+    Read once per process: every output names it, and a distribution does not change
+    under a running process without a restart to load it.
+    """
     from importlib.metadata import PackageNotFoundError, version
 
     try:
