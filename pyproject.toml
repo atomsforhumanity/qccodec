@@ -9,7 +9,7 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.24.0a5",
+    "qcdata>=0.24.0a7",
     "qccompute>=0.23.0a4",
     "qcref>=0.4.0",
     "threadpoolctl>=3.1",
