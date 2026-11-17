@@ -19,7 +19,10 @@ What qccompute grants a calculation (its `RunContext`) reaches the program like 
   most that. A program with its own thread setting runs with the grant written into
   it (the codec's ``cap_threads``), the others with it in ``OMP_NUM_THREADS`` and the
   other numerical libraries' variables; a request larger than the grant is lowered
-  with a ``resource_capped`` warning.
+  with a ``resource_capped`` warning. A Python library in a worker process gets each
+  call's threads afresh, since one worker serves calls with different grants:
+  PyTorch's threads and the BLAS and OpenMP runtimes it has loaded are set for every
+  call (``threadpoolctl``).
 - ``gpus``: a program run as a subprocess (TeraChem) sees the granted GPUs in
   ``CUDA_VISIBLE_DEVICES``. A Python library (the ML potentials) is handed the first
   granted GPU as this process's CUDA device, ``cuda:N`` from ``ctx.device_ordinals()``,
@@ -669,7 +672,7 @@ class CodecProgram:
                     request, directory, environment=env, timeout=timeout
                 )
             else:
-                out = self._run_python(native, directory, env, ctx)
+                out = self._run_python(native, directory, env, ctx, threads)
             logs = out.stdout
             if out.failed:
                 error = out.error or RuntimeError(
@@ -793,14 +796,22 @@ class CodecProgram:
         return Resolved(settings={**inp.keywords, "device": device}, reasons=reasons)
 
     def _run_python(
-        self, native: PythonInput, directory: Path, env: dict[str, str], ctx: Any
+        self,
+        native: PythonInput,
+        directory: Path,
+        env: dict[str, str],
+        ctx: Any,
+        threads: int | None,
     ) -> PythonOutput:
         """Call a Python library, with subprograms through the runner's ctx.
 
         A function that takes its directory (``directory_keyword``) is called as is
         (`qccodec.run.call_python`); any other runs with the process's working
         directory, environment and output redirected (`qccodec.run.run_python`),
-        which is why such codecs run in a worker process.
+        which is why such codecs run in a worker process. There the call's
+        ``threads`` are applied on every call, to the libraries already loaded as
+        well (`qccodec.run.thread_limits`): one worker serves calls with different
+        grants.
         """
 
         def compute_child(
@@ -832,6 +843,7 @@ class CodecProgram:
             compute_child=child,
             compute_children=children,
             device=device,
+            threads=threads,
         )
 
     def _batch(
@@ -852,6 +864,7 @@ class CodecProgram:
                 directory,
                 environment=env,
                 device=_granted_device(request, ctx),
+                threads=threads,
             )
             values = native.value
             if (

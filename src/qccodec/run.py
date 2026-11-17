@@ -310,6 +310,7 @@ def run_python(
     compute_child: ComputeChild | None = None,
     compute_children: ComputeChildren | None = None,
     device: str | None = None,
+    threads: int | None = None,
     update_func: Callable[[str, str], None] | None = None,
 ) -> PythonOutput:
     """Invoke a callable and retain its return value, merged logs, or failure.
@@ -325,6 +326,9 @@ def run_python(
             injected into the keyword named by request.children_callback.
         device: The device granted, injected into the keyword named by
             ``request.device_keyword``; None leaves it out.
+        threads: CPU threads of this call, for the numerical libraries already
+            loaded in this process (`thread_limits`); a library the call loads reads
+            them from ``environment`` (``OMP_NUM_THREADS``). None leaves them alone.
         update_func: Optional callback receiving the completed log twice, as both
             all output and new output. Called once for nonempty logs after capture
             is restored; Python execution does not provide live updates.
@@ -345,7 +349,10 @@ def run_python(
             mode="w+", encoding="utf-8", errors="replace"
         ) as capture:
             try:
-                with _python_context(directory, overrides, request.loggers, capture):
+                with (
+                    _python_context(directory, overrides, request.loggers, capture),
+                    thread_limits(threads),
+                ):
                     try:
                         kwargs = _call_kwargs(
                             request, directory, compute_child, compute_children, device
@@ -364,6 +371,35 @@ def run_python(
             output.error = exc
             output.traceback = traceback.format_exc()
     return output
+
+
+@contextmanager
+def thread_limits(threads: int | None) -> Iterator[None]:
+    """Run one call with ``threads`` in the numerical libraries this process has loaded.
+
+    A worker process serves calls with different grants, but a numerical library
+    reads ``OMP_NUM_THREADS`` once, when it loads. So for each call, PyTorch's
+    intra-op threads are set (``torch.set_num_threads``, when PyTorch is loaded) and
+    the BLAS and OpenMP runtimes already loaded are limited
+    (``threadpoolctl.threadpool_limits``, undone afterwards). Process-wide: only for
+    calls that own the process (`run_python`).
+
+    Args:
+        threads: The call's CPU threads; None changes nothing.
+
+    Yields:
+        Control with the limits in place.
+    """
+    if threads is None:
+        yield
+        return
+    from threadpoolctl import threadpool_limits
+
+    torch = sys.modules.get("torch")
+    if torch is not None:
+        torch.set_num_threads(threads)
+    with threadpool_limits(limits=threads):
+        yield
 
 
 def _call_kwargs(

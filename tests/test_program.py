@@ -23,6 +23,7 @@ from qcdata import (
 from qccodec import Codec, CodecProgram, PythonInput, SubprocessInput, re_search
 from qccodec.exceptions import CalculationError, EncoderError
 from qccodec.program import file_digest, image_digest
+from qccodec.run import run_python
 
 H2 = Structure(
     symbols=["H", "H"], geometry=np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]])
@@ -506,6 +507,61 @@ def test_resolve_device(monkeypatch: pytest.MonkeyPatch) -> None:
     cuda.available = False
     assert resolve_device(None, "cuda:2") == "cpu"  # the adapter warns
     assert resolve_device(None) == "cpu"
+
+
+def test_each_python_call_runs_with_its_own_threads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Libraries loaded before the call (BLAS, PyTorch) take each call's threads."""
+    from threadpoolctl import threadpool_info
+
+    from tests.worker_programs import report_threads
+
+    if not any(i["user_api"] == "blas" for i in threadpool_info()):
+        pytest.skip("numpy's BLAS is not one threadpoolctl controls")
+    set_to: list[int] = []
+    torch = SimpleNamespace(set_num_threads=set_to.append)
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    seen = [
+        run_python(PythonInput(report_threads), tmp_path, threads=n).value
+        for n in (2, 3)
+    ]
+    assert [v["extras"]["blas_threads"][0] for v in seen] == [2, 3]
+    assert set_to == [2, 3]
+    unlimited = run_python(PythonInput(report_threads), tmp_path).value
+    assert set_to == [2, 3]  # no threads: left alone
+    assert unlimited["extras"]["blas_threads"][0] not in (2, 3) or os.cpu_count() in (
+        2,
+        3,
+    )
+
+
+def test_one_worker_serves_calls_with_different_threads() -> None:
+    """A worker is pooled by program, so each call applies its own threads."""
+    import qccompute
+    from qccompute.program import register_program, unregister_program
+
+    from tests.worker_programs import blas_threads
+
+    register_program(blas_threads)
+    try:
+        with qccompute.Runner(threads=4) as runner:
+            outs = [
+                runner.compute(
+                    ProgramInput(
+                        program="blasthreads",
+                        calctype=CalcType.energy,
+                        structure=H2,
+                        keywords={"threads": n},
+                    )
+                )
+                for n in (1, 3, 2)
+            ]
+    finally:
+        unregister_program("blasthreads")
+    extras = [o.results.extras for o in outs]
+    assert len({e["pid"] for e in extras}) == 1  # one worker served them all
+    assert [e["blas_threads"][0] for e in extras] == [1, 3, 2]
 
 
 def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:

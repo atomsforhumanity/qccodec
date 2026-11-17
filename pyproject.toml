@@ -12,6 +12,7 @@ dependencies = [
     "qcdata>=0.24.0a5",
     "qccompute>=0.23.0a3",
     "qcref>=0.4.0",
+    "threadpoolctl>=3.1",
 ]
 
 classifiers = [

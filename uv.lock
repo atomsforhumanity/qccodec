@@ -2617,6 +2617,7 @@ dependencies = [
     { name = "qccompute" },
     { name = "qcdata" },
     { name = "qcref" },
+    { name = "threadpoolctl" },
     { name = "tomli-w" },
 ]
 
@@ -2663,6 +2664,7 @@ requires-dist = [
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
     { name = "tcpb", marker = "extra == 'tcpb'", specifier = ">=0.16.0" },
+    { name = "threadpoolctl", specifier = ">=3.1" },
     { name = "tomli-w", specifier = ">=1.0.0" },
 ]
 provides-extras = ["geometric", "tcpb", "sella"]
@@ -3027,6 +3029,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/71/44/e3b83d6c71b7476e312a1813a87429848e6dd082b54ff1294849c6e208f9/tcpb-0.16.0.tar.gz", hash = "sha256:0883566a465f0f1511383dfabdcbcadf895e906b248a68a541486451c82e7ab0", size = 141091, upload-time = "2026-03-26T22:31:10.362Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6c/aa/edba4c35b63fbf2da3a2d807babde6031dca5e601e9bd77d3e6958657cd0/tcpb-0.16.0-py3-none-any.whl", hash = "sha256:3fe1bbb72606750696eeae127a4e96cd3bcb0a73a3fc2e752eab976a3830134a", size = 29572, upload-time = "2026-03-26T22:31:08.949Z" },
+]
+
+[[package]]
+name = "threadpoolctl"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/97/b4748951a683e369513691c8eea33d100298d556308dcb0ab66b132a67f0/threadpoolctl-3.8.0.tar.gz", hash = "sha256:01080674ad7ac6182429c918a79de92da789bb448acc02fc0b620b1abd6b6137", size = 39424, upload-time = "2026-11-05T11:08:51.112Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/1b/831f2de4840a25db1dd7b1afea433ccafe6bb10aca07e13264f2079462d0/threadpoolctl-3.8.0-py3-none-any.whl", hash = "sha256:f1b49c82704d50f13ffae019c727b0fa4f6791a58f48f06a09c45face1be66da", size = 32091, upload-time = "2026-11-05T11:08:49.773Z" },
 ]
 
 [[package]]
