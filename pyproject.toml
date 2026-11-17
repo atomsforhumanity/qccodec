@@ -1,7 +1,7 @@
 [project]
 name = "qccodec"
 version = "0.22.0a4"
-description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
+description = "External quantum chemistry programs as qccompute programs: encode qcdata inputs into native input files, run the programs, and decode their outputs into qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
 requires-python = ">=3.11"
@@ -40,7 +40,7 @@ keywords = [
 
 [project.urls]
 Homepage = 'https://github.com/atomsforhumanity/qccodec'
-Documentation = 'https://github.com/atomsforhumanity/qccodec#readme'
+Documentation = 'https://qccodec.docs.afh.org'
 Source = 'https://github.com/atomsforhumanity/qccodec'
 Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md'
 "Bug Tracker" = 'https://github.com/atomsforhumanity/qccodec/issues'
