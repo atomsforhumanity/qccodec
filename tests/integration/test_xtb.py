@@ -49,6 +49,7 @@ def test_energy(run: Run, water: Structure) -> None:
     """GFN2-xTB energy and partial charges."""
     output = run(_input(water, CalcType.energy), case="water_energy")
     assert output.results.provenance.program == "xtb"
+    assert output.results.provenance.program_commit  # the build, from the banner
     assert np.isclose(output.results.energy, ENERGY, atol=1e-6)
     assert np.allclose(
         output.results.atomic_charges, [-0.561, 0.2805, 0.2805], atol=1e-3
@@ -233,3 +234,16 @@ def test_point_charges(run: Run, water: Structure) -> None:
                 energies.append(run(inp).results.energy)
             numeric = (energies[0] - energies[1]) / (2 * step)
             assert np.isclose(pc_gradient[i, k], numeric, atol=1e-6)
+
+
+def test_an_accuracy_target_is_refused_before_xtb_runs(water: Structure) -> None:
+    """GFN2's SCC has thresholds the codec cannot set from a target; GFN-FF has none."""
+    from qccompute import compute
+
+    target = {"gradient": 1e-6}
+    with pytest.raises(ProgramError) as e:
+        compute(_input(water, CalcType.gradient, accuracy=target))
+    assert e.value.error.kind == "unsupported"
+    with pytest.raises(ProgramError) as e:
+        compute(_input(water, CalcType.gradient, "gfnff", accuracy=target))
+    assert (e.value.error.kind, e.value.error.code) == ("input", "no_effect")
