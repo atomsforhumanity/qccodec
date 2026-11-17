@@ -2659,7 +2659,7 @@ integration = [
 requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
-    { name = "qccompute", specifier = ">=0.23.0a3" },
+    { name = "qccompute", specifier = ">=0.23.0a4" },
     { name = "qcdata", specifier = ">=0.24.0a5" },
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
@@ -2692,14 +2692,14 @@ integration = [{ name = "tblite", marker = "python_full_version < '3.15'", speci
 
 [[package]]
 name = "qccompute"
-version = "0.23.0a3"
+version = "0.23.0a4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "qcdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/a4/cfb56cbd4f29de8b36d1be353abf004fd7ac8a6519ac8b82f1e97ad8f794/qccompute-0.23.0a3.tar.gz", hash = "sha256:aaf6d11b0fa546bce24ce68e10f13d01db079bbff8263619873f76b2af61c4c9", size = 612710, upload-time = "2026-11-17T04:00:57.107Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/22/68fe84accbaaa1f2c401726693a098fc2759a0facc90980ec33fe6dd3d07/qccompute-0.23.0a4.tar.gz", hash = "sha256:15b5174629837ad137ba91262ef4ab4d0d77495a8c0d54dfbee30cc4bb3cfaed", size = 621285, upload-time = "2026-11-17T06:18:59.726Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/a6/da246fd0943d694a5c646f6cdbb8f99dd22857c6f5c527f5fc988337802f/qccompute-0.23.0a3-py3-none-any.whl", hash = "sha256:edd842011907274931d93568b0d99b3eda5584e8566c1eba176b1484eedfdc7c", size = 67378, upload-time = "2026-11-17T04:00:55.713Z" },
+    { url = "https://files.pythonhosted.org/packages/81/7a/54006de7aa7877aac2cd0aea08ce1480a8be72602928a33da30276108cd9/qccompute-0.23.0a4-py3-none-any.whl", hash = "sha256:53bcb89a179c08d068ef1dd87c4eb91c6b5ec928f9089310c17369ad66ae43af", size = 71148, upload-time = "2026-11-17T06:18:58.262Z" },
 ]
 
 [[package]]
