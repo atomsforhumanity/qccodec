@@ -36,14 +36,22 @@ calculating anything, and the codec reports that as kind ``input``, code
 ``unknown_key`` (a misspelled method or basis set is ``input`` without a code).
 
 Failures and their kinds: an SCF that does not converge is ``convergence`` (code
-``scf_not_converged``); an optimization that runs out of cycles is ``convergence``
-(``max_iter``), with its trajectory attached (ORCA itself reports it as a normal
-termination); a multiplicity the number of electrons cannot have is ``input``; a
-module out of memory is ``resource`` (``host_memory``), with ``required_gib`` and
-``available_gib`` in the error's ``details`` where ORCA prints what a step needed
-against ``%maxcore`` (the SCF's estimate, DLPNO's minimum): ORCA's per-process MB
-(2^20 bytes) times the processes, in GiB. Any other error termination is
-``internal``, with ORCA's error line.
+``scf_not_converged``), with the energy of its last iteration; coupled-perturbed SCF
+equations (for analytic Hessians) that end with perturbations above their tolerance
+are ``convergence`` (``response_not_converged``), with the results ORCA wrote, since
+ORCA itself carries on with them; an optimization that runs out of cycles is
+``convergence`` (``max_iter``), with its trajectory attached (ORCA itself reports it as
+a normal termination); a multiplicity the number of electrons cannot have is
+``input``; a module out of memory is ``resource`` (``host_memory``), with
+``required_gib`` and ``available_gib`` in the error's ``details`` where ORCA prints
+what a step needed against ``%maxcore`` (the SCF's estimate, DLPNO's minimum), in
+the terms of ORCA's memory keyword: the ``%maxcore`` with which the step fits and the
+one it ran with, each times the processes (ORCA's per-process MB of 2^20 bytes), in
+GiB. Any other error termination is ``internal``, with ORCA's error line.
+
+ORCA stops when the SCF does not converge unless ``%scf ConvIgnored true`` lets it
+carry on with the unconverged SCF; its results then come with the warning
+``loosely_converged``, whose message gives the last iteration's residuals.
 
 Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 ``/usr/bin/orca`` is the GNOME screen reader. qccompute always runs the absolute path;
@@ -64,6 +72,7 @@ from qcdata import (
     ExecutionInfo,
     Frame,
     ProgramInput,
+    ProgramWarning,
     SinglePointData,
     Structure,
 )
@@ -90,6 +99,7 @@ codec = Codec(
         (r"does not recognize the simple-input", "input", "unknown_key"),
         (r"has no input block|has no setting", "input", "unknown_key"),
         (r"the SCF did not converge", "convergence", "scf_not_converged"),
+        (r"CP-SCF equations did not converge", "convergence", "response_not_converged"),
         (r"optimization reached its maximum", "convergence", "max_iter"),
         (r"multiplicity .* impossible", "input", None),
         (r"need OpenMPI's mpirun", "environment", None),
@@ -275,6 +285,9 @@ def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
         return f"ORCA: {multiplicity.group(1)}."
     if re.search(r"The optimization did not converge but reached the maximum", stdout):
         return "ORCA: the optimization reached its maximum number of cycles."
+    response = unconverged_response(stdout)
+    if response is not None:
+        return response
     stopped = re.search(r"ORCA finished by error termination in (\w+)", stdout)
     if stopped:
         memory = out_of_memory(stdout, stopped.group(1))
@@ -286,6 +299,39 @@ def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
         errors = re.findall(r"^(?:\[file [^\]]*\]: )?\s*(Error.*\S)", stdout, re.M)
         reason = f": {errors[0]}" if errors else ""
         return f"ORCA stopped with an error in {stopped.group(1)}{reason}"
+    return None
+
+
+#: An iteration of ORCA's CP-SCF solver: ``ITERATION   4:   ||err||_max =
+#: 1.8527e-04 (   0.0 sec   9/  9 done)``, the last two the perturbations converged.
+_CPSCF_ITERATION = re.compile(
+    r"ITERATION\s+(\d+):\s+\|\|err\|\|_max =\s+(\S+)\s+\(.*?(\d+)/\s*(\d+) done\)"
+)
+
+
+def unconverged_response(stdout: str) -> str | None:
+    """Read CP-SCF equations that ended with perturbations above their tolerance.
+
+    ORCA's solver stops at its maximum number of iterations and goes on with the
+    response it has, without a word, so the last iteration of each solve is checked:
+    it counts the perturbations that met the tolerance.
+
+    Returns:
+        The failure's message, or None when every solve converged.
+    """
+    for block in re.split(r"CP-SCF DRIVER", stdout)[1:]:
+        iterations = _CPSCF_ITERATION.findall(block.split("CP-SCF equations solved")[0])
+        if not iterations:
+            continue
+        step, error, done, total = iterations[-1]
+        if int(done) < int(total):
+            tolerance = re.search(r"Convergence Tolerance\s+\.+\s+(\S+)", block)
+            limit = f" {tolerance.group(1)}" if tolerance else ""
+            return (
+                f"ORCA's CP-SCF equations did not converge: {int(total) - int(done)} "
+                f"of {total} perturbations were above the tolerance{limit} after "
+                f"{int(step) + 1} iterations (largest error {error})."
+            )
     return None
 
 
@@ -350,10 +396,75 @@ def out_of_memory(stdout: str, module: str) -> tuple[str, dict[str, Any]] | None
     target="energy", calctypes=[CalcType.energy, CalcType.gradient, CalcType.hessian]
 )
 def parse_energy(stdout: str) -> float:
-    """Parse the final single point energy from ORCA stdout."""
+    """Parse the final single point energy from ORCA stdout.
+
+    An SCF that did not converge has none; its last iteration's energy is returned.
+    """
+    final = re.search(r"FINAL SINGLE POINT ENERGY\s+(-?\d+\.\d+)", stdout)
+    if final is None and "SCF NOT CONVERGED AFTER" in stdout:
+        last = last_scf_iteration(stdout)
+        if last is not None:
+            return last[0]
     return float(
         re_search(r"FINAL SINGLE POINT ENERGY\s+(-?\d+\.\d+)", stdout).group(1)
     )
+
+
+def last_scf_iteration(stdout: str) -> tuple[float, dict[str, str]] | None:
+    """The energy (Eh) and residuals of the last SCF iteration ORCA printed.
+
+    ORCA's DIIS and SOSCF tables print a row per iteration under a header naming the
+    columns after the energy (``Delta-E  RMSDP  MaxDP  DIISErr ...``). None when the
+    last SCF ran in a solver without such a table (TRAH).
+    """
+    columns: list[str] = []  # empty outside a table
+    last: tuple[float, dict[str, str]] | None = None
+    end = last_end = 0
+    for line in stdout.splitlines(keepends=True):
+        end += len(line)
+        header = re.match(r"Iteration\s+Energy \(Eh\)\s+(.*)", line)
+        row = re.match(r"\s+\d+\s+(-?\d+\.\d{10,})\s+(-?\d\.\d+e[-+]\d+\s.*)", line)
+        if header:
+            columns = header.group(1).split()
+        elif columns and row:
+            values = dict(zip(columns, row.group(2).split(), strict=False))
+            last = (float(row.group(1)), values)
+            last_end = end
+        elif "***" not in line and not line.lstrip().startswith("-"):
+            columns = []  # the table ended
+    if last is None or "TRAH" in stdout[last_end:]:
+        return None
+    return last
+
+
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    """Warn ``loosely_converged`` when ORCA carried on with an unconverged SCF.
+
+    ORCA does that only with ``%scf ConvIgnored true``; the message gives the last
+    iteration's residuals.
+    """
+    stdout = ctx.stdout or ""
+    accepted = len(re.findall(r"the SCF did not converge, but SCFConvIgnored", stdout))
+    if not accepted:
+        return []
+    last = last_scf_iteration(stdout)
+    residuals = ""
+    if last is not None:
+        named = [
+            f"{k} {v}" for k, v in last[1].items() if k not in ("Damp", "Time(sec)")
+        ]
+        residuals = f"; the last iteration printed had {', '.join(named)}"
+    count = f"{accepted} SCFs" if accepted > 1 else "the SCF"
+    return [
+        ProgramWarning(
+            code="loosely_converged",
+            message=(
+                f"ORCA did not converge {count} and carried on with the unconverged "
+                f"result because %scf ConvIgnored is true{residuals}."
+            ),
+        )
+    ]
 
 
 @codec.parser(target="gradient", calctypes=[CalcType.gradient])

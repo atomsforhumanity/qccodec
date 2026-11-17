@@ -161,6 +161,37 @@ def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
         "convergence",
         "scf_not_converged",
     )
+    # The last iterate's energy comes with the failure.
+    assert e.value.output is not None
+    assert np.isclose(e.value.output.results.energy, ENERGY, atol=0.1)
+
+
+def test_scf_carried_on_unconverged_warns(run: Run, water: Structure) -> None:
+    """With ConvIgnored ORCA carries on after an unconverged SCF: a warned success."""
+    inp = _input(water, CalcType.gradient).model_copy(
+        update={"keywords": {"scf": {"maxiter": 2, "convignored": True}}}
+    )
+    output = run(inp, case="scf_convignored_gradient")
+    assert [w.code for w in output.warnings] == ["loosely_converged"]
+    assert "ConvIgnored" in output.warnings[0].message
+    assert "Delta-E" in output.warnings[0].message
+
+
+def test_unconverged_cpscf_is_response_not_converged(
+    run: Run, water: Structure
+) -> None:
+    """ORCA goes on with CP-SCF equations it did not converge; the codec does not."""
+    inp = _input(water, CalcType.hessian).model_copy(
+        update={"keywords": {"method": {"z_maxiter": 1}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="cpscf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "response_not_converged",
+    )
+    assert e.value.output is not None
+    assert e.value.output.results.hessian is not None  # what ORCA computed with it
 
 
 def test_optimization_out_of_cycles_fails(run: Run, water: Structure) -> None:
