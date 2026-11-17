@@ -18,7 +18,7 @@
   "hessian": null,
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "scf_dipole_moment": null,
+  "dipole_moment": null,
   "atomic_charges": [
     -0.56104018,
     0.28051358,
@@ -36,7 +36,7 @@
   "energy_components": {},
   "scf_iterations": null,
   "scf_s_squared": null,
-  "scf_quadrupole_moment": null,
+  "quadrupole_moment": null,
   "polarizability": null,
   "bond_orders": null,
   "bond_orders_kind": null,

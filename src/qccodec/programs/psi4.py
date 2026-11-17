@@ -288,7 +288,7 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
         "calcinfo_nmo": results.get("nmo"),
         "calcinfo_nalpha": results.get("nalpha"),
         "calcinfo_nbeta": results.get("nbeta"),
-        "scf_dipole_moment": results.get("dipole"),
+        "dipole_moment": results.get("dipole"),
         "atomic_charges": results.get("mulliken_charges"),
         "point_charge_gradient": results.get("point_charge_gradient"),
     }

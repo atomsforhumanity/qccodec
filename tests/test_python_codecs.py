@@ -332,7 +332,7 @@ def test_tblite_invoke_with_a_fake_library(monkeypatch: pytest.MonkeyPatch) -> N
     assert isinstance(data, SinglePointData)
     assert data.energy == -5.07
     assert np.allclose(np.asarray(data.gradient), 0.01)
-    assert np.allclose(np.asarray(data.scf_dipole_moment), [0.1, 0.2, 0.3])
+    assert np.allclose(np.asarray(data.dipole_moment), [0.1, 0.2, 0.3])
 
 
 # ------------------------------------------------------------------ MLIPs

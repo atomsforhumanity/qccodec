@@ -52,7 +52,7 @@ def test_dftb3_gradient(run: Run, water: Structure) -> None:
     assert results.provenance.program == "dftbplus"
     assert np.isclose(results.energy, DFTB3_ENERGY, atol=1e-8)
     assert np.isclose(sum(results.atomic_charges), 0.0, atol=1e-6)
-    assert results.scf_dipole_moment is not None
+    assert results.dipole_moment is not None
 
 
 def test_dftb3_gradient_matches_finite_differences(run: Run, water: Structure) -> None:

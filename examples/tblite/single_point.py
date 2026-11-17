@@ -63,5 +63,5 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 print("Partial charges:", results.atomic_charges)
-print("Dipole (e*bohr):", results.scf_dipole_moment)
+print("Dipole (e*bohr):", results.dipole_moment)
 print("tblite version:", results.provenance.program_version)

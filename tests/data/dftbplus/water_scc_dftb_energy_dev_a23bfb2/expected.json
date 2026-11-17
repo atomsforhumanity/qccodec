@@ -17,7 +17,7 @@
   "hessian": null,
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "scf_dipole_moment": [
+  "dipole_moment": [
     0.490608944923102,
     0.363336386893196,
     -0.256800577296359

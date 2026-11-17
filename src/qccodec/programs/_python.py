@@ -30,7 +30,7 @@ class SinglePoint(TypedDict, total=False):
     gradient: list[list[float]]
     hessian: list[list[float]]
     atomic_charges: list[float]
-    scf_dipole_moment: list[float]
+    dipole_moment: list[float]
     extras: dict[str, Any]
     version: str | None
 
@@ -160,7 +160,7 @@ def single_point_decoder(
         fields: dict[str, Any] = {
             "energy": snapshot["energy"],
             "atomic_charges": snapshot.get("atomic_charges"),
-            "scf_dipole_moment": snapshot.get("scf_dipole_moment"),
+            "dipole_moment": snapshot.get("dipole_moment"),
             "extras": snapshot.get("extras", {}),
         }
         if inp.calctype in (CalcType.gradient, CalcType.hessian):

@@ -81,6 +81,6 @@ if results.gradient is not None:
 if results.hessian is not None:
     print("Hessian (Hartree/bohr^2), shape:", results.hessian.shape)
 print("Mulliken charges:", results.atomic_charges)
-print("Dipole (e*bohr):", results.scf_dipole_moment)
+print("Dipole (e*bohr):", results.dipole_moment)
 print("DFTB+ version:", results.provenance.program_version)
 print("Cite:", dftb_parameter_sets.by_name("3ob-3-1").citation)

@@ -44,7 +44,7 @@ the result has the Hessian but no energy or gradient at the input geometry; run 
 ``gradient`` for those. The codec tightens ``SCCTolerance`` to 1e-8 for these runs,
 since DFTB+'s default 1e-5 leaves noise of about 1e-4 in the Hessian), and ``optimization`` (``Driver = GeometryOptimisation`` with
 LBFGS on all atoms; override any part through ``keywords["Driver"]``). Energies and
-gradients also fill ``atomic_charges`` (Mulliken) and ``scf_dipole_moment``. The
+gradients also fill ``atomic_charges`` (Mulliken) and ``dipole_moment``. The
 optimization trajectory holds each step's structure and energy; the last step also
 carries the gradient.
 
@@ -427,7 +427,7 @@ def parse_charges(contents: str) -> list[float]:
 
 @codec.parser(
     file="results.tag",
-    target="scf_dipole_moment",
+    target="dipole_moment",
     calctypes=[CalcType.energy, CalcType.gradient],
     required=False,
 )

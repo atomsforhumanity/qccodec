@@ -27,7 +27,7 @@ Inputs map to tblite as follows:
 Calculation types: ``energy`` and ``gradient``. tblite has no analytic Hessian; use
 ``program="xtb"`` for GFN2-xTB Hessians, or geomeTRIC with tblite gradients for
 optimizations. Every result records Mulliken partial charges in ``atomic_charges``
-and the dipole moment (e bohr) in ``scf_dipole_moment``.
+and the dipole moment (e bohr) in ``dipole_moment``.
 
 tblite never moves or reorients the molecule, so gradients are in the input's frame.
 No input field carries atom indices.
@@ -161,7 +161,7 @@ def invoke_tblite(
         "energy": float(result.get("energy")),
         "gradient": np.asarray(result.get("gradient")).tolist(),
         "atomic_charges": np.asarray(result.get("charges")).tolist(),
-        "scf_dipole_moment": np.asarray(result.get("dipole")).tolist(),
+        "dipole_moment": np.asarray(result.get("dipole")).tolist(),
         "version": package_version("tblite"),
     }
 

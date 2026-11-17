@@ -54,7 +54,7 @@ def test_energy(run: Run, water: Structure) -> None:
     assert (
         results.atomic_charges is not None and abs(sum(results.atomic_charges)) < 1e-6
     )
-    assert results.scf_dipole_moment is not None
+    assert results.dipole_moment is not None
     assert "SCF TOTAL ENERGY" in results.extras["psi4_variables"]
 
 

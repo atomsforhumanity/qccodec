@@ -33,7 +33,7 @@
   "hessian": null,
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "scf_dipole_moment": null,
+  "dipole_moment": null,
   "atomic_charges": [
     -0.61254611,
     0.30620088,

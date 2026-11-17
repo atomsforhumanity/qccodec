@@ -49,7 +49,7 @@ def test_gradient(run: Run, water: Structure) -> None:
     assert np.isclose(results.energy, XTB_ENERGY, atol=1e-7)
     assert np.allclose(results.gradient, XTB_GRADIENT, atol=1e-5)
     assert np.allclose(results.atomic_charges, [-0.561, 0.2805, 0.2805], atol=1e-3)
-    assert results.scf_dipole_moment is not None
+    assert results.dipole_moment is not None
 
 
 def test_energy_has_no_gradient(run: Run, water: Structure) -> None:

@@ -101,7 +101,7 @@
     "core_hamiltonian": null,
     "qcdata_version": "0.24.0a2"
   },
-  "scf_dipole_moment": [
+  "dipole_moment": [
     0.499637637409581,
     0.36993522101925447,
     -0.2615773884606035
@@ -123,7 +123,7 @@
   "energy_components": {},
   "scf_iterations": null,
   "scf_s_squared": null,
-  "scf_quadrupole_moment": null,
+  "quadrupole_moment": null,
   "polarizability": null,
   "bond_orders": null,
   "bond_orders_kind": null,

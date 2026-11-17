@@ -109,7 +109,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -214,7 +214,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -319,7 +319,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -424,7 +424,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"

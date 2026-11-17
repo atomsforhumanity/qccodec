@@ -78,5 +78,5 @@ if results.gradient is not None:
 if results.hessian is not None:
     print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
 print("Mulliken charges:", results.atomic_charges)
-print("Dipole (e*bohr):", results.scf_dipole_moment)
+print("Dipole (e*bohr):", results.dipole_moment)
 print("Psi4 variables:", sorted(results.extras["psi4_variables"])[:5], "...")

@@ -116,7 +116,7 @@
   ],
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "scf_dipole_moment": null,
+  "dipole_moment": null,
   "vibrational_analysis": {
     "masses": [
       15.999,
