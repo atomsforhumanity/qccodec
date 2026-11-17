@@ -123,7 +123,8 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(
             f"{method} describes neutral closed-shell molecules only; got charge "
             f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}. "
-            "MACE-OMOL ('mace-omol') takes charge and spin."
+            "MACE-OMOL ('mace-omol') takes charge and spin.",
+            code="not_modeled",
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)

@@ -94,7 +94,8 @@ def encode(inp: ProgramInput) -> PythonInput:
     if inp.require_structure().charge != 0 or inp.require_structure().multiplicity != 1:
         raise EncoderError(
             "ANI models describe neutral closed-shell molecules only; got charge "
-            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}."
+            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}.",
+            code="not_modeled",
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)

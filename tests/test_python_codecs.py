@@ -181,6 +181,29 @@ def test_tblite_failures_have_kinds(message: str, kind: str, code: str | None) -
     assert (e.value.kind, e.value.code) == (kind, code)
 
 
+@pytest.mark.parametrize(
+    ("program", "message"),
+    [
+        (
+            "aimnet2",
+            "AIMNet2 model 'aimnet2' is closed-shell; use 'aimnet2-nse' for "
+            "multiplicity 2.",
+        ),
+        (
+            "orb",
+            "Orb model 'orb-v3-direct-20-omat' describes neutral closed-shell systems "
+            "only; use an OMol25 model such as 'orb-v3-conservative-omol'.",
+        ),
+    ],
+)
+def test_models_refusing_a_spin_are_not_modeled(program: str, message: str) -> None:
+    """A model that cannot describe the structure's charge or spin: not_modeled."""
+    out = PythonOutput(error=ValueError(message))
+    with pytest.raises(CalculationError) as e:
+        get_codec(program).decode(_input(program), out)
+    assert (e.value.kind, e.value.code) == ("input", "not_modeled")
+
+
 def test_tblite_unknown_keyword_names_the_closest() -> None:
     """A misspelled tblite setting is refused with code unknown_key."""
     with pytest.raises(EncoderError, match="did you mean 'max-iter'") as e:
@@ -336,8 +359,9 @@ def test_torchani_models(method: str, name: str) -> None:
 
 def test_torchani_rejects_what_ani_cannot_describe() -> None:
     """ANI models are neutral closed-shell only; dtype and model names are checked."""
-    with pytest.raises(EncoderError, match="neutral closed-shell"):
+    with pytest.raises(EncoderError, match="neutral closed-shell") as e:
         _encode(_input("torchani", structure=HYDROXIDE))
+    assert e.value.code == "not_modeled"
     with pytest.raises(EncoderError, match="Unknown TorchANI model"):
         _encode(_input("torchani", method="ANI3"))
     with pytest.raises(EncoderError, match="dtype"):
@@ -362,8 +386,9 @@ def test_mace_models(method: str, loader: str | None, model: str | None) -> None
 
 def test_mace_charge_and_spin() -> None:
     """Only MACE-OMOL reads charge and spin; the other families refuse ions."""
-    with pytest.raises(EncoderError, match="neutral closed-shell"):
+    with pytest.raises(EncoderError, match="neutral closed-shell") as e:
         _encode(_input("mace", structure=HYDROXIDE))
+    assert e.value.code == "not_modeled"
     kwargs = _encode(_input("mace", method="mace-omol", structure=HYDROXIDE)).kwargs
     assert kwargs["charge_and_spin"] == (-1, 1)
     with pytest.raises(EncoderError, match="Unknown MACE model"):

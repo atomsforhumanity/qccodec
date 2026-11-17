@@ -214,6 +214,8 @@ codec = Codec(
     decode=single_point_decoder("aimnet2"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    # The model cannot describe the structure's charge or spin.
+    errors=[(r"is closed-shell; use 'aimnet2-nse'", "input", "not_modeled")],
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'aimnet2').

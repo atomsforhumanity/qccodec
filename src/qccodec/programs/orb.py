@@ -215,6 +215,8 @@ codec = Codec(
     decode=single_point_decoder("orb"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    # The model cannot describe the structure's charge or spin.
+    errors=[(r"describes neutral closed-shell systems only", "input", "not_modeled")],
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'orb').
