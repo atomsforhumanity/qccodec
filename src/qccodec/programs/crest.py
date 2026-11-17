@@ -26,6 +26,14 @@ is the codec's, not written to CREST's input), or with the decode option
 optimizes with the center of mass at the origin; the codec shifts optimization
 trajectories back into the input's frame. No input field carries atom indices.
 
+CREST refuses keys it does not know inside the tables it reads, before calculating
+(kind ``input``, code ``unknown_key``), but ignores whole tables it does not know, so
+the codec refuses those itself, naming the closest table (CREST 3.0.2 reads
+``calculation`` with ``level``, ``mecp``, ``scans`` and ``constraints``, ``dynamics``
+with ``meta``, ``cregen``, ``confsolv``, ``thermo``, ``protonation`` and ``lwoniom``). A
+value CREST does not accept is ``input``; anything else CREST reports as FAILED is
+``internal``.
+
 CREST computes GFN-xTB and GFN-FF with its built-in tblite and gfnff libraries, so it
 needs no separate xtb. Use the official static build: conda-forge's CREST 3.0.2 crashes
 in its optimizer.
@@ -36,6 +44,7 @@ from __future__ import annotations
 import copy
 import math
 import os
+import re
 from typing import Any
 
 import numpy as np
@@ -55,7 +64,7 @@ from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..program import CodecProgram
 from ..utils import re_finditer, re_search
-from ._common import invocation, parse_g98_vibrations
+from ._common import invocation, parse_g98_vibrations, reject_unknown
 
 codec = Codec(
     "crest",
@@ -68,7 +77,25 @@ codec = Codec(
     },
     # Rotamer sets can be very large, so they are not collected unless requested.
     options={"collect_rotamers": False},
+    # Matched against the failure hook's messages below.
+    errors=[
+        (r"CREST does not know", "input", "unknown_key"),
+        (r"CREST does not accept", "input", None),
+    ],
 )
+
+# The tables of CREST 3.0.2's input file, and the tables inside them; CREST ignores a
+# table it does not know without a word. "output" is the codec's own group.
+TABLES: dict[str, frozenset[str]] = {
+    "calculation": frozenset({"level", "mecp", "scans", "constraint", "constraints"}),
+    "dynamics": frozenset({"meta"}),
+    "cregen": frozenset(),
+    "confsolv": frozenset(),
+    "thermo": frozenset(),
+    "protonation": frozenset(),
+    "lwoniom": frozenset(),
+    "output": frozenset(),
+}
 
 
 # ------------------------------------------------------------------ encoding
@@ -108,6 +135,32 @@ def validate_input(inp: ProgramInput) -> None:
             )
     if "runtype" in inp.keywords:
         _validate_runtype_calctype(inp.keywords["runtype"], inp.calctype)
+    _check_tables(inp.keywords)
+
+
+def _is_table(value: Any) -> bool:
+    """Whether a TOML value is a table or an array of tables."""
+    return isinstance(value, dict) or (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(v, dict) for v in value)
+    )
+
+
+def _check_tables(keywords: dict[str, Any]) -> None:
+    """Refuse tables CREST would ignore; CREST checks the keys inside the ones it reads.
+
+    Raises:
+        EncoderError: Kind ``input``, code ``unknown_key``, with the closest table.
+    """
+    reject_unknown(
+        "CREST", [k for k, v in keywords.items() if _is_table(v)], TABLES, where="table"
+    )
+    for name, inner in TABLES.items():
+        section = keywords.get(name)
+        if isinstance(section, dict):
+            tables = [k for k, v in section.items() if _is_table(v)]
+            reject_unknown("CREST", tables, inner, where=f"table in [{name}]")
 
 
 _RUNTYPES: dict[CalcType, set[str]] = {
@@ -173,8 +226,21 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
 
 @codec.failure
 def failure(ctx: Context) -> str | None:
-    """CREST prints FAILED on scientific failure even with a zero exit code."""
-    if ctx.stdout and "FAILED" in ctx.stdout:
+    """Explain why CREST stopped, from what it prints.
+
+    CREST refuses an input file with keys or values it does not know ("unrecognized
+    KEYWORD in <where> : <key>", "unrecognized ARGUMENT : <value>") before calculating,
+    and prints FAILED on a scientific failure even with a zero exit code.
+    """
+    stdout = ctx.stdout or ""
+    keys = re.findall(r"unrecognized KEYWORD in (.+?) : (\S+)", stdout)
+    if keys:
+        named = ", ".join(f"{key!r} ({where})" for where, key in keys)
+        return f"CREST does not know the setting(s) {named}."
+    values = re.findall(r"unrecognized ARGUMENT : (\S+)", stdout)
+    if values:
+        return f"CREST does not accept the value(s) {', '.join(map(repr, values))}."
+    if "FAILED" in stdout:
         return "CREST reported FAILED. See calculation logs."
     return None
 
