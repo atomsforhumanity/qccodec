@@ -338,8 +338,10 @@ tests/data/<program>/<case>/
 
 `case.json` keys: `options` (decode options for the codec), `failed` (decode in recovery
 mode), `raises` (exception class name the decode must raise; `expected.json` then holds
-the partial data attached to it), `directory` (force passing the case directory to
-parsers; by default it is passed only when the case holds output files).
+the partial data attached to it) with its `kind`, `code` and `details`, `warnings` (the
+codes the codec's warning hook must give, in order; none by default), `directory`
+(force passing the case directory to parsers; by default it is passed only when the
+case holds output files).
 
 `tests/test_cases.py` runs every case under `tests/data` through
 `qccodec.testing.run_case`, which checks the encoded files, the full decode, and each

@@ -167,14 +167,17 @@ def _record_case(
     (dest / "input.json").write_text(input_data.model_dump_json(indent=2) + "\n")
     expected = _without_execution(json.loads(output.results.model_dump_json()))
     (dest / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    settings: dict[str, Any] = {}
     if failure is not None:
-        settings: dict[str, Any] = {
-            "raises": "CalculationError",
-            "kind": failure.error.kind.value,
-            "code": failure.error.code,
-        }
+        settings["raises"] = "CalculationError"
+        settings["kind"] = failure.error.kind.value
+        settings["code"] = failure.error.code
         if failure.error.details:
             settings["details"] = failure.error.details
+    warned = codec.warnings(input_data, stdout=output.logs, directory=scratch)
+    if warned:
+        settings["warnings"] = [w.code for w in warned]
+    if settings:
         (dest / "case.json").write_text(json.dumps(settings, indent=2) + "\n")
     if output.logs is not None:
         (dest / "stdout").write_text(output.logs)

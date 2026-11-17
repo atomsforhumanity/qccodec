@@ -700,6 +700,10 @@ class CodecProgram:
                     # The codec explains the failure (an exit status, a library's
                     # exception): lead with its reason, which carries the kind.
                     failures.insert(0, failures.pop())
+            if isinstance(inp, ProgramInput):
+                warnings.extend(
+                    self.codec.warnings(inp, stdout=out.stdout, directory=out.directory)
+                )
             if isinstance(out, PythonOutput):
                 resolved = self._device(inp, native, out.value, ctx, warnings)
             if not isinstance(inp, ProgramInput):

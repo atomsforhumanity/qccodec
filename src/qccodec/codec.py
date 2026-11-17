@@ -20,6 +20,7 @@ from qcdata import (
     ProgramError,
     ProgramInput,
     ProgramOutput,
+    ProgramWarning,
     StructuredData,
     get_data_type,
 )
@@ -49,6 +50,9 @@ Decoder = Callable[[Any, NativeOutput], Data]
 #: A failure hook: None (no failure), why the program failed, or that and the
 #: failure's structured facts (`qcdata.ErrorInfo.details`: ``required_gib``, ...).
 Failure = Callable[["Context"], "str | tuple[str, dict[str, Any]] | None"]
+#: A warning hook: what a run's output says the caller should know about results it
+#: delivered (`qcdata.ProgramWarning`), such as an SCF accepted unconverged.
+Warn = Callable[["Context"], "list[ProgramWarning]"]
 PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
 VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
@@ -258,6 +262,7 @@ class Codec:
         self._encode: Encoder | None = encode
         self._decode: Decoder | None = None
         self._failure: Failure | None = failure
+        self._warn: Warn | None = None
         if (encode_batch is None) != (batch_key is None):
             raise RegistryError(
                 f"Codec {program!r} needs both encode_batch and batch_key to batch."
@@ -319,6 +324,42 @@ class Codec:
         """
         self._failure = func
         return func
+
+    def warning(self, func: F) -> F:
+        """Register ``func(ctx)`` returning the warnings a run's output gives.
+
+        For results a program delivered but the caller should know about, such as an
+        SCF it accepted unconverged (code ``loosely_converged``). It runs on every
+        output, failed or not, and returns an empty list when there is nothing to say.
+        """
+        self._warn = func
+        return func
+
+    def warnings(
+        self,
+        input_data: ProgramInput,
+        *,
+        stdout: str | None = None,
+        directory: str | Path | None = None,
+    ) -> list[ProgramWarning]:
+        """The warnings the codec's warning hook finds in a run's output.
+
+        Args:
+            input_data: The input that produced the output.
+            stdout: The program's captured output.
+            directory: The calculation directory holding output files.
+        """
+        if self._warn is None:
+            return []
+        ctx = Context(
+            codec=self,
+            calctype=input_data.calctype,
+            stdout=stdout,
+            directory=Path(directory) if directory is not None else None,
+            input_data=input_data,
+            options=self._merge_options(None),
+        )
+        return self._warn(ctx)
 
     def add_error(self, pattern: str, kind: str, code: str | None = None) -> None:
         """Classify failures whose message matches ``pattern`` (see ``errors``).

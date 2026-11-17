@@ -10,7 +10,7 @@ A *case* is a directory holding one program run and what a codec must make of it
         case.json       optional settings: {"options": {...}, "failed": true,
                         "raises": "CalculationError", "kind": "convergence",
                         "code": "scf_not_converged", "details": {...},
-                        "directory": true}
+                        "warnings": ["loosely_converged"], "directory": true}
         encoded/        optional: command.txt (one argument per line) and the native
                         input files codec.encode(input) must generate
 
@@ -78,6 +78,8 @@ class Case:
         code: The error code it must carry, if ``kind`` is given.
         details: The details a raised ``CalculationError`` must carry
             (``required_gib``, ...), if given.
+        warnings: The codes of the warnings the codec's warning hook must give, in
+            order; none unless given.
         encoded: The ``encoded/`` directory with expected native inputs, if present.
     """
 
@@ -93,6 +95,7 @@ class Case:
     kind: str | None = None
     code: str | None = None
     details: dict[str, Any] | None = None
+    warnings: list[str] = field(default_factory=list)
     encoded: Path | None = None
 
     def __str__(self) -> str:
@@ -128,6 +131,7 @@ def load_case(path: str | Path) -> Case:
         kind=settings.get("kind"),
         code=settings.get("code"),
         details=settings.get("details"),
+        warnings=list(settings.get("warnings", [])),
         encoded=encoded if encoded.is_dir() else None,
     )
 
@@ -325,17 +329,23 @@ def run_case(
 ) -> None:
     """Check a codec against one fixture case.
 
-    Verifies, in order: the encoded native inputs when ``encoded/`` exists; the full
-    decode, which must produce ``expected.json`` or raise the exception named in
-    ``case.json`` (with its ``kind``, ``code`` and ``details``, when given) with
-    ``expected.json`` attached as partial data; and each registered parser applied
-    directly to its own file.
+    Verifies, in order: the encoded native inputs when ``encoded/`` exists; the
+    warnings the codec gives, which must have the codes ``case.json`` lists (none by
+    default); the full decode, which must produce ``expected.json`` or raise the
+    exception named in ``case.json`` (with its ``kind``, ``code`` and ``details``,
+    when given) with ``expected.json`` attached as partial data; and each registered
+    parser applied directly to its own file.
 
     Raises:
         AssertionError: With a description of the first mismatch.
     """
     if case.encoded is not None:
         check_encoding(codec, case, rtol=rtol)
+    warnings = codec.warnings(
+        case.input_data, stdout=case.stdout, directory=case.directory
+    )
+    codes = [w.code for w in warnings]
+    assert codes == case.warnings, f"{case}: warnings are {codes}, not {case.warnings}"
     kwargs: dict[str, Any] = dict(
         stdout=case.stdout,
         directory=case.directory,

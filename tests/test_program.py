@@ -17,6 +17,7 @@ from qcdata import (
     Model,
     ProgramError,
     ProgramInput,
+    ProgramWarning,
     Structure,
 )
 
@@ -39,6 +40,8 @@ if mode == "fail":
     print("SCF failed to converge"); sys.exit(3)
 if mode == "sleep":
     time.sleep(30)
+if mode == "loose":
+    print("SCF accepted unconverged")
 print("Total energy: -1.5")
 """
 
@@ -69,6 +72,13 @@ def _energy(stdout: str) -> float:
 @codec.failure
 def _failure(ctx: Any) -> str | None:
     return "SCF failed" if "failed to converge" in (ctx.stdout or "") else None
+
+
+@codec.warning
+def _warnings(ctx: Any) -> list[ProgramWarning]:
+    if "accepted unconverged" not in (ctx.stdout or ""):
+        return []
+    return [ProgramWarning(code="loosely_converged", message="SCF accepted.")]
 
 
 codec.cap_threads = lambda inp, n: inp.model_copy(
@@ -114,6 +124,14 @@ def test_a_request_larger_than_the_grant_is_capped(tmp_path: Path) -> None:
     assert out.input_data.keywords["threads"] == 8  # the caller's input, unchanged
     within: Any = program.compute(inp(threads=2), ctx(tmp_path, threads=4))
     assert within.execution.threads == 2 and not within.warnings
+
+
+def test_the_codecs_warnings_come_with_the_output(tmp_path: Path) -> None:
+    """A result the codec's warning hook flags carries its warning."""
+    out: Any = program.compute(inp(mode="loose"), ctx(tmp_path))
+    assert out.success and [w.code for w in out.warnings] == ["loosely_converged"]
+    assert not program.compute(inp(), ctx(tmp_path)).warnings
+    assert Codec("plain", calctypes={CalcType.energy}).warnings(inp()) == []
 
 
 def test_failures_raise_with_the_output_and_logs(tmp_path: Path) -> None:

@@ -156,10 +156,28 @@ anything else is `internal`, which means a bug. A failure that knows a number re
 `(message, details)` from the hook instead of the message alone, and `details` becomes
 the error's `ErrorInfo.details`: a program out of memory (kind `resource`, code
 `host_memory` or `device_memory`) gives `required_gib` and `available_gib` there when
-its output says what it needed, for the whole calculation (ORCA's per-process
+its output says what it needed, in the terms of the memory setting that would make it
+fit: the setting with which it fits and the one it ran with (ORCA's per-process
 `%maxcore` figures times its processes). Record a fixture case of each failure with
 `"raises": "CalculationError", "kind": ..., "code": ...` (and `"details"`) in its
-`case.json`.
+`case.json`. The shared codes come first: an SCF that does not converge is
+`scf_not_converged` (attach the last iteration's energy where the output gives it),
+response equations (CPHF/CPKS) that do not are `response_not_converged`.
+
+A result the program delivered but the caller should know about gets a warning from a
+second hook, which runs on every output:
+
+```python
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    if "SCF not converged, continuing" not in (ctx.stdout or ""):
+        return []
+    return [ProgramWarning(code="loosely_converged", message="... residual and rule ...")]
+```
+
+An SCF the program accepted without meeting its thresholds is the shared
+`loosely_converged`, its message giving the residual reached and the rule that
+accepted it. List the codes in the case's `case.json` as `"warnings": [...]`.
 Programs driven through a Python API skip parsers entirely:
 
 ```python
