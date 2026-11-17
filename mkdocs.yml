@@ -1,8 +1,12 @@
 site_name: qccodec
-site_url: https://qccodec.docs.afh.org/
+# The Docs workflow builds the next branch's docs with DOCS_SITE_URL set to
+# https://qccodec.docs.afh.org/next/; their pages then show a pre-release banner
+# (overrides/main.html).
+site_url: !ENV [DOCS_SITE_URL, "https://qccodec.docs.afh.org/"]
 site_description: Program-specific encoders and parsers for quantum chemistry programs, with copy-and-paste examples.
 theme:
   name: material
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default

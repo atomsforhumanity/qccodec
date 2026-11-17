@@ -1,20 +1,31 @@
 name: Docs
 
-# Publishes https://qccodec.docs.afh.org from the gh-pages branch.
-# A release tag (the same tags as the Release workflow) or a manual run builds and
-# deploys the site; pull requests that touch the docs only build it.
+# Publishes https://qccodec.docs.afh.org from gh-pages, which holds two sites:
+# - the stable docs at the root, from final release tags (0.22.0, not a pre-release
+#   such as 0.22.0a1);
+# - the next branch's docs under /next/, from every push to next and from manual runs
+#   (which always build next).
+# Each deploy replaces only its own part (scripts/deploy_docs.py): a stable deploy keeps
+# next/ and CNAME, and a next deploy touches nothing outside next/. While the repository
+# has no final release, a next deploy also publishes the next docs at the root.
+# Pull requests that touch the docs only build them.
 on:
   push:
-    tags: ["[0-9]+.[0-9]+.[0-9]+"]  # final releases only, not pre-releases such as 0.22.0a1
+    # Filter patterns, not regular expressions: + repeats the preceding character
+    # class, . is literal, and the pattern must match the whole tag.
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+    branches: [next]
   workflow_dispatch:
   pull_request:
     paths:
       - "docs/**"
       - "examples/**"
       - "src/**"
+      - "overrides/**"
       - "mkdocs.yml"
       - "pyproject.toml"
       - "uv.lock"
+      - "scripts/deploy_docs.py"
       - ".github/workflows/docs.yaml"
 
 permissions:
@@ -24,24 +35,51 @@ jobs:
   docs:
     name: Build and publish docs
     runs-on: ubuntu-latest
-    # Deploys must not overlap; pull request builds can be superseded.
+    # Deploys of one site queue (a newer one replaces a waiting one); the two sites'
+    # deploys may overlap, since each pushes only its own part. Pull request builds
+    # can be superseded.
     concurrency:
-      group: docs-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+      group: docs-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && 'stable' || 'next' }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     permissions:
       contents: write # push to gh-pages
+    env:
+      # stable: a final release tag; next: a push to next or a manual run; empty: a
+      # pull request.
+      DEPLOY: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && 'stable' || github.event_name != 'pull_request' && 'next' || '' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'next' || '' }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install
         run: uv sync --locked --group docs
-      - name: Build
-        run: uv run mkdocs build --strict
-      - name: Publish to gh-pages
-        if: github.event_name != 'pull_request'
+      - name: Build (site root)
+        run: uv run mkdocs build --strict --site-dir site
+      - name: Build (/next/)
+        if: env.DEPLOY != 'stable'
+        env:
+          DOCS_SITE_URL: https://qccodec.docs.afh.org/next/
+        run: uv run mkdocs build --strict --site-dir site-next
+      - name: Configure git
+        if: env.DEPLOY != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          uv run mkdocs gh-deploy --force --message "Deploy {sha} with MkDocs {version}"
+      - name: Publish the stable docs (site root)
+        if: env.DEPLOY == 'stable'
+        run: uv run python scripts/deploy_docs.py site --message "Deploy ${{ github.ref_name }} to the root"
+      - name: Publish the next docs (/next/)
+        if: env.DEPLOY == 'next'
+        run: uv run python scripts/deploy_docs.py site-next --prefix next
+      - name: Publish the next docs at the root, while there is no final release
+        if: env.DEPLOY == 'next'
+        run: |
+          tags=$(git ls-remote --tags --refs origin)
+          if grep -qE 'refs/tags/[0-9]+\.[0-9]+\.[0-9]+$' <<< "$tags"; then
+            echo "A final release exists; the root keeps the stable docs."
+          else
+            uv run python scripts/deploy_docs.py site
+          fi
