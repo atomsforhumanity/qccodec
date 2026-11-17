@@ -53,8 +53,9 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_search
-from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
+from ._common import invocation, parse_g98_vibrations
 
 STRUCTURE_FILE = "structure.xyz"
 ENGRAD_FILE = "structure.engrad"
@@ -187,7 +188,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         STRUCTURE_FILE,
         arguments=arguments,
         environment={"OMP_NUM_THREADS": "1"},
-        threads=int(inp.keywords.get("parallel", 1) or 1),
+        threads=int(inp.keywords["parallel"]) if inp.keywords.get("parallel") else None,
     )
 
 
@@ -307,12 +308,9 @@ def parse_hessian(contents: str) -> list[list[float]]:
     return [values[i * n : (i + 1) * n] for i in range(n)]
 
 
-codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])(
-    parse_g98_freqs
-)
 codec.parser(
-    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
-)(parse_g98_normal_modes)
+    file="directory", target="vibrational_analysis", calctypes=[CalcType.hessian]
+)(parse_g98_vibrations)
 
 
 @codec.parser(
@@ -385,3 +383,7 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     if not trajectory and not ctx.failed:
         raise ParserError("xtb optimization trajectory is empty.")
     return trajectory
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'xtb').
+program = CodecProgram(codec)

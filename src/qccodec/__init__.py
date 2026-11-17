@@ -14,6 +14,7 @@ from .native import (
     SubprocessInput,
     SubprocessOutput,
 )
+from .program import CodecProgram
 from .registry import (
     decode,
     encode,
@@ -26,6 +27,7 @@ from .utils import re_finditer, re_search
 
 __all__ = [
     "Codec",
+    "CodecProgram",
     "Context",
     "ParserSpec",
     "NativeInput",

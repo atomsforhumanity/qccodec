@@ -293,21 +293,18 @@ def check_parsers(
             continue
         if spec.target is None:
             for key, item in value.items():
+                found = expected.get(key)
+                if isinstance(item, dict) and isinstance(found, dict):
+                    found = {k: found.get(k) for k in item}
                 assert_data_equal(
-                    item,
-                    expected.get(key),
-                    rtol=rtol,
-                    atol=atol,
-                    where=f"{where}.{key}",
+                    item, found, rtol=rtol, atol=atol, where=f"{where}.{key}"
                 )
         else:
-            assert_data_equal(
-                value,
-                _expected_slice(expected, spec.target),
-                rtol=rtol,
-                atol=atol,
-                where=where,
-            )
+            found = _expected_slice(expected, spec.target)
+            if isinstance(value, dict) and isinstance(found, dict):
+                # A parser filling a model returns its own fields; the rest default.
+                found = {key: found.get(key) for key in value}
+            assert_data_equal(value, found, rtol=rtol, atol=atol, where=where)
 
 
 def run_case(
@@ -514,7 +511,7 @@ def check_normal_modes(
     atom order, or a mass-weighted convention.
 
     Args:
-        data: A ``SinglePointData`` with ``normal_modes_cartesian``.
+        data: A ``SinglePointData`` with a ``vibrational_analysis``.
         symbols: The input structure's element symbols.
         min_overlap: Smallest acceptable overlap with the Hessian's eigenvector;
             below 1 for programs that print modes with few digits.
@@ -523,8 +520,11 @@ def check_normal_modes(
     Raises:
         AssertionError: Listing every problem found.
     """
-    modes = np.asarray(data.normal_modes_cartesian, dtype=float)
-    freqs = np.asarray(data.freqs_wavenumber, dtype=float)
+    analysis = data.vibrational_analysis
+    if analysis is None:
+        raise AssertionError("no vibrational_analysis")
+    modes = np.asarray(analysis.normal_modes_cartesian, dtype=float)
+    freqs = np.asarray(analysis.frequencies, dtype=float)
     problems: list[str] = []
     if len(modes) != len(freqs):
         problems.append(f"{len(modes)} modes for {len(freqs)} frequencies")

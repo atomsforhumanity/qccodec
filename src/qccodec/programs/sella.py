@@ -85,6 +85,7 @@ from qcref import constants as c
 from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
+from ..program import CodecProgram
 from ._common import align_path
 from .geometric import _attach_hessians, _child_resources
 
@@ -440,3 +441,6 @@ codec = Codec(
     encode=encode,
     decode=decode,
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'sella').
+program = CodecProgram(codec, in_process=False)

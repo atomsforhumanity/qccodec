@@ -43,6 +43,7 @@ from qcdata import CalcType, ProgramInput
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
 from ._python import (
     SinglePoint,
     package_version,
@@ -166,3 +167,6 @@ codec = Codec(
     encode=encode,
     decode=single_point_decoder("tblite"),
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'tblite').
+program = CodecProgram(codec, in_process=False)

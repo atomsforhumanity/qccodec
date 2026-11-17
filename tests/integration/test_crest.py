@@ -61,7 +61,9 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert np.allclose(hessian, hessian.T, atol=1e-5)
     assert np.isclose(output.results.energy, ENERGY, atol=1e-6)
     assert np.allclose(
-        output.results.freqs_wavenumber, [1588.38, 3520.98, 3527.24], atol=1.0
+        output.results.vibrational_analysis.frequencies,
+        [1588.38, 3520.98, 3527.24],
+        atol=1.0,
     )
     # CREST writes its modes in a reoriented frame; the codec rotates them back.
     check_normal_modes(output.results, list(water.symbols))

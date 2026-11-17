@@ -51,8 +51,9 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_finditer, re_search
-from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
+from ._common import invocation, parse_g98_vibrations
 
 codec = Codec(
     "crest",
@@ -264,12 +265,9 @@ def parse_numhess1(contents: str) -> list[list[float]]:
     return [numbers[i * n : (i + 1) * n] for i in range(n)]
 
 
-codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])(
-    parse_g98_freqs
-)
 codec.parser(
-    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
-)(parse_g98_normal_modes)
+    file="directory", target="vibrational_analysis", calctypes=[CalcType.hessian]
+)(parse_g98_vibrations)
 
 
 def _to_input_frame(structures: list[Structure], start: Structure) -> list[Structure]:
@@ -338,3 +336,7 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         results = final.results.model_copy(update={"gradient": gradient})
         trajectory[-1] = Frame.model_validate({**dict(final), "results": results})
     return trajectory
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'crest').
+program = CodecProgram(codec)

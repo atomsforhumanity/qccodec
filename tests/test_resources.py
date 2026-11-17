@@ -31,7 +31,7 @@ def _native(program: str, method: str = "gfn2", basis: str | None = None, **kw: 
 @pytest.mark.parametrize(
     ("program", "method", "basis", "kwargs", "threads", "gpus"),
     [
-        ("xtb", "gfn2", None, {}, 1, 0),
+        ("xtb", "gfn2", None, {}, None, 0),  # no request: the runner's grant
         ("xtb", "gfn2", None, {"keywords": {"parallel": 4}}, 4, 0),
         ("orca", "hf", "sto-3g", {}, 1, 0),
         ("orca", "hf", "sto-3g", {"keywords": {"pal": 8}}, 8, 0),
@@ -39,8 +39,8 @@ def _native(program: str, method: str = "gfn2", basis: str | None = None, **kw: 
         ("psi4", "hf", "sto-3g", {"cmdline_args": ["-n", "6"]}, 6, 0),
         ("psi4", "hf", "sto-3g", {"cmdline_args": ["--nthread=3"]}, 3, 0),
         ("crest", "gfn2", None, {"keywords": {"threads": 2}}, 2, 0),
-        ("terachem", "hf", "sto-3g", {}, 1, 1),
-        ("terachem", "hf", "sto-3g", {"keywords": {"gpus": "2 0 1"}}, 1, 2),
+        ("terachem", "hf", "sto-3g", {}, None, 1),
+        ("terachem", "hf", "sto-3g", {"keywords": {"gpus": "2 0 1"}}, None, 2),
     ],
 )
 def test_declared_resources(
@@ -48,7 +48,7 @@ def test_declared_resources(
     method: str,
     basis: str | None,
     kwargs: dict,
-    threads: int,
+    threads: int | None,
     gpus: int,
 ) -> None:
     """Each codec reports the threads and GPUs it asked the program to use."""
@@ -64,9 +64,10 @@ def test_crest_declares_its_default_threads() -> None:
 
 
 def test_defaults() -> None:
-    """Without a declaration, a calculation uses one thread and no GPU."""
-    assert (SubprocessInput(("x",)).threads, SubprocessInput(("x",)).gpus) == (1, 0)
-    assert (PythonInput(print).threads, PythonInput(print).gpus) == (1, 0)
+    """Without a declaration, a calculation requests no threads (it takes the grant)
+    and no GPU."""
+    assert (SubprocessInput(("x",)).threads, SubprocessInput(("x",)).gpus) == (None, 0)
+    assert (PythonInput(print).threads, PythonInput(print).gpus) == (None, 0)
 
 
 @pytest.mark.parametrize("program", ["aimnet2", "torchani", "mace", "orb", "fairchem"])
@@ -116,4 +117,4 @@ def test_geometric_declares_the_resources_of_its_child() -> None:
         model=Model(method="hf", basis="sto-3g"),
     )
     assert (optimization(orca).threads, optimization(orca).gpus) == (4, 0)
-    assert (optimization(terachem).threads, optimization(terachem).gpus) == (1, 1)
+    assert (optimization(terachem).threads, optimization(terachem).gpus) == (None, 1)

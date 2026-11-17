@@ -68,7 +68,7 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert np.isclose(results.energy, ENERGY, atol=1e-6)
     # Translations and rotations are left out; the distorted water is not a
     # minimum, but HF/STO-3G still gives three real modes here.
-    assert len(results.freqs_wavenumber) == 3
+    assert len(results.vibrational_analysis.frequencies) == 3
     check_normal_modes(results, list(water.symbols))
 
 
@@ -86,7 +86,7 @@ def test_hessian_modes_across_blocks(run: Run) -> None:
         ),
     )
     output = run(_input(ammonia, CalcType.hessian), case="ammonia_hessian")
-    assert len(output.results.freqs_wavenumber) == 6
+    assert len(output.results.vibrational_analysis.frequencies) == 6
     check_normal_modes(output.results, list(ammonia.symbols))
 
 

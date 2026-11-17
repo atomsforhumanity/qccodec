@@ -78,6 +78,26 @@ integration = [
 [project.scripts]
 qccodec = "qccodec.cli:main"
 
+# Every external program qccodec brings in, as a program qccompute finds by name.
+[project.entry-points."qccompute.programs"]
+terachem = "qccodec.programs.terachem:program"
+orca = "qccodec.programs.orca:program"
+crest = "qccodec.programs.crest:program"
+xtb = "qccodec.programs.xtb:program"
+psi4 = "qccodec.programs.psi4:program"
+geometric = "qccodec.programs.geometric:program"
+sella = "qccodec.programs.sella:program"
+tblite = "qccodec.programs.tblite:program"
+dftbplus = "qccodec.programs.dftbplus:program"
+aimnet2 = "qccodec.programs.aimnet2:program"
+torchani = "qccodec.programs.torchani:program"
+mace = "qccodec.programs.mace:program"
+orb = "qccodec.programs.orb:program"
+fairchem = "qccodec.programs.fairchem:program"
+terachem-fe = "qccodec.programs.tcpb:terachem_fe"
+terachem-pbs = "qccodec.programs.tcpb:terachem_pbs"
+files = "qccodec.programs.file:program"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

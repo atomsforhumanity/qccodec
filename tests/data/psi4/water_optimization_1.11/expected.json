@@ -98,9 +98,6 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
@@ -195,9 +192,6 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
@@ -292,9 +286,6 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
         "scf_dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
@@ -409,47 +400,38 @@
         "nuclear_repulsion_energy": 8.905849374720837,
         "wavefunction": {
           "extras": {},
-          "scf_eigenvalues_a": [
-            -20.251631434812328,
-            -1.2575498908416345,
-            -0.5937495254356362,
-            -0.45980691794544604,
-            -0.3926377865538957,
-            0.5817730644585021,
-            0.692484637311669
-          ],
-          "scf_eigenvalues_b": [
-            -20.251631434812328,
-            -1.2575498908416345,
-            -0.5937495254356362,
-            -0.45980691794544604,
-            -0.3926377865538957,
-            0.5817730644585021,
-            0.692484637311669
-          ],
-          "scf_occupations_a": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0
-          ],
-          "scf_occupations_b": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0
-          ],
-          "qcdata_version": "0.23.0"
+          "qcdata_version": "0.23.0",
+          "orbitals": {
+            "spin": "restricted",
+            "energies_a": [
+              -20.251631434812328,
+              -1.2575498908416345,
+              -0.5937495254356362,
+              -0.45980691794544604,
+              -0.3926377865538957,
+              0.5817730644585021,
+              0.692484637311669
+            ],
+            "occupations_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "occupations_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ]
+          }
         },
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
         "scf_dipole_moment": [
           0.49816738689513107,
           0.3688634515691942,

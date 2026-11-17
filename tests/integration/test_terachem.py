@@ -94,8 +94,10 @@ def _check_normal_modes(results: SinglePointData, structure: Structure) -> None:
     )
     weights = 1 / np.sqrt(masses)
     weighted = np.asarray(results.hessian) * np.outer(weights, weights)
-    freqs = np.asarray(results.freqs_wavenumber)
-    modes = np.asarray(results.normal_modes_cartesian)
+    analysis = results.vibrational_analysis
+    assert analysis is not None
+    freqs = np.asarray(analysis.frequencies)
+    modes = np.asarray(analysis.normal_modes_cartesian)
     assert freqs.shape == (3,) and modes.shape == (3, 3, 3)
     assert np.all(freqs > 1000)
     for freq, mode in zip(freqs, modes, strict=True):

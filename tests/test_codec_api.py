@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from qcdata import CalcType, FileInput, Model, ProgramInput, SinglePointData
@@ -119,9 +120,16 @@ def test_pipeline_collects_values_and_tolerates_optional(tmp_path: Path) -> None
         raise MatchNotFoundError("gradient", contents)
 
     @codec.parser(target="wavefunction")
-    def orbitals(contents: str) -> dict[str, list[float]]:
+    def orbitals(contents: str) -> dict[str, Any]:
         """Return a dictionary assigned at an explicit target, not merged."""
-        return {"scf_eigenvalues_a": [-1]}
+        return {
+            "orbitals": {
+                "spin": "restricted",
+                "energies_a": [-1],
+                "occupations_a": [1],
+                "occupations_b": [1],
+            }
+        }
 
     @codec.parser(file="directory")
     def extras(ctx: Context) -> dict[str, object]:
@@ -133,8 +141,8 @@ def test_pipeline_collects_values_and_tolerates_optional(tmp_path: Path) -> None
     assert isinstance(data, SinglePointData)
     assert data.energy == -1 and data.gradient is None
     assert data.wavefunction is not None
-    assert data.wavefunction.scf_eigenvalues_a is not None
-    assert data.wavefunction.scf_eigenvalues_a.tolist() == [-1]
+    assert data.wavefunction.orbitals.energies_a is not None
+    assert data.wavefunction.orbitals.energies_a.tolist() == [-1]
     assert data.calcinfo_natoms == 3
     assert data.provenance.program == "local"
     as_dict = codec.parse("energy", stdout="-1", directory=tmp_path, as_dict=True)

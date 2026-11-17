@@ -53,8 +53,9 @@ from qcref import constants
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_finditer, re_search
-from ._common import invocation, unit_modes
+from ._common import invocation, unit_modes, vibrations
 
 codec = Codec(
     "terachem",
@@ -364,23 +365,29 @@ def _frequency_blocks(contents: str) -> tuple[list[float], list[list[list[float]
     return freqs, modes
 
 
-@codec.parser(
-    file="scr*/Frequencies.dat",
-    target="freqs_wavenumber",
-    calctypes=[CalcType.hessian],
-    required=False,
-)
 def parse_frequencies(contents: str) -> list[float]:
     """Parse vibrational frequencies (cm^-1) from ``scr.*/Frequencies.dat``."""
     return _frequency_blocks(contents)[0]
 
 
 @codec.parser(
-    file="scr*/Frequencies.dat",
-    target="normal_modes_cartesian",
+    file="directory",
+    target="vibrational_analysis",
     calctypes=[CalcType.hessian],
     required=False,
 )
+def parse_vibrations(ctx: Context) -> dict[str, Any]:
+    """The vibrational analysis of ``scr.*/Frequencies.dat``."""
+    if ctx.input_data is None:  # the masses come from the input's elements
+        raise FileNotFoundError("input_data")
+    contents = ctx.read("scr*/Frequencies.dat")
+    return vibrations(
+        parse_frequencies(contents),
+        parse_normal_modes(contents),
+        ctx.input_data.require_structure(),
+    )
+
+
 def parse_normal_modes(contents: str) -> list[list[list[float]]]:
     """Parse normal modes (n_modes, n_atoms, 3) from ``scr.*/Frequencies.dat``.
 
@@ -541,3 +548,7 @@ def parse_calctype(stdout: str) -> CalcType:
         if re.search(regex, stdout):
             return calctype
     raise MatchNotFoundError(regex, stdout)
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'terachem').
+program = CodecProgram(codec, gpu=True)

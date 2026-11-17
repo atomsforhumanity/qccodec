@@ -51,8 +51,9 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_search
-from ._common import invocation, rotation_onto, unit_modes
+from ._common import invocation, rotation_onto, unit_modes, vibrations
 
 codec = Codec(
     "orca",
@@ -290,12 +291,6 @@ def _vibrations(contents: str) -> tuple[list[float], np.ndarray]:
     ]
 
 
-@codec.parser(
-    file=_hess_file,
-    target="freqs_wavenumber",
-    calctypes=[CalcType.hessian],
-    required=False,
-)
 def parse_frequencies(contents: str) -> list[float]:
     """Parse vibrational frequencies (cm^-1, negative for imaginary modes)."""
     return _vibrations(contents)[0]
@@ -303,10 +298,21 @@ def parse_frequencies(contents: str) -> list[float]:
 
 @codec.parser(
     file="directory",
-    target="normal_modes_cartesian",
+    target="vibrational_analysis",
     calctypes=[CalcType.hessian],
     required=False,
 )
+def parse_vibrations(ctx: Context) -> dict[str, Any]:
+    """The vibrational analysis of the ``.hess`` file, modes in the input frame."""
+    if ctx.input_data is None:  # the masses come from the input's elements
+        raise FileNotFoundError("input_data")
+    return vibrations(
+        parse_frequencies(ctx.read(_hess_file(ctx))),
+        parse_normal_modes(ctx),
+        ctx.input_data.require_structure(),
+    )
+
+
 def parse_normal_modes(ctx: Context) -> list[list[list[float]]]:
     """Parse normal modes as unit-length Cartesian displacements in the input frame.
 
@@ -406,3 +412,7 @@ def parse_natoms(stdout: str) -> int:
 def parse_basename(stdout: str) -> str:
     """Parse the output file basename from ORCA stdout."""
     return Path(re_search(r"NAME\s+=\s+(.*)", stdout).group(1)).stem
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'orca').
+program = CodecProgram(codec)

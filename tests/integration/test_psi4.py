@@ -72,9 +72,9 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert hessian.shape == (9, 9)
     assert np.allclose(hessian, hessian.T, atol=1e-8)
     assert np.allclose(results.gradient, GRADIENT, atol=1e-7)
-    assert results.freqs_wavenumber
-    modes = np.asarray(results.normal_modes_cartesian)
-    assert modes.shape == (len(results.freqs_wavenumber), 3, 3)
+    assert results.vibrational_analysis.frequencies
+    modes = np.asarray(results.vibrational_analysis.normal_modes_cartesian)
+    assert modes.shape == (len(results.vibrational_analysis.frequencies), 3, 3)
 
 
 def test_optimization(run: Run, water: Structure) -> None:
@@ -155,7 +155,9 @@ def test_transition_state(run: Run) -> None:
     assert isinstance(results, OptimizationData)
     assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)
     final = results.frames[-1].structure
-    frequencies = run(_input(final, CalcType.hessian)).results.freqs_wavenumber
+    frequencies = run(
+        _input(final, CalcType.hessian)
+    ).results.vibrational_analysis.frequencies
     assert sum(f < 0 for f in frequencies) == 1
 
 
@@ -186,9 +188,11 @@ def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
 
 def test_projecting_rotations(run: Run, water: Structure) -> None:
     """Away from a stationary point Psi4 keeps rotations unless told to project them."""
-    default = run(_input(water, CalcType.hessian)).results.freqs_wavenumber
+    default = run(
+        _input(water, CalcType.hessian)
+    ).results.vibrational_analysis.frequencies
     projected = run(
         _input(water, CalcType.hessian, project_rot=True)
-    ).results.freqs_wavenumber
+    ).results.vibrational_analysis.frequencies
     assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
     assert len(projected) == 3  # 3N - 6

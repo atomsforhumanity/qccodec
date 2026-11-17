@@ -88,8 +88,11 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)
-    print("Normal modes (modes, atoms, xyz):", results.normal_modes_cartesian.shape)
+    print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
+    print(
+        "Normal modes (modes, atoms, xyz):",
+        results.vibrational_analysis.normal_modes_cartesian.shape,
+    )
 print("Partial charges:", results.atomic_charges)
 if results.point_charge_gradient is not None:
     print("Gradient on point charges:\n", results.point_charge_gradient)

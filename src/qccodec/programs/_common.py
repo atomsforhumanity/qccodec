@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 import numpy as np
-from qcdata import Frame, ProgramInput
+from qcdata import Frame, ProgramInput, Structure
 from qcref import constants, periodic_table
 
 from ..codec import Context
@@ -23,7 +23,7 @@ def invocation(
     wavefunction_files: tuple[str, ...] = (),
     environment: dict[str, str] | None = None,
     arguments: tuple[str, ...] = (),
-    threads: int = 1,
+    threads: int | None = None,
     gpus: int = 0,
 ) -> SubprocessInput:
     """Build ``<program> <filename> <arguments> <cmdline_args>`` and the input files.
@@ -100,6 +100,26 @@ def _g98_coordinates(contents: str) -> np.ndarray:
     return np.array(rows, dtype=float) * constants.ANGSTROM_TO_BOHR
 
 
+def vibrations(frequencies: Any, modes: Any, structure: Structure) -> dict[str, Any]:
+    """The `VibrationalAnalysis` fields of a program's printed vibrations.
+
+    Every codec reads the vibrations a program printed after projecting out
+    translations and rotations, so the modes are the vibrations only and the masses
+    are the standard atomic masses of the input structure's elements.
+
+    Args:
+        frequencies: Wavenumbers (cm^-1), negative for imaginary modes.
+        modes: Unit-length Cartesian displacements, n_modes x n_atoms x 3.
+        structure: The input structure.
+    """
+    return {
+        "masses": [float(periodic_table[s].mass) for s in structure.symbols],
+        "projection": "translations_rotations",
+        "frequencies": list(frequencies),
+        "normal_modes_cartesian": modes,
+    }
+
+
 def unit_modes(modes: Any) -> list[list[list[float]]]:
     """Scale each normal mode to unit length, as qcdata defines them."""
     array = np.asarray(modes, dtype=float)
@@ -136,6 +156,17 @@ def rotation_onto(source: np.ndarray, target: np.ndarray) -> np.ndarray:
             "mapped onto the input."
         )
     return rotation
+
+
+def parse_g98_vibrations(ctx: Context) -> dict[str, Any]:
+    """The vibrational analysis xtb and CREST write to ``g98.out``."""
+    if ctx.input_data is None:
+        raise ParserError("Vibrational analysis parsing requires input_data.")
+    return vibrations(
+        parse_g98_freqs(ctx.read("g98.out")),
+        parse_g98_normal_modes(ctx),
+        ctx.input_data.require_structure(),
+    )
 
 
 def parse_g98_normal_modes(ctx: Context) -> list[list[list[float]]]:

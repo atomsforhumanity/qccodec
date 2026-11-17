@@ -44,6 +44,7 @@ from qcref import constants as c
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
 from ._python import (
     SinglePoint,
     batch_signature,
@@ -248,3 +249,6 @@ codec = Codec(
     encode_batch=encode_batch,
     batch_key=batch_signature,
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'torchani').
+program = CodecProgram(codec, in_process=False, gpu=True)

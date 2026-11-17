@@ -56,10 +56,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
     Frame,
+    Orbitals,
+    OrbitalSpin,
     ProgramInput,
     Provenance,
     SinglePointData,
@@ -70,7 +73,8 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
-from ._common import invocation, unit_modes
+from ..program import CodecProgram
+from ._common import invocation, unit_modes, vibrations
 
 codec = Codec(
     "psi4",
@@ -231,7 +235,16 @@ def parse_single_point(ctx: Context) -> dict[str, Any]:
     results = _results(ctx)
     if "energy" not in results:
         raise MatchNotFoundError("energy", RESULTS_FILE)
-    return _single_point_fields(results)
+    fields = _single_point_fields(results)
+    if results.get("frequencies") and results.get("normal_modes"):
+        if ctx.input_data is None:
+            raise ParserError("Vibrational analysis parsing requires input_data.")
+        fields["vibrational_analysis"] = vibrations(
+            results["frequencies"],
+            unit_modes(results["normal_modes"]),
+            ctx.input_data.require_structure(),
+        )
+    return fields
 
 
 def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
@@ -248,23 +261,36 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
         "scf_dipole_moment": results.get("dipole"),
         "atomic_charges": results.get("mulliken_charges"),
         "point_charge_gradient": results.get("point_charge_gradient"),
-        "normal_modes_cartesian": (
-            unit_modes(results["normal_modes"]) if results.get("normal_modes") else None
-        ),
     }
-    if results.get("frequencies") is not None:
-        fields["freqs_wavenumber"] = results["frequencies"]
-    wavefunction = {
-        "scf_eigenvalues_a": results.get("eigenvalues_a"),
-        "scf_eigenvalues_b": results.get("eigenvalues_b"),
-        "scf_occupations_a": results.get("occupations_a"),
-        "scf_occupations_b": results.get("occupations_b"),
-    }
-    if any(v is not None for v in wavefunction.values()):
-        fields["wavefunction"] = Wavefunction.model_validate(wavefunction)
+    orbitals = _orbitals(results)
+    if orbitals is not None:
+        fields["wavefunction"] = Wavefunction(orbitals=orbitals)
     if results.get("variables"):
         fields["extras"] = {"psi4_variables": results["variables"]}
     return {k: v for k, v in fields.items() if v is not None}
+
+
+def _orbitals(results: dict[str, Any]) -> Orbitals | None:
+    """The orbital levels of the final wavefunction, from the driver's results.
+
+    The driver writes Psi4's ``epsilon`` and ``occupation`` vectors per spin. Alpha and
+    beta energies that agree are one set of spatial orbitals (RHF, RKS, ROHF);
+    otherwise the orbitals are unrestricted. None when the driver wrote no levels.
+    """
+    energies_a = results.get("eigenvalues_a")
+    occupations_a = results.get("occupations_a")
+    if energies_a is None or occupations_a is None:
+        return None
+    energies_b = results.get("eigenvalues_b")
+    occupations_b = results.get("occupations_b", occupations_a)
+    restricted = energies_b is None or np.allclose(energies_a, energies_b, atol=0)
+    return Orbitals(
+        spin=OrbitalSpin.restricted if restricted else OrbitalSpin.unrestricted,
+        energies_a=energies_a,
+        energies_b=None if restricted else energies_b,
+        occupations_a=occupations_a,
+        occupations_b=occupations_b,
+    )
 
 
 @codec.parser(file="directory", target="frames", calctypes=OPTIMIZATIONS)
@@ -310,3 +336,7 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
             )
         )
     return trajectory
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'psi4').
+program = CodecProgram(codec)

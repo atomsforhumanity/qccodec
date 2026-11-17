@@ -71,7 +71,7 @@ def test_transition_state_from_an_xtb_hessian(run: Run) -> None:
     assert results.frames[0].results.hessian is not None
     assert results.final_structure is not None
     check = run(ProgramInput.from_spec(HESSIAN, results.final_structure))
-    frequencies = check.results.freqs_wavenumber
+    frequencies = check.results.vibrational_analysis.frequencies
     assert sum(f < -100 for f in frequencies) == 1
 
 

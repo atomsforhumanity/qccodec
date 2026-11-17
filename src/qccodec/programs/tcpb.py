@@ -30,6 +30,7 @@ from qcdata import CalcType, ProgramInput, ProgramOutput, Provenance, SinglePoin
 from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import NativeOutput, PythonInput, PythonOutput
+from ..program import CodecProgram
 
 CALCTYPES = frozenset({CalcType.energy, CalcType.gradient})
 
@@ -86,3 +87,7 @@ codecs: dict[str, Codec] = {
     name: Codec(name, calctypes=CALCTYPES, encode=encode, decode=decode)
     for name in ("terachem-fe", "terachem-pbs")
 }
+
+#: The programs qccompute runs (the ``qccompute.programs`` entry points).
+terachem_fe = CodecProgram(codecs["terachem-fe"], in_process=False, gpu=True)
+terachem_pbs = CodecProgram(codecs["terachem-pbs"], in_process=False, gpu=True)

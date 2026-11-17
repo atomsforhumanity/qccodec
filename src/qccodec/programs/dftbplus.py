@@ -75,6 +75,7 @@ from qcref import dftb_parameter_sets
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 
 INPUT_FILE = "dftb_in.hsd"
 STRUCTURE_FILE = "geometry.xyz"
@@ -513,3 +514,7 @@ def _xyz_frames(text: str, reference: Structure) -> list[Structure]:
         )
         i += 2 + natoms
     return structures
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'dftbplus').
+program = CodecProgram(codec)

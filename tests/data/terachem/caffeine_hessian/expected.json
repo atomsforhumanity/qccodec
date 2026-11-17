@@ -5466,8 +5466,5 @@
   ],
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "freqs_wavenumber": [],
-  "normal_modes_cartesian": null,
-  "gibbs_free_energy": null,
   "scf_dipole_moment": null
 }

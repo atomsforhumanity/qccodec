@@ -68,6 +68,7 @@ from qcref import constants as c
 from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
+from ..program import CodecProgram
 from ._common import align_path
 
 if TYPE_CHECKING:
@@ -143,7 +144,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     )
 
 
-def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int, int]:
+def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int | None, int]:
     """Return the threads and GPUs the gradient child declares; defaults if unknown."""
     from ..registry import get_codec
 
@@ -380,3 +381,6 @@ codec = Codec(
     encode=encode,
     decode=decode,
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'geometric').
+program = CodecProgram(codec, in_process=False)
