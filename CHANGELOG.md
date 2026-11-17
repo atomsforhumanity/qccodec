@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a4] - 2026-11-17
+
+### Changed
+
+- **Breaking:** `CodecProgram(gpu=)` and the `gpu` capability are removed (qccompute 0.23.0a4). ML potentials run on the GPU that `ctx.device_ordinals()` names, or the CPU when none was granted; `resolved.settings` records `cuda`. A granted GPU the process can't see fails with kind `environment`.
+- **Breaking:** calculations with no convergence settings (ML potentials, GFN-FF, non-SCC DFTB single points) accept an `accuracy` target, as keyword or session request, and record it as met (`{"target": ..., "thresholds": {}, "estimate": {...: 0.0}}`); the program never sees the keyword. Codecs with convergence settings still refuse it as `unsupported` (#41).
+- **Breaking:** out-of-memory failures in ORCA, Psi4 and TeraChem are kind `resource` (`host_memory` or `device_memory`), with `required_gib` and `available_gib` in `ErrorInfo.details` where the output gives them (#45). Psi4's `--memory` below its minimum was `internal`; TeraChem's CUDA out-of-memory was `backend`.
+- `backend_fallback` is warned only when a GPU was granted and the program still ran on the CPU, not on machines without GPUs.
+- Python libraries in a worker apply each call's threads (`torch.set_num_threads`, and `threadpoolctl` for BLAS and OpenMP), since workers are now shared by calls with different threads. New dependency: `threadpoolctl`.
+- Batch outputs leave `execution.threads` to the runner, which fills in each input's share (#52).
+- Requires qcdata 0.24.0a5 and qccompute 0.23.0a4.
+
+### Added
+
+- `Codec.accuracy`, `qccodec.codec.accuracy_record`, `PythonInput.device_keyword`, `run_python(device=, threads=)`, `call_python(device=)`, `qccodec.run.thread_limits`, `CalculationError.details`; failure hooks may return `(message, details)`, and fixture `case.json` takes `details`.
+
+
 ## [0.22.0a3] - 2026-11-17
 
 ### Changed
