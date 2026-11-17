@@ -24,15 +24,15 @@ print(atoms.get_potential_energy())  # eV
 print(len(atoms.calc.outputs), "calculations")  # every ProgramOutput, in order
 ```
 
-- qccodec never runs programs, so you pass `compute`. Any function taking a
-  `ProgramInput` and returning a `ProgramOutput` works.
+- You pass `compute`: `qccompute.compute`, or any function taking a `ProgramInput`
+  and returning a `ProgramOutput` (or raising `qcdata.ProgramError` with the failed
+  output).
 - Units are converted at the boundary: positions in angstrom, energies in eV, forces
   in eV/angstrom, as ASE expects.
 - Charge and multiplicity come from `charge` and `multiplicity`, or from a
   `structure=` whose charge, multiplicity, and identifiers every calculation keeps.
-- A failed calculation raises ASE's `CalculationFailed`, with the `ProgramOutput` as
-  its `.output`. With `qccompute.compute`'s default `raise_exc=True`, qccompute's own
-  exception is raised first.
+- A failed calculation raises ASE's `CalculationFailed`, with the failed
+  `ProgramOutput` as its `.output`, and joins `outputs`.
 - Each request is one calculation, so ASE workflows do not get qccompute's batching
   or parallel lists. For optimizations and transition states, the
   [sella](../programs/sella.md) and [geomeTRIC](../programs/geometric.md) codecs run

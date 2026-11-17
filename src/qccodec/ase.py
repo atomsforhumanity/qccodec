@@ -34,6 +34,7 @@ from numpy.typing import NDArray
 from qcdata import (
     CalcType,
     Data,
+    ProgramError,
     ProgramInput,
     ProgramOutput,
     ProgramSpec,
@@ -143,7 +144,12 @@ class ProgramCalculator(Calculator):  # type: ignore[misc]
         child = ProgramInput.from_spec(
             self.spec, self.structure(self.atoms), structures=self.structures
         )
-        output = self.compute(child)
+        try:
+            output = self.compute(child)
+        except ProgramError as e:  # qccompute.compute raises with the failed output
+            if e.output is None:
+                raise
+            output = e.output
         self.outputs.append(output)
         data = output.results
         reason = None
