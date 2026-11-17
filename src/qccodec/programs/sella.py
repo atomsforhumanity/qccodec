@@ -28,7 +28,10 @@ Inputs map to Sella as follows:
   Atom indices are 0-based and targets in angstrom and degrees, as in Sella.
 - The codec sets ``order`` from the calculation type and keeps Sella's log on stdout;
   ``order``, ``logfile``, ``trajectory``, ``restart``, ``append_trajectory``,
-  ``hessian_function``, and ``cmdline_args`` are not accepted.
+  ``hessian_function``, and ``cmdline_args`` are not accepted. Any other keyword that
+  is not one of Sella 2.6's arguments for the calculation type is refused before Sella
+  runs (kind ``input``, code ``unknown_key`` with the closest one named, or
+  ``not_applicable`` for an argument of the other kind of run).
 
 Calculation types: ``optimization`` (``order=0``), ``transition_state``
 (``order=1``), and ``irc`` (Sella's ``IRC`` from the transition state in
@@ -51,7 +54,8 @@ displaced geometries to probe the curvature are not steps and are left out, unle
 fails. Each Hessian from the Hessian program is attached to the frame at its geometry
 (``frame.results.hessian``). Sella removes overall translation and rotation from its
 steps, so every frame stays in the input's frame. A run that uses up ``steps`` without
-meeting ``fmax`` fails, with its trajectory attached.
+meeting ``fmax`` fails, with its trajectory attached: kind ``convergence``, code
+``max_iter``, as does an IRC branch that does not reach a minimum.
 
 Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
 the step's program runs wherever the runner places it. Called directly, the program
@@ -87,7 +91,7 @@ from ..codec import Codec
 from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
 from ..program import CodecProgram
-from ._common import align_path
+from ._common import align_path, reject_unknown
 from .geometric import _attach_hessians, _child_resources
 
 
@@ -98,6 +102,7 @@ class SellaOutcome(TypedDict):
     ts_index: int | None
     version: str | None
     error: str | None
+    traceback: str | None
 
 
 # Arguments of Sella.run (IRC.run also takes fmax_inner); every other keyword goes to
@@ -118,6 +123,31 @@ OWNED_KEYWORDS = frozenset(
         "direction",
     }
 )
+# Keywords of Sella 2.6: the Sella constructor and the PES it builds, and Sella.run
+# (optimization, transition_state); the IRC constructor, the PES, and IRC.run (irc).
+_PES = {
+    "eigensolver",
+    "proj_trans",
+    "proj_rot",
+    "iterative_stepper",
+    "auto_find_internals",
+}
+SELLA_SETTINGS = frozenset(
+    {
+        "delta0", "sigma_inc", "sigma_dec", "rho_dec", "rho_inc", "eig", "eta",
+        "method", "gamma", "threepoint", "constraints", "constraints_tol", "internal",
+        "rs", "nsteps_per_diag", "diag_every_n", "hessian_progress", "optimize_cell",
+        "cell_mask", "exp_cell_factor", "scalar_pressure", "smax", "allow_fragments",
+        "niggli", "refine_initial_hessian", "exact_geodesic", "max_cpu_threads",
+        "hessian_delta", *_PES, *RUN_KEYWORDS,
+    }
+)  # fmt: skip
+IRC_SETTINGS = frozenset(
+    {
+        "ninner_iter", "irctol", "dx", "eta", "gamma", "peskwargs", "keep_going",
+        "constraints", *_PES, *IRC_RUN_KEYWORDS,
+    }
+)  # fmt: skip
 # Sella Constraints methods taking atom indices, and what each call names.
 # (argument name, number of atoms; None for one atom or several)
 CONSTRAINT_METHODS: dict[str, tuple[str, int | None]] = {
@@ -151,11 +181,23 @@ def encode(inp: ProgramInput) -> PythonInput:
     keywords = deepcopy(inp.keywords)
     owned = sorted(OWNED_KEYWORDS & set(keywords))
     if owned:
-        raise EncoderError(f"The sella codec sets these keywords itself: {owned}.")
+        raise EncoderError(
+            f"The sella codec sets these keywords itself: {owned}.", code="unknown_key"
+        )
+    irc = inp.calctype == CalcType.irc
+    known, other = (
+        (IRC_SETTINGS, SELLA_SETTINGS) if irc else (SELLA_SETTINGS, IRC_SETTINGS)
+    )
+    elsewhere = sorted((set(keywords) - known) & other)
+    if elsewhere:
+        raise EncoderError(
+            f"Sella keywords {elsewhere} do not apply to calctype {inp.calctype.value}.",
+            code="not_applicable",
+        )
+    reject_unknown("Sella", keywords, known)
     constraints = _constraints(
         keywords.pop("constraints", None), len(inp.require_structure().symbols)
     )
-    irc = inp.calctype == CalcType.irc
     run_keywords = IRC_RUN_KEYWORDS if irc else RUN_KEYWORDS
     run_kwargs = {k: keywords.pop(k) for k in run_keywords & set(keywords)}
     threads, gpus = _child_resources(gradient_spec, inp)
@@ -251,6 +293,7 @@ def invoke_sella(
         "ts_index": None,
         "version": metadata.version("sella"),
         "error": None,
+        "traceback": None,
     }
     previous: list[ProgramOutput[ProgramInput, Data]] = []
 
@@ -345,8 +388,9 @@ def invoke_sella(
                 f"Sella did not converge to fmax={optimizer.fmax} eV/angstrom in "
                 f"{optimizer.nsteps} steps."
             )
-    except Exception:
-        outcome["error"] = traceback.format_exc()
+    except Exception as exc:
+        outcome["error"] = f"{type(exc).__name__}: {exc}".strip()
+        outcome["traceback"] = traceback.format_exc()
     finally:
         # A failed gradient ends the run without becoming a step; keep it.
         if calculator.outputs and not calculator.outputs[-1].success:
@@ -420,6 +464,7 @@ def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData | PathData:
         "ts_index": None,
         "version": None,
         "error": None,
+        "traceback": None,
     }
     provenance = Provenance(program="sella", program_version=native["version"])
     data: OptimizationData | PathData
@@ -432,7 +477,10 @@ def decode(inp: ProgramInput, out: NativeOutput) -> OptimizationData | PathData:
     else:
         data = OptimizationData(provenance=provenance, frames=native["trajectory"])
     if native["error"]:
-        raise CalculationError(native["error"], data=data)
+        error = CalculationError(native["error"], data=data)
+        if native.get("traceback"):
+            error.add_note(f"Sella's traceback:\n{native['traceback']}")
+        raise error
     return data
 
 
@@ -441,7 +489,16 @@ codec = Codec(
     calctypes={CalcType.optimization, CalcType.transition_state, CalcType.irc},
     encode=encode,
     decode=decode,
+    errors=[
+        (
+            r"^Sella did not converge|^Sella's IRC did not reach",
+            "convergence",
+            "max_iter",
+        ),
+    ],
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'sella').
+#: It runs in a worker process: importing Sella imports JAX and sets JAX's environment
+#: variables, Sella sets thread variables (max_cpu_threads), and its log is stdout.
 program = CodecProgram(codec, in_process=False, library="sella")
