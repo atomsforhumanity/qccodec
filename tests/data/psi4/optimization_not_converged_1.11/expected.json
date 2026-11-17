@@ -1,0 +1,18 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "extras": {},
+  "files": {},
+  "provenance": {
+    "extras": {},
+    "program": "psi4",
+    "program_version": "1.11",
+    "program_commit": null,
+    "qcdata_version": "0.24.0a2"
+  },
+  "frames": [],
+  "qcdata_version": "0.24.0a2"
+}

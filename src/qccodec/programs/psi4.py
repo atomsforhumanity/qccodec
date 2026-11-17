@@ -28,6 +28,11 @@ Inputs map to Psi4 as follows:
 - ``cmdline_args`` are appended to the ``psi4`` command, e.g. ``["-n", "4"]`` for
   four threads or ``["--memory", "8GB"]``.
 
+Psi4's options are too many to list in the codec, but Psi4 checks every one itself:
+the driver sets them one at a time before calculating and reports each one Psi4 does
+not know (kind ``input``, code ``unknown_key``, with the closest option Psi4 has) and
+each value it does not take (kind ``input``).
+
 The molecule keeps the input's frame (``no_com``, ``no_reorient``): Psi4 never moves
 or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
 input's coordinates, and symmetry detection only finds symmetry the frame already
@@ -39,8 +44,17 @@ frequencies, normal modes, and the gradient), ``optimization`` and
 and gradient). A transition-state search sets ``opt_type ts`` and, unless given,
 ``full_hess_every 0`` (an exact Hessian at the first step). Every single point also
 records Mulliken charges in ``atomic_charges`` when the method supports them, the
-gradient on external point charges in ``point_charge_gradient``, and all scalar Psi4
-variables in ``extras["psi4_variables"]``.
+gradient on external point charges in ``point_charge_gradient``, all scalar Psi4
+variables in ``extras["psi4_variables"]``, and the orbital levels in
+``wavefunction.orbitals``: ``restricted`` when Psi4's wavefunction has one set of
+spatial orbitals for both spins (RHF, RKS, ROHF), ``unrestricted`` otherwise (UHF,
+UKS, CUHF), even when a UHF lands on the closed-shell solution.
+
+Failures and their kinds: an SCF that does not converge is ``convergence`` (code
+``scf_not_converged``), optking out of iterations ``convergence`` (``max_iter``),
+another iterative procedure ``convergence``; an unknown option, method or basis set,
+an invalid value and a multiplicity the electrons cannot have are ``input``; a method
+Psi4 has but not for this calculation is ``unsupported``.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with ``external_potentials`` either fail or come back wrong (they disagree
@@ -56,7 +70,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
@@ -85,6 +98,18 @@ codec = Codec(
         CalcType.optimization,
         CalcType.transition_state,
     },
+    # The exception the driver recorded: "psi4: <name>: <message>".
+    errors=[
+        (r"OptionError: Unknown Psi4 option", "input", "unknown_key"),
+        (r"OptionError", "input", None),
+        (r"SCFConvergenceError", "convergence", "scf_not_converged"),
+        (r"OptimizationConvergenceError", "convergence", "max_iter"),
+        (r"ConvergenceError", "convergence", None),
+        (r"BasisSetNotFound|BasisSetNotDefined", "input", None),
+        (r"not available for any derivative level", "input", None),  # unknown method
+        (r"ManagedMethodError|MissingMethodError", "unsupported", None),
+        (r"ValidationError|UpgradeHelper", "input", None),
+    ],
 )
 
 DRIVER_FILE = "input.py"
@@ -273,17 +298,20 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
 def _orbitals(results: dict[str, Any]) -> Orbitals | None:
     """The orbital levels of the final wavefunction, from the driver's results.
 
-    The driver writes Psi4's ``epsilon`` and ``occupation`` vectors per spin. Alpha and
-    beta energies that agree are one set of spatial orbitals (RHF, RKS, ROHF);
-    otherwise the orbitals are unrestricted. None when the driver wrote no levels.
+    The driver writes Psi4's ``epsilon`` and ``occupation`` vectors per spin and
+    whether the wavefunction's alpha and beta electrons share spatial orbitals
+    (``same_a_b_orbs``: RHF, RKS and ROHF do; UHF, UKS and CUHF do not), so a UHF
+    that lands on a closed-shell solution is still unrestricted. None when the driver
+    wrote no levels.
     """
     energies_a = results.get("eigenvalues_a")
     occupations_a = results.get("occupations_a")
-    if energies_a is None or occupations_a is None:
+    same_orbitals = results.get("same_orbitals")
+    if energies_a is None or occupations_a is None or same_orbitals is None:
         return None
     energies_b = results.get("eigenvalues_b")
     occupations_b = results.get("occupations_b", occupations_a)
-    restricted = energies_b is None or np.allclose(energies_a, energies_b, atol=0)
+    restricted = bool(same_orbitals)
     return Orbitals(
         spin=OrbitalSpin.restricted if restricted else OrbitalSpin.unrestricted,
         energies_a=energies_a,

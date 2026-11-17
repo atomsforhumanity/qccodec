@@ -1,0 +1,1 @@
+{"psi4_version": "1.11", "error": "ValidationError: Inconsistent or unspecified chg/mult: sys chg: None, frag chg: [0.0], sys mult: None, frag mult: [2]"}

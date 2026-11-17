@@ -8,10 +8,11 @@
     "extras": {},
     "method": "hf",
     "basis": "sto-3g",
-    "qcdata_version": "0.20.1"
+    "qcdata_version": "0.24.0a2"
   },
   "keywords": {
-    "not_a_psi4_option": 1
+    "scf_type": "pk",
+    "reference": "uhf"
   },
   "subprograms": [],
   "structure": {
@@ -56,11 +57,12 @@
       "pubchem_cid": null,
       "pubchem_sid": null,
       "pubchem_conformerid": null,
-      "qcdata_version": "0.20.1"
+      "qcdata_version": "0.24.0a2"
     },
     "connectivity": [],
-    "qcdata_version": "0.20.1"
+    "qcdata_version": "0.24.0a2"
   },
   "structures": {},
-  "qcdata_version": "0.20.1"
+  "given": null,
+  "qcdata_version": "0.24.0a2"
 }

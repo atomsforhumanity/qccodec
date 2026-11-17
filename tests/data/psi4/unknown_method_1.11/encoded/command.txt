@@ -1,0 +1,5 @@
+psi4
+input.py
+-k
+-o
+stdout

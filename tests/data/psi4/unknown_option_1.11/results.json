@@ -1,0 +1,1 @@
+{"psi4_version": "1.11", "error": "OptionError: Unknown Psi4 option(s): 'maxiterr' (did you mean 'maxiter'?)."}

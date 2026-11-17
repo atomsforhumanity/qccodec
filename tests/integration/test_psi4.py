@@ -6,6 +6,7 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
@@ -126,10 +127,68 @@ def test_options_pass_through(run: Run, water: Structure) -> None:
     assert np.isclose(output.results.energy, ENERGY, atol=1e-8)
 
 
-def test_invalid_option_fails(run: Run, water: Structure) -> None:
-    """Psi4 rejects unknown options, and the error says so."""
-    with pytest.raises(Exception, match="NOT_A_PSI4_OPTION is not a valid option"):
-        run(_input(water, CalcType.energy, not_a_psi4_option=1))
+def test_unknown_option_fails(run: Run, water: Structure) -> None:
+    """Psi4 rejects unknown options; the error names each, with the closest option."""
+    with pytest.raises(ProgramError, match="did you mean 'maxiter'") as e:
+        run(_input(water, CalcType.energy, maxiterr=10), case="unknown_option")
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+
+
+@pytest.mark.parametrize(
+    ("case", "model", "keywords", "change", "kind", "code"),
+    [
+        ("invalid_option_value", None, {"reference": "rhff"}, {}, "input", None),
+        ("unknown_basis", Model(method="hf", basis="sto-3gg"), {}, {}, "input", None),
+        ("unknown_method", Model(method="hff", basis="sto-3g"), {}, {}, "input", None),
+        ("impossible_multiplicity", None, {}, {"multiplicity": 2}, "input", None),
+        (
+            "scf_not_converged",
+            None,
+            {"maxiter": 2},
+            {},
+            "convergence",
+            "scf_not_converged",
+        ),
+    ],
+)
+def test_failures_have_kinds(
+    run: Run,
+    water: Structure,
+    case: str,
+    model: Model | None,
+    keywords: dict[str, object],
+    change: dict[str, object],
+    kind: str,
+    code: str | None,
+) -> None:
+    """Psi4's failures are classified, so a store reuses only input-determined ones."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    inp = _input(structure, CalcType.energy, **keywords)
+    if model is not None:
+        inp = inp.model_copy(update={"model": model})
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == (kind, code), e.value.error
+
+
+def test_optimization_out_of_iterations(run: Run, water: Structure) -> None:
+    """optking out of iterations is convergence (max_iter), trajectory attached."""
+    inp = _input(water, CalcType.optimization, geom_maxiter=2)
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="optimization_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == ("convergence", "max_iter")
+
+
+def test_unrestricted_orbitals_are_recorded(run: Run, water: Structure) -> None:
+    """A UHF wavefunction is unrestricted even when it lands on the RHF solution."""
+    output = run(
+        _input(water, CalcType.energy, reference="uhf"), case="water_uhf_energy"
+    )
+    orbitals = output.results.wavefunction.orbitals
+    assert orbitals.spin == "unrestricted"
+    assert np.allclose(orbitals.energies_a, orbitals.energies_b)
+    restricted = run(_input(water, CalcType.energy)).results.wavefunction.orbitals
+    assert restricted.spin == "restricted" and restricted.energies_b is None
 
 
 # Slightly pyramidal ammonia (bohr); its inversion saddle point is planar.
