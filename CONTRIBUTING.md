@@ -182,9 +182,10 @@ Raise `EncoderError` for anything the program cannot run. Never execute here.
 
 Declare what the calculation uses: `invocation(..., threads=4)` when the input asks
 the program for several CPU threads (ORCA `pal`, Psi4 `-n`, CREST `threads`), and
-`gpus=1` (or more) for GPU programs. qccompute uses these to run lists of
-calculations side by side without oversubscribing cores or sharing a GPU. The
-defaults, one thread and no GPU, fit most single-threaded programs.
+`gpus=1` (or more) for GPU programs. qccompute packs lists of calculations by these
+without oversubscribing cores or sharing a GPU. Without a request (`threads=None`, the
+default) the program runs with the runner's grant through `OMP_NUM_THREADS` and is packed
+as one thread.
 
 Keep the input's frame. Many programs move the molecule to its center of mass, rotate
 it to a standard orientation, or symmetrize it, which leaves gradients, Hessians, and
@@ -306,18 +307,18 @@ machine-learned potentials) share `programs/_python.py`: `invoke` returns a
 the decoder. Set `PythonInput.environment` for settings the library reads at
 import time, and `loggers` for Python loggers whose output should be captured.
 
-### 6. Options, wavefunction propagation, registration
+### 6. Options and registration
 
 - Declare decode options with defaults on the codec, `Codec(..., options={"collect_rotamers": False})`,
-  and read them in parsers as `ctx.options["collect_rotamers"]`. Callers override them
-  with `qccompute.compute(inp, options={...})` or `qccodec.decode(..., options={...})`;
-  unknown names are rejected.
-- Set `codec.propagate_wfn = fn` if the program can reuse a previous wavefunction.
-  `fn(output, input_data)` returns a new `ProgramInput` with the wavefunction files from
-  `output.results.files` attached and the guess keyword set. The encoder's
-  `wavefunction_files` glob patterns tell qccompute which files to keep.
+  and read them in parsers as `ctx.options["collect_rotamers"]`. Callers of
+  `qccodec.decode(..., options={...})` override them; unknown names are rejected. A
+  choice made per calculation belongs in the keywords instead (CREST's
+  `{"output": {"rotamers": True}}`), which parsers read from `ctx.input_data`.
 - Add the program to `_BUILTIN` in `src/qccodec/registry.py` so `get_codec("myprog")`
-  finds it. Users can also do this at runtime with `qccodec.register(codec)`.
+  finds it, and make it a program qccompute runs: `program = CodecProgram(codec)` at the
+  end of the module (`in_process=False` for a codec that calls a Python library,
+  `gpu=True` for a GPU program) and an entry under `[project.entry-points."qccompute.programs"]`
+  in `pyproject.toml`.
 
 ### 7. Tests
 
@@ -390,6 +391,6 @@ script is on a docs page; `tests/integration/test_examples.py` runs every script
 4. If the failure hook fired, raises `CalculationError` with the data attached.
 5. Otherwise validates and returns the qcdata model for the calculation type.
 
-`Codec.decode(input_data, native_output)` is what qccompute calls; it uses the custom
+`Codec.decode(input_data, native_output)` is what the adapter (`CodecProgram`) calls; it uses the custom
 `decode` function if there is one, otherwise the pipeline above with
 `failed=native_output.failed`.
