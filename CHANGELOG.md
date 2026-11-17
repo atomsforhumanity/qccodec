@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a3] - 2026-11-17
+
+### Changed
+
+- **Breaking:** `scf_dipole_moment` and `scf_quadrupole_moment` are `dipole_moment` and `quadrupole_moment` (qcdata 0.24.0a4). Psi4 fills `dipole_moment` only for HF and DFT: after MP2, Psi4's SCF dipole is still the Hartree-Fock one.
+- **Breaking:** every codec refuses the shared `accuracy` keyword before running: `unsupported` where the program has convergence settings that don't take targets yet, `input`/`no_effect` where it has none (ML potentials, GFN-FF and non-SCC DFTB single points). `Codec(converges=)` declares which.
+- **Breaking:** tblite's accuracy factor is the keyword `acc` (it was `accuracy`, now the shared target), matching xtb's `--acc`.
+- **Breaking:** AIMNet2, MACE and FAIR-Chem numerics include the weights file's sha256 when it is on disk; a container program's numerics is `<version> image sha256:<image id>`; a FileInput's is the sha256 of its command's executable. `executable_digest` is now `file_digest`.
+- Numerics inputs are read once per process: identities cost 3-10 µs per output (were 26-84 µs).
+- In `compute_batch`, an input that can't be batched runs with its own threads, capped at the batch's grant.
+
+### Added
+
+- `provenance.program_commit` for xtb (it tells the g-xTB build from upstream 6.7.1), CREST, ORCA 6.1 and later, TeraChem and DFTB+ development builds.
+- ML potentials record the device they ran on, and warn `backend_fallback` when a planned GPU wasn't there.
+- `CodecProgram(image=, weights=, keywords=)` and `QCCODEC_<PROGRAM>_IMAGE`; `settings_schema` lists the keys a codec knows (xtb, tblite, geomeTRIC, Sella, ML potentials), plus `threads`.
+
+
 ## [0.22.0a2] - 2026-11-17
 
 ### Changed

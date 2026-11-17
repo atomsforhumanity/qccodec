@@ -2610,7 +2610,7 @@ wheels = [
 
 [[package]]
 name = "qccodec"
-version = "0.22.0a2"
+version = "0.22.0a3"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
