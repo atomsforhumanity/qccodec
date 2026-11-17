@@ -1802,6 +1802,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#qccodec.exceptions.StoppedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;StoppedError
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#testing-codecs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2591,6 +2602,17 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;DependencyNotFoundError
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qccodec.exceptions.StoppedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;StoppedError
       
     </span>
   </a>
@@ -7526,6 +7548,45 @@ it knows (<code>Codec</code> <code>errors</code>); anything else stays <code>int
 
 
       <p>A codec explicitly reports an unavailable execution dependency.</p>
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="qccodec.exceptions.StoppedError" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>StoppedError</code>
+
+
+<a href="#qccodec.exceptions.StoppedError" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+
+      <p>A program killed because its caller asked its calculation to stop.</p>
+<p>Its calculation fails with kind <code>stopped</code>, keeping what the codec recovers from
+the program's output so far.</p>
 
 
 

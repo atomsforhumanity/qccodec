@@ -1780,8 +1780,13 @@ and codes the codecs use:</p>
 <td></td>
 </tr>
 <tr>
-<td>the deadline passed</td>
+<td>the deadline passed, or the calculation was cancelled (an external program is killed within about a second)</td>
 <td><code>timeout</code></td>
+<td></td>
+</tr>
+<tr>
+<td>the calculation was asked to stop (<code>runner.stop</code>): an external program is killed within about a second, keeping what was recovered</td>
+<td><code>stopped</code></td>
 <td></td>
 </tr>
 </tbody>
