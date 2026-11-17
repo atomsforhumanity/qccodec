@@ -22,7 +22,7 @@ def _input(
     **keywords: Any,
 ) -> ProgramInput:
     subprograms = []
-    if calctype == CalcType.optimization and program in ("geometric", "sella"):
+    if program in ("geometric", "sella"):
         subprograms = [
             ProgramSpec(
                 program="xtb", calctype=CalcType.gradient, model=Model(method="gfn2")
@@ -142,3 +142,74 @@ def test_inputs_with_a_target_are_not_batched() -> None:
         )
         is None
     )
+
+
+# ------------------------------------------------------------------ settings schema
+
+LISTED = [
+    ("xtb", "gfn2", CalcType.energy),
+    ("xtb", "gfn2", CalcType.optimization),
+    ("tblite", "gfn2", CalcType.gradient),
+    ("geometric", None, CalcType.optimization),
+    ("geometric", None, CalcType.irc),
+    ("sella", None, CalcType.transition_state),
+    ("sella", None, CalcType.irc),
+    ("aimnet2", "aimnet2", CalcType.gradient),
+    ("torchani", "ANI2x", CalcType.gradient),
+    ("mace", "mace-off-small", CalcType.gradient),
+    ("orb", "orb-v3-conservative-omol", CalcType.gradient),
+    ("fairchem", "uma-s-1p1", CalcType.gradient),
+]
+
+
+def _program(name: str) -> CodecProgram:
+    import importlib
+
+    program = importlib.import_module(f"qccodec.programs.{name}").program
+    assert isinstance(program, CodecProgram)
+    return program
+
+
+@pytest.mark.parametrize(
+    ("program", "method", "calctype"),
+    LISTED,
+    ids=[f"{p}-{c.value}" for p, _, c in LISTED],
+)
+def test_a_listed_schema_is_what_the_encoder_takes(
+    program: str, method: str | None, calctype: CalcType
+) -> None:
+    """Every listed keyword passes the encoder's name check; any other is refused."""
+    schema = _program(program).settings_schema(calctype)
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["threads"]["x-concern"] == "resource"
+    assert "accuracy" not in schema["properties"]  # refused by every codec
+    codec = get_codec(program)
+    for name in set(schema["properties"]) - {"threads"}:
+        try:
+            codec.encode(_input(program, method, calctype, **{name: 1}))
+        except EncoderError as refused:
+            assert refused.code != "unknown_key", (name, str(refused))
+        except Exception:  # noqa: BLE001, S110 - a bad value, not an unknown name
+            pass
+    with pytest.raises(EncoderError) as e:
+        codec.encode(_input(program, method, calctype, not_a_setting=1))
+    assert e.value.code == "unknown_key"
+
+
+def test_per_calctype_and_open_schemas() -> None:
+    xtb = _program("xtb")
+    assert "opt" in xtb.settings_schema(CalcType.optimization)["properties"]
+    assert "opt" not in xtb.settings_schema(CalcType.energy)["properties"]
+    energy = xtb.settings_schema(CalcType.energy)["properties"]
+    assert {"alpb", "etemp", "external_potentials"} <= set(energy)
+    assert not {"chrg", "uhf", "gfn", "grad"} & set(energy)  # the codec sets them
+    geometric = _program("geometric")
+    assert "irc_direction" in geometric.settings_schema(CalcType.irc)["properties"]
+    assert (
+        "irc_direction"
+        not in geometric.settings_schema(CalcType.optimization)["properties"]
+    )
+    for name in ("orca", "psi4", "terachem", "crest", "dftbplus"):
+        schema = _program(name).settings_schema(CalcType.energy)
+        assert schema["additionalProperties"] is True  # passed through unlisted
+        assert list(schema["properties"]) == ["threads"]

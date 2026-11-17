@@ -81,6 +81,10 @@ def model_name(method: str) -> str:
     return lookup[key]
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "dtype", "model_index"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, device, precision, and molecule in angstrom.
 
@@ -102,7 +106,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("torchani", keywords, frozenset({"dtype", "model_index"}))
+    reject_unknown("torchani", keywords, KEYWORDS)
     dtype = keywords.get("dtype", "float64")
     if dtype not in DTYPES:
         raise EncoderError(f"dtype must be one of {list(DTYPES)}, not {dtype!r}.")
@@ -261,4 +265,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'torchani').
-program = CodecProgram(codec, in_process=False, gpu=True, library="torchani")
+program = CodecProgram(
+    codec, in_process=False, gpu=True, library="torchani", keywords=KEYWORDS
+)

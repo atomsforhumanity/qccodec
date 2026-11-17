@@ -502,4 +502,12 @@ codec = Codec(
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'sella').
 #: It runs in a worker process: importing Sella imports JAX and sets JAX's environment
 #: variables, Sella sets thread variables (max_cpu_threads), and its log is stdout.
-program = CodecProgram(codec, in_process=False, library="sella", threads=None)
+program = CodecProgram(
+    codec,
+    in_process=False,
+    library="sella",
+    threads=None,
+    keywords=lambda calctype: (
+        IRC_SETTINGS if calctype == CalcType.irc else SELLA_SETTINGS
+    ),
+)

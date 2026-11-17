@@ -39,6 +39,10 @@ with `qccodec.reject_unknown(program, keywords, known)`, which raises
 `EncoderError(..., code="unknown_key")` naming the closest known name. `EncoderError`
 takes `kind` (`input`, or `unsupported` for a valid request the program does not
 implement) and `code` (`unknown_key`, `not_applicable`, `no_effect`, `not_modeled`).
+Give the same names to the program, `CodecProgram(codec, keywords=known)` (or a
+function of the calctype), and its `settings_schema` lists them; without them it
+lists only the shared `threads` and allows any other key, for a program that checks
+its own keywords.
 
 The shared keyword `accuracy` (an accuracy target, `{"energy": ..., "gradient": ...,
 "hessian": ...}`) never reaches your encoder: `Codec.encode` reads it with qcdata's

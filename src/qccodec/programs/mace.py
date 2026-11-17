@@ -102,6 +102,10 @@ def split_method(method: str) -> tuple[str | None, str | None]:
     return None, method
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "default_dtype"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, device, precision, and molecule in angstrom.
 
@@ -132,7 +136,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("mace", keywords, frozenset({"default_dtype"}))
+    reject_unknown("mace", keywords, KEYWORDS)
     dtype = keywords.get("default_dtype")
     if dtype is not None and dtype not in DTYPES:
         raise EncoderError(
@@ -361,5 +365,10 @@ codec = Codec(
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'mace').
 program = CodecProgram(
-    codec, in_process=False, gpu=True, library="mace-torch", weights=model_file
+    codec,
+    in_process=False,
+    gpu=True,
+    library="mace-torch",
+    weights=model_file,
+    keywords=KEYWORDS,
 )

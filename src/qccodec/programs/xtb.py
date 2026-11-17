@@ -464,5 +464,16 @@ def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
 
 codec.cap_threads = cap_threads
 
+
+def keywords(calctype: CalcType) -> frozenset[str]:
+    """The keywords xtb takes for a calctype, for its settings schema.
+
+    xtb's flags but those the codec sets or refuses, ``opt`` for optimizations only,
+    and ``external_potentials``.
+    """
+    flags = FLAGS - RESERVED - ({"opt"} if calctype != CalcType.optimization else set())
+    return flags | {"external_potentials"}
+
+
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'xtb').
-program = CodecProgram(codec)
+program = CodecProgram(codec, keywords=keywords)

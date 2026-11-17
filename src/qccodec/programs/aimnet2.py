@@ -77,6 +77,9 @@ from ._python import (
     split_atoms,
 )
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "validate_species"})
+
 
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model name, device, and molecule in angstrom.
@@ -90,7 +93,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError("AIMNet2 runs in Python; cmdline_args and files are unused.")
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("aimnet2", keywords, frozenset({"validate_species"}))
+    reject_unknown("aimnet2", keywords, KEYWORDS)
     return PythonInput(
         gpus=gpu_count(device),
         function=invoke_aimnet2,
@@ -282,5 +285,10 @@ codec = Codec(
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'aimnet2').
 program = CodecProgram(
-    codec, in_process=False, gpu=True, library="aimnet", weights=weights
+    codec,
+    in_process=False,
+    gpu=True,
+    library="aimnet",
+    weights=weights,
+    keywords=KEYWORDS,
 )

@@ -69,6 +69,10 @@ from ._python import (
 PRECISIONS = ("float32-high", "float32-highest", "float64")
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "precision"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, device, precision, and molecule in angstrom.
 
@@ -81,7 +85,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError("Orb runs in Python; cmdline_args and files are unused.")
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("orb", keywords, frozenset({"precision"}))
+    reject_unknown("orb", keywords, KEYWORDS)
     precision = keywords.get("precision", "float32-high")
     if precision not in PRECISIONS:
         raise EncoderError(
@@ -225,4 +229,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'orb').
-program = CodecProgram(codec, in_process=False, gpu=True, library="orb-models")
+program = CodecProgram(
+    codec, in_process=False, gpu=True, library="orb-models", keywords=KEYWORDS
+)

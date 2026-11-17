@@ -90,6 +90,10 @@ DEFAULT_INFERENCE_SETTINGS: dict[str, Any] = {
 }
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "task", "inference_settings"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, task, device, inference settings, and molecule in angstrom.
 
@@ -104,7 +108,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("fairchem", keywords, frozenset({"task", "inference_settings"}))
+    reject_unknown("fairchem", keywords, KEYWORDS)
     settings = keywords.get("inference_settings", DEFAULT_INFERENCE_SETTINGS)
     if not isinstance(settings, (str, dict)):
         raise EncoderError(
@@ -357,5 +361,10 @@ codec = Codec(
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'fairchem').
 program = CodecProgram(
-    codec, in_process=False, gpu=True, library="fairchem-core", weights=model_file
+    codec,
+    in_process=False,
+    gpu=True,
+    library="fairchem-core",
+    weights=model_file,
+    keywords=KEYWORDS,
 )

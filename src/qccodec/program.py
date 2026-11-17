@@ -49,7 +49,7 @@ import subprocess
 import tempfile
 import time
 import traceback
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +119,14 @@ _SCHEMA_NOTE = (
     "The program's own keywords, passed through unchanged; its documentation is the "
     "reference."
 )
+#: The shared keyword every adapter takes (`CodecProgram.compute`).
+_THREADS_SCHEMA: dict[str, Any] = {
+    "type": "integer",
+    "minimum": 1,
+    "description": "CPU threads the calculation may use; the runner's grant caps it.",
+    "x-tier": "common",
+    "x-concern": "resource",
+}
 
 
 class CodecProgram:
@@ -147,6 +155,10 @@ class CodecProgram:
         weights: For a library's ML potential: a function of the input or
             subprogram spec giving the file of its model's weights on disk, or None
             when it cannot name one (a model not downloaded yet).
+        keywords: The keywords the program takes, when the codec knows them all
+            and refuses any other: a collection, or a function of the calctype.
+            ``settings_schema`` lists them. None for a program whose keywords pass
+            through to it unlisted (ORCA, Psi4), which checks them itself.
     """
 
     def __init__(
@@ -163,6 +175,7 @@ class CodecProgram:
         threads: int | None = 1,
         image: str | None = None,
         weights: Callable[[Any], Path | None] | None = None,
+        keywords: Collection[str] | Callable[[CalcType], Collection[str]] | None = None,
     ) -> None:
         """Wrap a codec."""
         self.codec = codec
@@ -176,6 +189,7 @@ class CodecProgram:
         self.threads = threads
         self.image = image
         self.weights = weights
+        self.keywords = keywords
 
     def __repr__(self) -> str:
         """Show the program."""
@@ -286,12 +300,29 @@ class CodecProgram:
         }
 
     def settings_schema(self, calctype: CalcType) -> dict[str, Any]:
-        """Any keywords: the program's own, which it validates when it runs."""
+        """The keywords the program takes for a calctype, where the codec knows them.
+
+        Every program takes the shared ``threads``. A codec that knows all of its
+        program's keywords (``keywords``) lists them in the program's own spelling and
+        allows no others; the rest pass the program's keywords through unlisted, and
+        the program checks them when it runs.
+        """
+        known = self.keywords(calctype) if callable(self.keywords) else self.keywords
+        properties: dict[str, Any] = {"threads": _THREADS_SCHEMA}
+        if known is None:
+            return {
+                "type": "object",
+                "description": _SCHEMA_NOTE,
+                "properties": properties,
+                "additionalProperties": True,
+            }
+        properties.update({name: {} for name in sorted(known)})
         return {
             "type": "object",
-            "description": _SCHEMA_NOTE,
-            "properties": {},
-            "additionalProperties": True,
+            "description": f"The keywords {self.name} takes, in its own spelling; "
+            "its documentation is the reference.",
+            "properties": properties,
+            "additionalProperties": False,
         }
 
     def record_schema(self, calctype: CalcType) -> dict[str, Any]:

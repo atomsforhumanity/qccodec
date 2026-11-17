@@ -546,4 +546,11 @@ codec = Codec(
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'geometric').
 #: It runs in the caller's process, so its subprograms are found there too, and plans
 #: the threads its subprogram does (None when that one asks for all).
-program = CodecProgram(codec, library="geometric", threads=None)
+program = CodecProgram(
+    codec,
+    library="geometric",
+    threads=None,
+    keywords=lambda calctype: (
+        SETTINGS if calctype == CalcType.irc else SETTINGS - {"irc_direction"}
+    ),
+)
