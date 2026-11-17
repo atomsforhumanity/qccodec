@@ -16,7 +16,7 @@ from qcdata import (
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, required_programs
+from .conftest import Run, finite_difference_check, required_programs
 
 
 def _orca_installed() -> bool:
@@ -77,6 +77,23 @@ def test_hessian(run: Run, water: Structure) -> None:
     # minimum, but HF/STO-3G still gives three real modes here.
     assert len(results.vibrational_analysis.frequencies) == 3
     check_normal_modes(results, list(water.symbols))
+
+
+@pytest.mark.parametrize(("numfreq", "atol"), [(False, 2e-5), (True, 5e-4)])
+def test_hessian_is_not_projected(
+    run: Run, water: Structure, numfreq: bool, atol: float
+) -> None:
+    """Analytic and numerical Hessians agree with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 3e-2.
+    """
+    keywords = {"verytightscf": True, "numfreq": numfreq or None}
+    finite_difference_check(
+        run,
+        _input(water, CalcType.gradient).model_copy(update={"keywords": keywords}),
+        atol=atol,
+        hessian=True,
+    )
 
 
 def test_hessian_modes_across_blocks(run: Run) -> None:

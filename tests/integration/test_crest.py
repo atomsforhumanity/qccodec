@@ -14,7 +14,7 @@ from qcdata import (
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("crest")]
 
@@ -67,6 +67,16 @@ def test_hessian(run: Run, water: Structure) -> None:
     )
     # CREST writes its modes in a reoriented frame; the codec rotates them back.
     check_normal_modes(output.results, list(water.symbols))
+
+
+def test_hessian_is_not_projected(run: Run, water: Structure) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 1e-2.
+    """
+    finite_difference_check(
+        run, _input(water, CalcType.gradient), atol=5e-4, hessian=True
+    )
 
 
 def test_optimization(run: Run, water: Structure) -> None:

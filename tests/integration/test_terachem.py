@@ -12,7 +12,7 @@ from qcdata import (
     Structure,
 )
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("terachem")]
 
@@ -78,6 +78,21 @@ def test_hessian(run: Run) -> None:
     # Builds from 2023 and 2026 differ by up to 2e-4 in this row.
     assert np.allclose(hessian[0], REFERENCE_HESSIAN_ROW_0, atol=1e-3)
     _check_normal_modes(output.results, WATER_NEAR_MINIMUM)
+
+
+def test_hessian_is_not_projected(run: Run, water: Structure) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 3e-2.
+    """
+    inp = _input(
+        water,
+        CalcType.gradient,
+        Model(method="hf", basis="6-31g"),
+        mincheck="false",
+        convthre="1e-8",
+    )
+    finite_difference_check(run, inp, atol=5e-5, hessian=True)
 
 
 # sqrt(Hartree / (bohr^2 amu)) in cm^-1.
