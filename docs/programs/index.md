@@ -104,7 +104,8 @@ and codes the codecs use:
 | a charge or multiplicity the model cannot describe | `input` | `not_modeled` |
 | atoms on top of each other, a multiplicity the electrons cannot have, an unknown method, basis set or solvent, a value the program does not take | `input` | |
 | a request the program does not implement | `unsupported` | |
-| the SCF did not converge | `convergence` | `scf_not_converged` |
+| the SCF did not converge (with its last iterate's energy where the program prints it) | `convergence` | `scf_not_converged` |
+| coupled-perturbed (CPHF/CPKS) equations did not converge, where the output tells | `convergence` | `response_not_converged` |
 | an optimizer ran out of iterations | `convergence` | `max_iter` |
 | an IRC started from a structure that is not a first-order saddle point | `input` | `not_first_order_saddle` |
 | a subprogram failed (`error.cause` holds its error) | `program` | |
@@ -114,7 +115,28 @@ and codes the codecs use:
 
 Each program page lists its own. A failure keeps everything recovered so far
 (`exc.output.results`, an optimization's trajectory), the program's log
-(`exc.output.logs`) and the traceback (`exc.output.traceback`).
+(`exc.output.logs`) and the traceback (`exc.output.traceback`). A program out of memory
+(`resource`, `host_memory` or `device_memory`) gives `required_gib` and `available_gib`
+in `error.details` where its output says what it needed, in the terms of its own memory
+setting (ORCA's `%maxcore`, Psi4's `--memory`, TeraChem's `gpumem`): the setting with
+which the calculation fits and the one it ran with.
+
+A result the program accepted without meeting its convergence thresholds (an SCF it
+carried on with: ORCA's `ConvIgnored`, Psi4's `fail_on_maxiter` off, DFTB+'s
+`ConvergentSCCOnly = No`) succeeds with the warning `loosely_converged` in
+`output.warnings`, whose message gives the residual reached and the rule.
+
+## Hessians
+
+`results.hessian` is the full Cartesian second derivative of the energy at the input
+geometry, never projected, as qcdata defines it, so it serves away from stationary
+points too (the start of a transition-state search, an IRC's updates). Every codec's
+Hessian is checked against central differences of the program's own gradients on a
+distorted water molecule. xtb projects translations and rotations out of the Hessian it
+writes, so its codec reads the one xtb writes before projecting; Psi4 projects
+rotations out of finite-difference Hessians only with `fd_project`, which its codec
+refuses for Hessians. Projection belongs to the harmonic analysis
+(`vibrational_analysis`), which records what it projected in `projection`.
 
 ## Programs that are Python libraries
 
