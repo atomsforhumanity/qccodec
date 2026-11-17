@@ -502,7 +502,6 @@
             "fermi_level_a": null,
             "fermi_level_b": null,
             "core_electrons": null,
-            "basis": null,
             "coefficients_a": null,
             "coefficients_b": null,
             "qcdata_version": "0.24.0a2"
