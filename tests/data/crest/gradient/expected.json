@@ -9,7 +9,8 @@
   "provenance": {
     "extras": {},
     "program": "crest",
-    "program_version": "3.0.1"
+    "program_version": "3.0.1",
+    "program_commit": "1782d7d"
   },
   "energy": -0.335557824179335,
   "gradient": [

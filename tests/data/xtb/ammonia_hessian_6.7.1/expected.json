@@ -10,6 +10,7 @@
     "extras": {},
     "program": "xtb",
     "program_version": "6.7.1",
+    "program_commit": "26dd68d",
     "qcdata_version": "0.20.1"
   },
   "energy": -4.425736621728,

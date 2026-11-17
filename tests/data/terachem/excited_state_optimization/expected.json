@@ -10,6 +10,7 @@
     "extras": {},
     "program": "terachem",
     "program_version": "v1.9-2025.03-dev [0fe15afa140ce458414fd8d35e48d406b4e6c95b]",
+    "program_commit": "0fe15afa140ce458414fd8d35e48d406b4e6c95b",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -305,6 +306,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2025.03-dev [0fe15afa140ce458414fd8d35e48d406b4e6c95b]",
+          "program_commit": "0fe15afa140ce458414fd8d35e48d406b4e6c95b",
           "qcdata_version": "0.23.0"
         },
         "energy": -2232.18874403,
@@ -789,6 +791,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2025.03-dev [0fe15afa140ce458414fd8d35e48d406b4e6c95b]",
+          "program_commit": "0fe15afa140ce458414fd8d35e48d406b4e6c95b",
           "qcdata_version": "0.23.0"
         },
         "energy": -2232.20511478,

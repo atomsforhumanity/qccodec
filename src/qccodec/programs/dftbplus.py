@@ -80,6 +80,7 @@ from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..program import CodecProgram
+from ..utils import re_search
 
 INPUT_FILE = "dftb_in.hsd"
 STRUCTURE_FILE = "geometry.xyz"
@@ -407,6 +408,12 @@ def parse_version(stdout: str) -> str:
     return match.group(1) or f"dev-{match.group(2)}"
 
 
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse a development build's commit: ``development version (commit: a23bfb2)``."""
+    return re_search(r"DFTB\+ development version \(commit: (\w+)\)", stdout).group(1)
+
+
 @codec.parser(
     file="results.tag", target="energy", calctypes=[CalcType.energy, CalcType.gradient]
 )
@@ -486,12 +493,15 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         gradient = parse_gradient(ctx.read("results.tag"))
     except (FileNotFoundError, MatchNotFoundError):
         gradient = None
-    version = None
+    version = commit = None
     try:
         version = parse_version(ctx.stdout or "")
+        commit = parse_commit(ctx.stdout or "")
     except MatchNotFoundError:
         pass
-    provenance = Provenance(program="dftbplus", program_version=version)
+    provenance = Provenance(
+        program="dftbplus", program_version=version, program_commit=commit
+    )
     trajectory = []
     for i, structure in enumerate(structures):
         last = i == len(structures) - 1

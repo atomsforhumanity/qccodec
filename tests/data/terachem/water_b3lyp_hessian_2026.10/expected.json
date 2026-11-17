@@ -10,6 +10,7 @@
     "extras": {},
     "program": "terachem",
     "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+    "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
     "qcdata_version": "0.20.1"
   },
   "energy": -76.3861100471,

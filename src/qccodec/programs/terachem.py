@@ -425,6 +425,15 @@ def parse_version(stdout: str) -> str:
     return f"{parse_terachem_version(stdout)} [{parse_version_control_details(stdout)}]"
 
 
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's git commit: ``Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d``.
+
+    Builds that print an ``Hg Version`` (a branch name) name no commit.
+    """
+    return re_search(r"Git Version: (\w+)", stdout).group(1)
+
+
 @codec.parser(target="calcinfo_natoms")
 def parse_natoms(stdout: str) -> int:
     """Parse the number of atoms from TeraChem stdout."""

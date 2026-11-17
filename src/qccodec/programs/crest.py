@@ -46,6 +46,7 @@ from __future__ import annotations
 import copy
 import math
 import re
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -250,6 +251,28 @@ def parse_version(stdout: str) -> str:
     return re_search(r"Version (\d+\.\d+\.\d+),", stdout).group(1)
 
 
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's commit from CREST's banner: ``commit (af7eb99)``."""
+    return re_search(r"commit \((\w+)\)", stdout).group(1)
+
+
+def _provenance(stdout: str | None) -> Provenance:
+    """CREST's provenance for the structures of an ensemble or trajectory."""
+
+    def found(parse: Callable[[str], str]) -> str | None:
+        try:
+            return parse(stdout) if stdout else None
+        except MatchNotFoundError:
+            return None
+
+    return Provenance(
+        program="crest",
+        program_version=found(parse_version),
+        program_commit=found(parse_commit),
+    )
+
+
 def _ensemble(ctx: Context, filename: str) -> list[Frame]:
     """Read a CREST multi-structure xyz file whose comment lines hold the energies."""
     assert ctx.input_data is not None
@@ -264,11 +287,7 @@ def _ensemble(ctx: Context, filename: str) -> list[Frame]:
         ids = ctx.input_data.require_structure().identifiers.model_dump()
         for structure in structures:
             structure.add_identifiers(**ids)
-    try:
-        version = parse_version(ctx.stdout) if ctx.stdout else None
-    except MatchNotFoundError:
-        version = None
-    provenance = Provenance(program="crest", program_version=version)
+    provenance = _provenance(ctx.stdout)
     return [
         Frame(
             structure=structure,
@@ -382,11 +401,7 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     )
     energies = [float(s.extras[Structure._xyz_comment_key][1]) for s in structures]
     structures = _to_input_frame(structures, ctx.input_data.require_structure())
-    try:
-        version = parse_version(ctx.stdout) if ctx.stdout else None
-    except MatchNotFoundError:
-        version = None
-    provenance = Provenance(program="crest", program_version=version)
+    provenance = _provenance(ctx.stdout)
     trajectory: list[Frame] = [
         Frame(
             structure=structure,

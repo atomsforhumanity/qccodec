@@ -9,7 +9,8 @@
   "provenance": {
     "extras": {},
     "program": "orca",
-    "program_version": "6.1.0"
+    "program_version": "6.1.0",
+    "program_commit": "679e74b"
   },
   "energy": -76.211122199697,
   "gradient": [

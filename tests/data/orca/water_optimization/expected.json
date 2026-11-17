@@ -10,6 +10,7 @@
     "extras": {},
     "program": "orca",
     "program_version": "6.1.0",
+    "program_commit": "679e74b",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -84,6 +85,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.320385565717,
@@ -187,6 +189,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.321113618631,
@@ -290,6 +293,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.32125161185,
@@ -393,6 +397,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.321270536009,

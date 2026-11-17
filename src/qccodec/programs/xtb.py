@@ -8,7 +8,10 @@ The codec writes ``structure.xyz`` and runs::
 ``gxtb``. g-xTB needs the xtb build distributed with g-xTB
 (https://github.com/grimme-lab/g-xtb); point qccodec at it with
 ``QCCODEC_XTB_EXECUTABLE``. GFN0 reads its parameter
-file from the directory named by ``XTBPATH``.
+file from the directory named by ``XTBPATH``. That build reports the version of
+upstream xtb 6.7.1, so results also name the build's commit from xtb's version line in
+``provenance.program_commit`` (``26dd68d`` for the g-xTB build, ``edcfbbe`` for
+upstream 6.7.1).
 
 Keywords become command-line flags in xtb's own spelling: ``{"alpb": "water"}`` gives
 ``--alpb water``, ``{"etemp": 1000}`` gives ``--etemp 1000``, a list gives several
@@ -329,6 +332,25 @@ def parse_version(stdout: str) -> str:
     return version
 
 
+def _commit(stdout: str) -> str | None:
+    """Return the commit of the build from the version line, or None."""
+    match = re.search(r"xtb version \S+ \((\w+)\)", stdout)
+    return match.group(1) if match else None
+
+
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's commit, which tells builds of one version apart.
+
+    The g-xTB build of xtb prints ``xtb version 6.7.1 (26dd68d)``, upstream xtb
+    6.7.1 ``xtb version 6.7.1 (edcfbbe)``.
+    """
+    commit = _commit(stdout)
+    if commit is None:
+        raise MatchNotFoundError(r"xtb version \S+ \((\w+)\)", stdout)
+    return commit
+
+
 @codec.parser(
     target="energy", calctypes=[CalcType.energy, CalcType.gradient, CalcType.hessian]
 )
@@ -413,8 +435,11 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         charge=ctx.input_data.require_structure().charge,
         multiplicity=ctx.input_data.require_structure().multiplicity,
     )
-    version = _version(ctx.stdout or "")
-    provenance = Provenance(program="xtb", program_version=version)
+    provenance = Provenance(
+        program="xtb",
+        program_version=_version(ctx.stdout or ""),
+        program_commit=_commit(ctx.stdout or ""),
+    )
     trajectory = []
     for structure in structures:
         comment = structure.extras[Structure._xyz_comment_key]

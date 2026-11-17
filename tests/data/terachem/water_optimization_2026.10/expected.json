@@ -10,6 +10,7 @@
     "extras": {},
     "program": "terachem",
     "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+    "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -88,6 +89,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
           "qcdata_version": "0.23.0"
         },
         "energy": -74.96441368363942,
@@ -195,6 +197,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
           "qcdata_version": "0.23.0"
         },
         "energy": -74.96570119044887,
@@ -302,6 +305,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
           "qcdata_version": "0.23.0"
         },
         "energy": -74.96587295458986,
@@ -409,6 +413,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
           "qcdata_version": "0.23.0"
         },
         "energy": -74.96590049505701,
@@ -516,6 +521,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2026.10.12-dev [175124dcc4ac54a6f38882b0f4668eab6c9d9e8d]",
+          "program_commit": "175124dcc4ac54a6f38882b0f4668eab6c9d9e8d",
           "qcdata_version": "0.23.0"
         },
         "energy": -74.96590123816203,

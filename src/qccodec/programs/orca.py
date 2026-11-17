@@ -493,6 +493,15 @@ def parse_version(stdout: str) -> str:
     return re_search(r"Program Version (\d+\.\d+\.\d+)", stdout).group(1)
 
 
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's commit under the version line: ``(GIT: $679e74b$)``.
+
+    ORCA prints it from 6.1; 6.0 names no commit.
+    """
+    return re_search(r"\(GIT: \$(\w+)\$\)", stdout).group(1)
+
+
 @codec.parser(target="calcinfo_natoms", required=False)
 def parse_natoms(stdout: str) -> int:
     """Parse the number of atoms from ORCA stdout."""

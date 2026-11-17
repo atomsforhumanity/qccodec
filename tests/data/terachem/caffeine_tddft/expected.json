@@ -92,7 +92,8 @@
   "provenance": {
     "extras": {},
     "program": "terachem",
-    "program_version": "v1.9-2023.08-dev [c64cd2447177582f771b61e281af288c614c900d]"
+    "program_version": "v1.9-2023.08-dev [c64cd2447177582f771b61e281af288c614c900d]",
+    "program_commit": "c64cd2447177582f771b61e281af288c614c900d"
   },
   "energy": -680.2483502824,
   "gradient": null,

@@ -10,6 +10,7 @@
     "extras": {},
     "program": "crest",
     "program_version": "3.0.2",
+    "program_commit": "af7eb99",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -80,6 +81,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.7918798035,
@@ -163,6 +165,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.9229264187,
@@ -246,6 +249,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0483521241,
@@ -329,6 +333,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.017059761,
@@ -412,6 +417,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0491088307,
@@ -495,6 +501,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0660326493,
@@ -578,6 +585,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0730217268,
@@ -661,6 +669,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.072307888,
@@ -744,6 +753,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0683269168,
@@ -827,6 +837,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0732163707,
@@ -910,6 +921,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0733841586,
@@ -993,6 +1005,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0734021646,
@@ -1076,6 +1089,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0734025156,
