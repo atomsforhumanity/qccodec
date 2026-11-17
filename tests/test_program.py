@@ -376,15 +376,24 @@ def _gpu_input(device: str | None = None) -> ProgramInput:
     )
 
 
-def test_a_gpu_library_on_the_cpu_warns_backend_fallback(tmp_path: Path) -> None:
-    """No GPU visible (none granted): the automatic device falls back, with a warning."""
-    fell_back: Any = CodecProgram(_gpu_library(None, "cpu")).compute(
-        _gpu_input(), ctx(tmp_path, gpus=())
-    )
+def test_a_gpu_library_on_the_cpu_warns_only_when_granted_a_gpu(tmp_path: Path) -> None:
+    """Granted none, the CPU is the plan; granted one it could not use, a fallback."""
+    library = CodecProgram(_gpu_library(None, "cpu"))
+    fell_back: Any = library.compute(_gpu_input(), ctx(tmp_path, gpus=("1",)))
     assert [w.code for w in fell_back.warnings] == ["backend_fallback"]
     assert fell_back.warnings[0].path == "device"
+    assert "granted GPU 1" in fell_back.warnings[0].message
     assert fell_back.resolved.settings == {"device": "cpu"}
-    assert fell_back.resolved.reasons == {"device": "auto: no GPU was visible"}
+    assert fell_back.resolved.reasons == {
+        "device": "auto: the granted GPU was not usable"
+    }
+    quiets: list[Any] = [
+        library.compute(_gpu_input(), ctx(tmp_path, gpus=())),
+        library.compute(_gpu_input()),
+    ]  # no grant: no GPU, or a direct call
+    for quiet in quiets:
+        assert not quiet.warnings and quiet.resolved.settings == {"device": "cpu"}
+        assert quiet.resolved.reasons == {"device": "auto: no GPU was granted"}
     on_gpu: Any = CodecProgram(_gpu_library(None, "cuda")).compute(
         _gpu_input(), ctx(tmp_path)
     )
@@ -395,13 +404,12 @@ def test_a_gpu_library_on_the_cpu_warns_backend_fallback(tmp_path: Path) -> None
     )
     assert not asked.warnings and asked.resolved.settings == {"device": "cpu"}
     assert asked.resolved.reasons == {}
-    batched = CodecProgram(_gpu_library(None, "cpu")).compute_batch(
-        [_gpu_input(), _gpu_input()], ctx(tmp_path, gpus=())
-    )
-    assert [[w.code for w in out.warnings] for out in batched] == [
-        ["backend_fallback"]
-    ] * 2
-    assert all(out.resolved is not None for out in batched)
+    for gpus, warned in (((), []), (("0",), ["backend_fallback"])):
+        batched = library.compute_batch(
+            [_gpu_input(), _gpu_input()], ctx(tmp_path, gpus=gpus)
+        )
+        assert [[w.code for w in out.warnings] for out in batched] == [warned] * 2
+        assert all(out.resolved is not None for out in batched)
 
 
 def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:

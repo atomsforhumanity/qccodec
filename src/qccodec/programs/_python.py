@@ -27,7 +27,7 @@ class SinglePoint(TypedDict, total=False):
 
     ``energy`` and ``version`` are always present; the rest only when computed.
     ``device`` is where a GPU-capable library ran (``cuda``, ``cpu``): the adapter
-    warns ``backend_fallback`` when a calculation that planned a GPU ran on the CPU.
+    warns ``backend_fallback`` when a calculation granted a GPU ran on the CPU.
     """
 
     energy: float

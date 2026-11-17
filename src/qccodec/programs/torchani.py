@@ -18,9 +18,9 @@ Inputs map to TorchANI as follows:
   its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
-  Unset, the device falls back to the CPU when no GPU is visible (none
-  granted), with a ``backend_fallback`` warning; ``resolved.settings``
-  names the device used.
+  Unset, it runs on a GPU when one is visible, else on the CPU; it warns
+  ``backend_fallback`` only when qccompute granted it a GPU and it still ran
+  on the CPU (a CPU-only PyTorch). ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
