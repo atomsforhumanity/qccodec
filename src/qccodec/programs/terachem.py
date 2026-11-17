@@ -32,11 +32,16 @@ supported. ``indices`` is the only input field that carries atom indices.
 The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another input as
 its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
 stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
-``input``; out of GPU memory is ``resource`` (``device_memory``), and out of its pinned
-host buffer ``resource`` (``host_memory``); no usable GPU is ``backend``; any other
-unfinished job is ``internal``. When an allocation overflows TeraChem's GPU buffer
-(``gpumem``, in megawords of 8 bytes), the error's ``details`` give the buffer as
-``available_gib`` and what it held plus the allocation that failed as ``required_gib``.
+``input``; an SCF that does not converge is ``convergence`` (``scf_not_converged``),
+with the energy of its last iteration, which TeraChem prints; coupled-perturbed
+equations that do not (TeraChem's ``CPSCF``/``CPCIS failed to converge``) are
+``convergence`` (``response_not_converged``); out of GPU memory is ``resource``
+(``device_memory``), and out of its pinned host buffer ``resource`` (``host_memory``);
+no usable GPU is ``backend``; any other unfinished job is ``internal``. When an
+allocation overflows TeraChem's GPU buffer, the error's ``details`` are in the terms of
+TeraChem's memory keyword ``gpumem`` (the buffer, in megawords of 8 bytes) converted
+to GiB: ``available_gib`` the buffer it ran with, ``required_gib`` the buffer with
+which the allocation fits (what the buffer held plus the allocation that failed).
 TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
 work is on the GPUs it declares, so several can share a machine's GPUs.
 
@@ -81,6 +86,12 @@ codec = Codec(
     # Matched against the failure hook's messages below.
     errors=[
         (r"TeraChem has no basis set", "input", None),
+        (r"TeraChem: the SCF did not converge", "convergence", "scf_not_converged"),
+        (
+            r"TeraChem: the response equations did not converge",
+            "convergence",
+            "response_not_converged",
+        ),
         (r"TeraChem ran out of GPU memory", "resource", "device_memory"),
         (r"TeraChem ran out of host memory", "resource", "host_memory"),
         (r"TeraChem could not use a GPU", "backend", None),
@@ -297,6 +308,15 @@ def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
     basis = re.search(r"Unable to open file \S*/basis/(\S+)", stdout)
     if basis:
         return f"TeraChem has no basis set {basis.group(1)!r}."
+    scf = re.search(r"Reached max number of SCF iterations \(maxit = (\d+)\)", stdout)
+    if scf or "SCF did not converge" in stdout:
+        cycles = f" in {scf.group(1)} iterations (maxit)" if scf else ""
+        return f"TeraChem: the SCF did not converge{cycles}."
+    response = re.search(r"(CPSCF|CPCIS) failed to converge", stdout)
+    if response:
+        return (
+            f"TeraChem: the response equations did not converge ({response.group(1)})."
+        )
     memory = out_of_memory(stdout)
     if memory is not None:
         return memory

@@ -95,6 +95,21 @@ def test_hessian_is_not_projected(run: Run, water: Structure) -> None:
     finite_difference_check(run, inp, atol=5e-5, hessian=True)
 
 
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """An SCF out of iterations is scf_not_converged, with its last energy."""
+    inp = _input(
+        water, CalcType.gradient, Model(method="b3lyp", basis="6-31g"), maxit="3"
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="scf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    assert e.value.output is not None
+    assert -76.5 < e.value.output.results.energy < -76.0
+
+
 # sqrt(Hartree / (bohr^2 amu)) in cm^-1.
 WAVENUMBER_PER_ROOT_AU = 5140.4871
 
