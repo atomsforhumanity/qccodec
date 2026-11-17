@@ -40,7 +40,7 @@ prog_input = ProgramInput(
     model=Model(method="gfn2"),  # or "gfn1", "ipea1"
     keywords={
         # Calculator settings:
-        "accuracy": 1.0,  # SCC accuracy; lower is tighter
+        "acc": 1.0,  # SCC accuracy factor; lower is tighter
         "max-iter": 250,  # maximum SCC iterations
         # "temperature": 300 * 3.166808578545117e-6,  # electronic temperature (Hartree)
         # "verbosity": 0,  # silence the SCC printout

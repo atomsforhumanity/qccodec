@@ -346,6 +346,7 @@ codec = Codec(
     decode=single_point_decoder("fairchem"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'fairchem').

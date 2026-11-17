@@ -67,7 +67,7 @@ def test_gradient_matches_finite_differences(run: Run, water: Structure) -> None
 def test_implicit_solvent_and_settings(run: Run, water: Structure) -> None:
     """ALPB water lowers the energy; settings reach the calculator."""
     solvated = run(
-        _input(water, CalcType.energy, **{"alpb-solvation": "water", "accuracy": 0.1})
+        _input(water, CalcType.energy, **{"alpb-solvation": "water", "acc": 0.1})
     ).results
     assert solvated.energy < ENERGY - 1e-3
 

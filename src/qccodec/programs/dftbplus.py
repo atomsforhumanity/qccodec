@@ -101,6 +101,13 @@ codec = Codec(
         (r"SCC is NOT converged", "convergence", "scf_not_converged"),
         (r"geometry optimization did not converge", "convergence", "max_iter"),
     ],
+    # Non-self-consistent DFTB has no SCC: a single point has nothing to converge
+    # (an optimization still has the optimizer's convergence).
+    converges=lambda inp: (
+        inp.calctype == CalcType.optimization
+        or inp.model is None
+        or inp.model.method.lower().replace("_", "-") != "dftb"
+    ),
 )
 
 DFTB_METHODS = {"dftb3": "DFTB3", "scc-dftb": "SCC-DFTB", "dftb": "DFTB"}

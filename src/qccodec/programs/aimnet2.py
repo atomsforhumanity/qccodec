@@ -214,6 +214,7 @@ codec = Codec(
     decode=single_point_decoder("aimnet2"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
     # The model cannot describe the structure's charge or spin.
     errors=[(r"is closed-shell; use 'aimnet2-nse'", "input", "not_modeled")],
 )

@@ -12,10 +12,12 @@ from typing import Any, Literal, TypeVar, overload
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 from qcdata import (
+    Accuracy,
     CalcType,
     Data,
     ErrorKind,
     Inputs,
+    ProgramError,
     ProgramInput,
     ProgramOutput,
     StructuredData,
@@ -50,6 +52,7 @@ VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
 BatchKey = Callable[[ProgramInput], "Hashable | None"]
 CapThreads = Callable[[ProgramInput, int], ProgramInput]
+Converges = Callable[[ProgramInput], bool]
 #: ``(pattern, kind, code)``: a failure whose message matches the regular expression
 #: ``pattern`` (``re.search``) is of that `qcdata.ErrorKind`, refined by ``code``.
 ErrorRule = tuple[str, str, str | None]
@@ -208,6 +211,11 @@ class Codec:
             code (``scf_not_converged``, ``max_iter``, ``unknown_key``, ...). A
             failure no rule matches is kind ``internal``. Kinds decide which stored
             failures a store reuses, so map every failure the program reports.
+        converges: Whether a calculation has convergence settings an accuracy
+            target could set (an SCF): True, False (a force field, an ML
+            potential), or a function of the input (xtb: not for GFN-FF). It decides
+            how ``encode`` refuses the shared keyword ``accuracy``, which no codec
+            maps onto its program's thresholds yet.
         parsers: Pre-built parser specifications.
     """
 
@@ -228,6 +236,7 @@ class Codec:
         max_batch: int = 32,
         cap_threads: CapThreads | None = None,
         errors: Iterable[ErrorRule] = (),
+        converges: bool | Converges = True,
     ) -> None:
         """Create a codec; hooks may also be attached later with decorators.
 
@@ -255,6 +264,7 @@ class Codec:
         self._batch_key: BatchKey | None = batch_key
         self.max_batch: int = max_batch
         self.cap_threads: CapThreads | None = cap_threads
+        self.converges: bool | Converges = converges
         self.errors: list[ErrorRule] = []
         for rule in errors:
             self.add_error(*rule)
@@ -418,10 +428,17 @@ class Codec:
     def encode(self, input_data: Inputs) -> NativeInput:
         """Translate an input into a native invocation without executing it.
 
+        The shared keyword ``accuracy`` (`qcdata.Accuracy.from_keywords`) is checked
+        here for every codec: a valid target is refused, as kind ``unsupported``
+        when the calculation has convergence settings (``converges``) and kind
+        ``input``, code ``no_effect``, when it has none; ``null`` is the default and
+        is left out before the codec's encoder sees the input.
+
         Raises:
             EncoderError: The codec has no encoder, the input's program or
-                calculation type is not supported, or the encoder returned
-                something other than a ``SubprocessInput`` or ``PythonInput``.
+                calculation type is not supported, the input sets ``accuracy``, or
+                the encoder returned something other than a ``SubprocessInput`` or
+                ``PythonInput``.
         """
         if self._encode is None:
             raise EncoderError(f"Codec {self.program!r} has no encoder.")
@@ -434,6 +451,11 @@ class Codec:
                 raise EncoderError(
                     f"{self.program} does not support {input_data.calctype.value}."
                 )
+            if "accuracy" in input_data.keywords:
+                self._refuse_accuracy(input_data)
+                keywords = dict(input_data.keywords)
+                del keywords["accuracy"]
+                input_data = input_data.model_copy(update={"keywords": keywords})
         native = self._encode(input_data)
         if not isinstance(native, (SubprocessInput, PythonInput)):
             raise EncoderError(
@@ -441,6 +463,37 @@ class Codec:
                 f"not {type(native).__name__}."
             )
         return native
+
+    def _refuse_accuracy(self, inp: ProgramInput) -> None:
+        """Refuse an accuracy target, which no codec maps onto its program's thresholds.
+
+        Raises:
+            EncoderError: Kind ``input`` for a value that is not a target (from
+                `qcdata.Accuracy.from_keywords`); ``no_effect`` for a calculation
+                without convergence settings; else kind ``unsupported``.
+        """
+        try:
+            target = Accuracy.from_keywords(inp.keywords)
+        except ProgramError as e:
+            raise EncoderError(
+                e.error.message, kind=e.error.kind.value, code=e.error.code
+            ) from e
+        if target is None:
+            return
+        converges = self.converges
+        if callable(converges):
+            converges = converges(inp)
+        if not converges:
+            raise EncoderError(
+                f"{self.program} has no convergence settings for this calculation, so "
+                "an accuracy target has no effect; remove accuracy.",
+                code="no_effect",
+            )
+        raise EncoderError(
+            f"{self.program} cannot turn an accuracy target into its own convergence "
+            "thresholds; remove accuracy and set the program's thresholds instead.",
+            kind="unsupported",
+        )
 
     def batch_key(self, input_data: Inputs) -> Hashable | None:
         """Return the key under which an input may share a batch, or None.
@@ -454,6 +507,7 @@ class Codec:
             or not isinstance(input_data, ProgramInput)
             or input_data.program != self.program
             or input_data.calctype not in self.calctypes
+            or "accuracy" in input_data.keywords  # alone, so encode refuses it
         ):
             return None
         return self._batch_key(input_data)

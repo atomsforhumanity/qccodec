@@ -40,6 +40,14 @@ with `qccodec.reject_unknown(program, keywords, known)`, which raises
 takes `kind` (`input`, or `unsupported` for a valid request the program does not
 implement) and `code` (`unknown_key`, `not_applicable`, `no_effect`, `not_modeled`).
 
+The shared keyword `accuracy` (an accuracy target, `{"energy": ..., "gradient": ...,
+"hessian": ...}`) never reaches your encoder: `Codec.encode` reads it with qcdata's
+`Accuracy.from_keywords` and refuses it, since no codec maps targets onto its
+program's thresholds yet. The refusal is kind `unsupported` for a calculation with
+convergence settings and kind `input`, code `no_effect`, for one without (a force
+field, an ML potential): say which with `Codec(..., converges=False)`, or a function
+of the input (`converges=lambda inp: inp.model.method != "gfnff"`).
+
 Then make it a program and run it with qccompute:
 
 ```python

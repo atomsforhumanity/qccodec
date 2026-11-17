@@ -273,7 +273,7 @@ def test_tblite_settings_and_interactions() -> None:
             "tblite",
             structure=HYDROXIDE,
             keywords={
-                "accuracy": 0.1,
+                "acc": 0.1,
                 "max-iter": 500,
                 "alpb-solvation": ["water", "bar1mol"],
                 "electric-field": [0.0, 0.0, 0.01],
@@ -319,9 +319,7 @@ def test_tblite_invoke_with_a_fake_library(monkeypatch: pytest.MonkeyPatch) -> N
     module.Calculator = Calculator  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "tblite", ModuleType("tblite"))
     monkeypatch.setitem(sys.modules, "tblite.interface", module)
-    native = _encode(
-        _input("tblite", keywords={"accuracy": 0.1, "alpb-solvation": "water"})
-    )
+    native = _encode(_input("tblite", keywords={"acc": 0.1, "alpb-solvation": "water"}))
     result = native.function(**native.kwargs)
     assert calls == [
         ("init", ("GFN2-xTB", [8, 1, 1], 0.0, 0)),

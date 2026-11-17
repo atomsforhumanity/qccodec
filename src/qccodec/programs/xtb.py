@@ -104,6 +104,13 @@ codec = Codec(
         (r"unpaired electrons .* not consistent", "input", None),
         (r"is not parametrized", "input", None),
     ],
+    # GFN-FF is a force field: a single point has nothing to converge (an
+    # optimization still has the optimizer's convergence).
+    converges=lambda inp: (
+        inp.calctype == CalcType.optimization
+        or inp.model is None
+        or inp.model.method.lower().replace("-", "") != "gfnff"
+    ),
 )
 
 METHODS: dict[str, tuple[str, ...]] = {

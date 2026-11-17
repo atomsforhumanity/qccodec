@@ -215,6 +215,7 @@ codec = Codec(
     decode=single_point_decoder("orb"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
     # The model cannot describe the structure's charge or spin.
     errors=[(r"describes neutral closed-shell systems only", "input", "not_modeled")],
 )

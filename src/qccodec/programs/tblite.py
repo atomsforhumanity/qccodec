@@ -13,10 +13,12 @@ Inputs map to tblite as follows:
 - ``structure.charge`` is the total charge and ``structure.multiplicity - 1`` the
   number of unpaired electrons (tblite's ``uhf``).
 - ``keywords`` use tblite's own names. Calculator settings go to
-  ``Calculator.set``: ``accuracy``, ``guess``, ``max-iter``, ``mixer-damping``,
-  ``mixer-memory``, ``temperature`` (electronic temperature in **Hartree**, as tblite
-  takes it; multiply kelvin by 3.166808578545117e-6), ``annealing``, and
-  ``verbosity``. Interactions go to ``Calculator.add``, with a single value or a list
+  ``Calculator.set``: ``acc`` (the accuracy factor, ``accuracy`` in tblite's Python
+  API and ``--acc`` on its command line: the shared keyword ``accuracy`` is an
+  accuracy target, which tblite cannot honour, kind ``unsupported``), ``guess``,
+  ``max-iter``, ``mixer-damping``, ``mixer-memory``, ``temperature`` (electronic
+  temperature in **Hartree**, as tblite takes it; multiply kelvin by
+  3.166808578545117e-6), ``annealing``, and ``verbosity``. Interactions go to ``Calculator.add``, with a single value or a list
   of arguments: ``alpb-solvation`` and ``gbsa-solvation`` (a solvent name, or
   ``[solvent, state]`` with state ``gsolv``, ``bar1mol``, or ``reference``),
   ``ddX-solvation``, ``gbe-solvation``, ``gb-solvation``, ``electric-field`` (a
@@ -62,10 +64,11 @@ METHODS: dict[str, str] = {
     "gfn1": "GFN1-xTB",
     "ipea1": "IPEA1-xTB",
 }
-# Calculator.set attributes and Calculator.add interactions, by tblite's names.
+# Calculator.set attributes and Calculator.add interactions, by tblite's names, but
+# for the accuracy factor: "accuracy" is the shared keyword of an accuracy target.
 SETTINGS = frozenset(
     {
-        "accuracy",
+        "acc",
         "guess",
         "max-iter",
         "mixer-damping",
@@ -127,7 +130,11 @@ def encode(inp: ProgramInput) -> PythonInput:
             "positions": inp.require_structure().geometry.tolist(),
             "charge": inp.require_structure().charge,
             "uhf": inp.require_structure().multiplicity - 1,
-            "settings": {k: v for k, v in inp.keywords.items() if k in SETTINGS},
+            "settings": {
+                ("accuracy" if k == "acc" else k): v
+                for k, v in inp.keywords.items()
+                if k in SETTINGS
+            },
             "interactions": interactions,
         },
     )
