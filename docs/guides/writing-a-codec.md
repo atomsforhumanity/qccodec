@@ -27,8 +27,18 @@ def parse_energy(stdout: str) -> float:
 If the input asks for several CPU threads or a GPU, say so in the native input:
 `SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute packs
 lists of calculations by these and gives each GPU calculation its own device. Leave
-`threads` out when the input asks for none: the program then runs with the runner's
-grant, through `OMP_NUM_THREADS`.
+`threads` out when the input asks for none: the program then plans one thread, or
+all the runner has with `CodecProgram(codec, threads=None)` for a program that scales
+with threads, and runs with the runner's grant, through `OMP_NUM_THREADS` or, when the
+codec has `cap_threads`, written into the input. The shared `threads` keyword is taken
+by the adapter before your encoder sees the input.
+
+Refuse what the program would ignore. Every setting given must take effect, so an
+encoder checks keyword names against the program's settings where they can be listed,
+with `qccodec.reject_unknown(program, keywords, known)`, which raises
+`EncoderError(..., code="unknown_key")` naming the closest known name. `EncoderError`
+takes `kind` (`input`, or `unsupported` for a valid request the program does not
+implement) and `code` (`unknown_key`, `not_applicable`, `no_effect`, `not_modeled`).
 
 Then make it a program and run it with qccompute:
 
@@ -40,8 +50,13 @@ output = qccompute.compute(input_data)   # also as a geomeTRIC gradient subprogr
 ```
 
 A codec that calls a Python library (one that returns a `PythonInput`) takes over its
-process's output streams while it runs: make it `CodecProgram(codec, in_process=False)`
-and qccompute runs it in a worker process. A registered program reaches a worker only
+process's output streams and working directory while it runs: make it
+`CodecProgram(codec, in_process=False)` and qccompute runs it in a worker process. A
+library that writes only where it is told and reports through Python loggers can run
+in the caller's process instead: name `PythonInput(directory_keyword="directory",
+loggers=(...))`, write every file under the directory the function is given, and the
+adapter calls it without changing the working directory, environment or output
+streams (geomeTRIC does this). A registered program reaches a worker only
 when it is defined at the top level of an importable module; publish it as an entry
 point (below) to be found everywhere. `CodecProgram(codec, executable=...,
 environment=...)` configures where the program is and what it runs with;
@@ -92,6 +107,27 @@ success). When the hook returns a message, decoding recovers what it can and rai
 exits with an error, so the hook's explanation reaches the user rather than just an
 exit status. `parse(..., failed=True)` stays quiet and returns the recovered data;
 pass `report_failure=True` to raise the explanation there too.
+
+Give each failure the program is known to report a kind. A store reuses a stored
+failure only when its kind says the input determines it, so an SCF that does not
+converge must not look like a crash:
+
+```python
+codec = Codec(
+    "myprog",
+    calctypes={CalcType.energy},
+    errors=[
+        (r"SCF not converged", "convergence", "scf_not_converged"),
+        (r"unknown keyword", "input", "unknown_key"),
+        (r"atoms too close", "input", None),
+    ],
+)
+```
+
+The first rule whose regular expression is found in the `CalculationError`'s message
+(the failure hook's explanation, or a decoder's) gives the failure its kind and code;
+anything else is `internal`, which means a bug. Record a fixture case of each failure
+with `"raises": "CalculationError", "kind": ..., "code": ...` in its `case.json`.
 Programs driven through a Python API skip parsers entirely:
 
 ```python
