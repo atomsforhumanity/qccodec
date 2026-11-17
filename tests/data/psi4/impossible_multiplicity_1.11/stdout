@@ -36,7 +36,7 @@
 
     Process ID: 159301
     Host:       localhost
-    PSIDATADIR: /home/user/micromamba/envs/psi4/share/psi4
+    PSIDATADIR: /opt/psi4/share/psi4
     Memory:     500.0 MiB
     Threads:    1
     Addons:     a̶d̶c̶c̶, a̶m̶b̶i̶t̶, bse, c̶c̶t̶3̶, c̶f̶o̶u̶r̶, c̶h̶e̶m̶p̶s̶2̶, c̶p̶p̶e̶, d̶d̶x̶, d̶f̶t̶d̶3̶,
@@ -48,22 +48,22 @@
 Traceback (most recent call last):
   File "<string>", line 228, in main
   File "<string>", line 177, in run
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/psi4/driver/molutil.py", line 285, in geometry
+  File "/opt/psi4/lib/python3.12/site-packages/psi4/driver/molutil.py", line 285, in geometry
     molrec = qcel.molparse.from_string(
              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_string.py", line 277, in from_string
+  File "/opt/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_string.py", line 277, in from_string
     molrec = from_input_arrays(
              ^^^^^^^^^^^^^^^^^^
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_arrays.py", line 97, in from_input_arrays
+  File "/opt/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_arrays.py", line 97, in from_input_arrays
     processed = from_arrays(
                 ^^^^^^^^^^^^
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_arrays.py", line 380, in from_arrays
+  File "/opt/psi4/lib/python3.12/site-packages/qcelemental/molparse/from_arrays.py", line 380, in from_arrays
     processed = validate_and_fill_chgmult(
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/qcelemental/molparse/chgmult.py", line 533, in validate_and_fill_chgmult
+  File "/opt/psi4/lib/python3.12/site-packages/qcelemental/molparse/chgmult.py", line 533, in validate_and_fill_chgmult
     c_final, fc_final, m_final, fm_final = reconcile(cgmp_exact_c, cgmp_exact_fc, cgmp_exact_m, cgmp_exact_fm)
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/user/micromamba/envs/psi4/lib/python3.12/site-packages/qcelemental/molparse/chgmult.py", line 523, in reconcile
+  File "/opt/psi4/lib/python3.12/site-packages/qcelemental/molparse/chgmult.py", line 523, in reconcile
     raise ValidationError(err)
 qcelemental.exceptions.ValidationError: Inconsistent or unspecified chg/mult: sys chg: None, frag chg: [0.0], sys mult: None, frag mult: [2]
 

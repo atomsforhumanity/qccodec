@@ -1,6 +1,6 @@
 [project]
 name = "qccodec"
-version = "0.22.0a1"
+version = "0.22.0a2"
 description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
@@ -9,8 +9,8 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.24.0a2",
-    "qccompute>=0.23.0a1",
+    "qcdata>=0.24.0a3",
+    "qccompute>=0.23.0a2",
     "qcref>=0.4.0",
 ]
 

@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : /home/user/.local/share/mepd/programs/gxtb-2.0.1/bin/xtb structure.xyz --sp --chrg 0 --uhf 1 --gfn 2
+          program call               : /opt/xtb/bin/xtb structure.xyz --sp --chrg 0 --uhf 1 --gfn 2
           coordinate file            : structure.xyz
           omp threads                :                     1
 

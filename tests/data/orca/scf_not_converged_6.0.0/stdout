@@ -452,7 +452,7 @@ Iteration    Energy (Eh)           Delta-E    RMSDP     MaxDP     DIISErr   Damp
 [file orca_leanscf/orca_leanscf.cpp, line 250]: Error (ORCA_LEANSCF): unfortunately, the SCF has not converged. There may be a way out but we have to stop here 
 
 ORCA finished by error termination in LEANSCF
-Calling Command: /home/user/opt/orca-6.0.0/orca_leanscf orca.gbw 
+Calling Command: /opt/orca/orca_leanscf orca.gbw 
 [file orca_tools/qcmsg.cpp, line 394]: 
   .... aborting the run
 

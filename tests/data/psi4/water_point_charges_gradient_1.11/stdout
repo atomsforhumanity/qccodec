@@ -36,7 +36,7 @@
 
     Process ID: 158229
     Host:       localhost
-    PSIDATADIR: /home/user/micromamba/envs/psi4/share/psi4
+    PSIDATADIR: /opt/psi4/share/psi4
     Memory:     500.0 MiB
     Threads:    1
     Addons:     a̶d̶c̶c̶, a̶m̶b̶i̶t̶, bse, c̶c̶t̶3̶, c̶f̶o̶u̶r̶, c̶h̶e̶m̶p̶s̶2̶, c̶p̶p̶e̶, d̶d̶x̶, d̶f̶t̶d̶3̶,
@@ -65,8 +65,8 @@ gradient() will perform analytic gradient computation.
     Name: STO-3G
     Role: ORBITAL
     Keyword: BASIS
-    atoms 1   entry O          line    81 file /home/user/micromamba/envs/psi4/share/psi4/basis/sto-3g.gbs 
-    atoms 2-3 entry H          line    19 file /home/user/micromamba/envs/psi4/share/psi4/basis/sto-3g.gbs 
+    atoms 1   entry O          line    81 file /opt/psi4/share/psi4/basis/sto-3g.gbs 
+    atoms 2-3 entry H          line    19 file /opt/psi4/share/psi4/basis/sto-3g.gbs 
 
 
          ---------------------------------------------------------

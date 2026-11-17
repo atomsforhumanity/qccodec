@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a2] - 2026-11-17
+
+### Changed
+
+- **Breaking:** failures are classified. Each codec maps its programs' known failures to a kind and code: SCF non-convergence is `convergence`/`scf_not_converged`; an optimizer out of iterations is `convergence`/`max_iter`; overlapping atoms, an impossible multiplicity, or an unknown method, basis or solvent is `input`; an unknown keyword is `input`/`unknown_key`; an IRC started away from a saddle is `input`/`not_first_order_saddle`. `internal` is left for failures nobody anticipated. `EncoderError` and `CalculationError` take `kind` and `code`; `Codec` gains `errors=`, `add_error` and `classify`.
+- **Breaking:** unknown keywords fail at once, with a did-you-mean: xtb flags, tblite, geomeTRIC parameters, Sella, CREST tables and the ML codecs are checked by the codec; Psi4 names each option it refuses; ORCA and DFTB+ refusals are reported as `unknown_key`. TeraChem keywords stay unchecked.
+- **Breaking:** an adapter's `version()` is the program's version (`<exe> --version`, or the library's), not qccodec's. Its `numerics` is the bare version for a library and `<version> sha256:<hex>` for an executable, so runs stored with 0.22.0a1 identities don't match.
+- **Breaking:** every adapter takes the shared `threads` keyword and writes it in the program's own spelling (`pal`, `-n`, `parallel`, `threads`, or `OMP_NUM_THREADS`). Plans state each program's default: Psi4 and CREST ask for the whole runner; ORCA (parallel needs MPI), TeraChem (its work is on GPUs), xtb, tblite and the ML potentials plan 1.
+- **Breaking:** geomeTRIC runs in process and is thread-safe (no working-directory or stream changes), so a program registered in the caller's process works as its subprogram. Subprograms are sized from their own plans. tblite, Sella and the ML potentials still run in workers.
+- **Breaking:** ORCA optimizations that run out of cycles fail (they returned a success), and ORCA SCF failures are reported as such.
+- Psi4 records whether alpha and beta orbitals are shared, which decides `Orbitals.spin`.
+- Examples print optimization frames as frames (structures evaluated), not steps.
+
+### Added
+
+- `PythonInput.directory_keyword` and `qccodec.run.call_python`: run a Python-library codec in process without changing the working directory.
+- `qccodec.reject_unknown`, for codec writers; a guide to writing a codec.
+
+### Fixed
+
+- geomeTRIC no longer warns `copy_scratch not implemented` for every gradient.
+
+
 ## [0.22.0a1] - 2026-11-17
 
 The first alpha of qccodec as the add-on that brings external programs into qccompute
