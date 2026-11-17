@@ -9,8 +9,9 @@ Each codec is also a program that [qccompute](https://qccompute.docs.afh.org) ru
 qccodec registers it under qccompute's `qccompute.programs` entry points, and its
 adapter (`qccodec.CodecProgram`) encodes the input, runs the program in a scratch
 directory with its output captured and a deadline, and decodes the result. qccompute
-finds it by name, packs lists into the machine, and stores results; qccodec never
-imports qccompute to run a program.
+finds it by name, packs lists into the machine, and stores results. A thread request
+larger than the runner's grant (ORCA `pal`, Psi4 `-n`) is lowered to the grant, with a
+`resource_capped` warning.
 
 ## Install
 

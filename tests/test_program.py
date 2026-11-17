@@ -61,6 +61,9 @@ def _failure(ctx: Any) -> str | None:
     return "SCF failed" if "failed to converge" in (ctx.stdout or "") else None
 
 
+codec.cap_threads = lambda inp, n: inp.model_copy(
+    update={"keywords": {**inp.keywords, "threads": n}}
+)
 program = CodecProgram(codec, executable=sys.executable)
 
 
@@ -89,6 +92,15 @@ def test_compute_runs_the_command_and_keeps_its_logs(tmp_path: Path) -> None:
     assert "threads 2" in str(asked.logs) and asked.execution.threads == 2
     direct = program.compute(inp())  # no ctx: a temporary directory, no grant
     assert direct.success and "threads None" in str(direct.logs)
+
+
+def test_a_request_larger_than_the_grant_is_capped(tmp_path: Path) -> None:
+    out: Any = program.compute(inp(threads=8), ctx(tmp_path, threads=4))
+    assert "threads 4" in str(out.logs) and out.execution.threads == 4
+    assert [w.code for w in out.warnings] == ["resource_capped"]
+    assert out.input_data.keywords["threads"] == 8  # the caller's input, unchanged
+    within: Any = program.compute(inp(threads=2), ctx(tmp_path, threads=4))
+    assert within.execution.threads == 2 and not within.warnings
 
 
 def test_failures_raise_with_the_output_and_logs(tmp_path: Path) -> None:

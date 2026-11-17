@@ -1,7 +1,7 @@
 """Each codec as a program: how qccompute runs external programs.
 
 `CodecProgram` wraps a `Codec` in the program protocol of ``qccompute.program``
-(structurally: qccodec never imports qccompute to run a program). Every built-in codec
+(structurally: running a program needs no qccompute import). Every built-in codec
 is registered as one under the ``qccompute.programs`` entry points, so
 ``qccompute.compute(ProgramInput(program="orca", ...))`` finds it by name. A call
 encodes the input, runs the command (or the Python callable) in a scratch directory
@@ -54,6 +54,7 @@ from qcdata import (
     ProgramError,
     ProgramInput,
     ProgramOutput,
+    ProgramWarning,
     Provenance,
     get_data_type,
 )
@@ -237,13 +238,32 @@ class CodecProgram:
             return qccompute.compute(inp)
         start = time.perf_counter()
         native = self._encode(inp)
+        warnings: list[ProgramWarning] = []
+        grant = ctx.threads if ctx is not None else None
+        requested = native.threads
+        if (
+            grant
+            and requested
+            and requested > grant
+            and self.codec.cap_threads is not None
+            and isinstance(inp, ProgramInput)
+        ):
+            # A program uses the smaller of its request and its grant.
+            native = self._encode(self.codec.cap_threads(inp, grant))
+            warnings.append(
+                ProgramWarning(
+                    code="resource_capped",
+                    message=f"{self.name} asked for {requested} threads and was granted "
+                    f"{grant}; it ran with {grant}.",
+                )
+            )
         if ctx is None:
             directory = Path(tempfile.mkdtemp(prefix="qccodec-"))
             try:
-                return self._run(inp, native, ctx, directory, start)
+                return self._run(inp, native, ctx, directory, start, warnings)
             finally:
                 shutil.rmtree(directory, ignore_errors=True)
-        return self._run(inp, native, ctx, ctx.scratch, start)
+        return self._run(inp, native, ctx, ctx.scratch, start, warnings)
 
     def compute_batch(
         self, inputs: Sequence[ProgramInput], ctx: Any = None
@@ -323,6 +343,7 @@ class CodecProgram:
         ctx: Any,
         directory: Path,
         start: float,
+        warnings: list[ProgramWarning],
     ) -> ProgramOutput[Any, Data]:
         """Run an encoded input in its directory and build the output."""
         failures: list[tuple[Exception, str]] = []
@@ -394,6 +415,7 @@ class CodecProgram:
                 success=True,
                 results=results,
                 logs=logs,
+                warnings=warnings,
                 execution=execution,
             )
         info = _error_info(failures[0][0], results)
@@ -405,11 +427,17 @@ class CodecProgram:
                 results=results,
                 traceback=trace,
                 logs=logs,
+                warnings=warnings,
                 execution=execution,
             )
         except Exception:  # noqa: BLE001 - partial results that break the contract
             output = ProgramOutput.failure(
-                inp, info, traceback=trace, logs=logs, execution=execution
+                inp,
+                info,
+                traceback=trace,
+                logs=logs,
+                warnings=warnings,
+                execution=execution,
             )
         raise ProgramError(info, output=output) from failures[0][0]
 

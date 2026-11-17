@@ -53,8 +53,8 @@ Parsers are tested through recorded program runs in `tests/data/<program>/<case>
 ## Integration tests
 
 Tests in `tests/integration/test_<program>.py` run real programs through
-[qccompute](https://github.com/atomsforhumanity/qccompute), which is a test-only
-dependency in the `integration` group. They are marked `integration` and deselected by
+[qccompute](https://github.com/atomsforhumanity/qccompute), which finds them under the
+`qccompute.programs` entry points. They are marked `integration` and deselected by
 default, and each test skips when its program is not on `PATH`.
 
 ```sh

@@ -414,5 +414,12 @@ def parse_basename(stdout: str) -> str:
     return Path(re_search(r"NAME\s+=\s+(.*)", stdout).group(1)).stem
 
 
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``pal`` lowered to ``threads``."""
+    return inp.model_copy(update={"keywords": {**inp.keywords, "pal": threads}})
+
+
+codec.cap_threads = cap_threads
+
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'orca').
 program = CodecProgram(codec)

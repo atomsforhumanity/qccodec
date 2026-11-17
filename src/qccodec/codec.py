@@ -47,6 +47,7 @@ PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
 VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
 BatchKey = Callable[[ProgramInput], "Hashable | None"]
+CapThreads = Callable[[ProgramInput, int], ProgramInput]
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,9 @@ class Codec:
         batch_key: Returns a key for an input: inputs with equal keys may share a
             batch; ``None`` means the input is computed alone.
         max_batch: The most inputs one batch may hold.
+        cap_threads: ``(input_data, threads) -> ProgramInput``: the input with its
+            thread request (ORCA ``pal``, Psi4 ``-n``) lowered to ``threads``, for a
+            runner that grants fewer threads than the input asks for.
         parsers: Pre-built parser specifications.
     """
 
@@ -210,6 +214,7 @@ class Codec:
         encode_batch: BatchEncoder | None = None,
         batch_key: BatchKey | None = None,
         max_batch: int = 32,
+        cap_threads: CapThreads | None = None,
     ) -> None:
         """Create a codec; hooks may also be attached later with decorators.
 
@@ -235,6 +240,7 @@ class Codec:
         self._encode_batch: BatchEncoder | None = encode_batch
         self._batch_key: BatchKey | None = batch_key
         self.max_batch: int = max_batch
+        self.cap_threads: CapThreads | None = cap_threads
         if decode is not None:
             self.decoder(decode)
 

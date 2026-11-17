@@ -15,9 +15,9 @@ Psi4, CREST, DFTB+, TeraChem, ...):
   ``parallel`` 2, eight xtb calculations run at once. GPU programs (TeraChem) get
   their own GPUs through ``CUDA_VISIBLE_DEVICES``.
 - The inputs may mix programs, methods, and calculation types.
-- Every calculation runs first. Then, if any failed, ``ComputeErrors`` (an
+- Every calculation runs first. Then, if any failed, ``qcdata.ProgramErrors`` (an
   ``ExceptionGroup``) is raised: each error is a ``qcdata.ProgramError`` whose
-  ``output`` is the failed output, and ``.outputs`` holds every output in input
+  ``output`` is the failed output, and ``.results`` holds every output in input
   order. With ``raise_exc=False`` the outputs are returned as they are; check
   ``output.success``. ``runner.as_completed(inputs)`` yields them as they finish.
 """
@@ -25,8 +25,8 @@ Psi4, CREST, DFTB+, TeraChem, ...):
 import math
 import time
 
-from qccompute import ComputeErrors, Runner, compute
-from qcdata import CalcType, Model, ProgramInput, Structure
+from qccompute import Runner, compute
+from qcdata import CalcType, Model, ProgramErrors, ProgramInput, Structure
 
 
 def water(r: float) -> Structure:
@@ -60,8 +60,8 @@ try:
         inputs,
         # timeout=600,  # seconds each calculation may run
     )
-except ComputeErrors as errors:
-    outputs = errors.outputs  # every output, failed ones with success=False
+except ProgramErrors as errors:
+    outputs = errors.results  # every output, failed ones with success=False
     for i, output in enumerate(outputs):
         if not output.success:
             print(f"Input {i} failed: {output.error}")

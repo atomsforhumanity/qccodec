@@ -384,5 +384,12 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     return trajectory
 
 
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``parallel`` lowered to ``threads``."""
+    return inp.model_copy(update={"keywords": {**inp.keywords, "parallel": threads}})
+
+
+codec.cap_threads = cap_threads
+
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'xtb').
 program = CodecProgram(codec)

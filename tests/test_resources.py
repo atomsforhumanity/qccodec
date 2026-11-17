@@ -118,3 +118,32 @@ def test_geometric_declares_the_resources_of_its_child() -> None:
     )
     assert (optimization(orca).threads, optimization(orca).gpus) == (4, 0)
     assert (optimization(terachem).threads, optimization(terachem).gpus) == (None, 1)
+
+
+@pytest.mark.parametrize(
+    ("program", "method", "basis", "kwargs"),
+    [
+        ("xtb", "gfn2", None, {"keywords": {"parallel": 8}}),
+        ("orca", "hf", "sto-3g", {"keywords": {"pal": 8}}),
+        ("psi4", "hf", "sto-3g", {"cmdline_args": ["--nthread=8"]}),
+        ("psi4", "hf", "sto-3g", {"cmdline_args": ["-n", "8", "--memory", "2GB"]}),
+        ("crest", "gfn2", None, {"keywords": {"threads": 8}}),
+    ],
+)
+def test_thread_requests_can_be_capped(
+    program: str, method: str, basis: str | None, kwargs: dict
+) -> None:
+    """A runner granting fewer threads than asked for gets them (decision: min)."""
+    inp = ProgramInput(
+        program=program,
+        calctype=CalcType.gradient,
+        structure=WATER,
+        model=Model(method=method, basis=basis),
+        **kwargs,
+    )
+    codec = get_codec(program)
+    assert codec.cap_threads is not None
+    capped = codec.cap_threads(inp, 3)
+    assert codec.encode(capped).threads == 3
+    if program == "psi4":
+        assert "--memory" in capped.cmdline_args or "--memory" not in inp.cmdline_args

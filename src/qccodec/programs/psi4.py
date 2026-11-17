@@ -338,5 +338,22 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     return trajectory
 
 
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``-n``/``--nthread`` lowered to ``threads``."""
+    args = list(inp.cmdline_args)
+    kept: list[str] = []
+    i = 0
+    while i < len(args):
+        if args[i] in ("-n", "--nthread"):
+            i += 2
+            continue
+        if not args[i].startswith("--nthread="):
+            kept.append(args[i])
+        i += 1
+    return inp.model_copy(update={"cmdline_args": [*kept, "-n", str(threads)]})
+
+
+codec.cap_threads = cap_threads
+
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'psi4').
 program = CodecProgram(codec)
