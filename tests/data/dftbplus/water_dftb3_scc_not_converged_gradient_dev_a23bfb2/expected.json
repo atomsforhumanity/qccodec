@@ -1,0 +1,63 @@
+{
+  "calcinfo_natoms": null,
+  "calcinfo_nalpha": null,
+  "calcinfo_nbeta": null,
+  "calcinfo_nbasis": null,
+  "calcinfo_nmo": null,
+  "files": {},
+  "provenance": {
+    "program": "dftbplus",
+    "program_version": "dev-a23bfb2",
+    "program_commit": "a23bfb2"
+  },
+  "energy": -4.07067241519819,
+  "gradient": [
+    [
+      -0.0163715508874515,
+      -0.0123008323224291,
+      0.00846699628229663
+    ],
+    [
+      0.0077024405822528,
+      0.00804466960291608,
+      -0.00267267356760439
+    ],
+    [
+      0.00866911030519872,
+      0.00425616271951301,
+      -0.00579432271469224
+    ]
+  ],
+  "hessian": null,
+  "nuclear_repulsion_energy": null,
+  "wavefunction": null,
+  "dipole_moment": [
+    0.591334107493979,
+    0.437950154008747,
+    -0.309512653284683
+  ],
+  "quadrupole_moment": null,
+  "atomic_charges": [
+    -0.708166833619376,
+    0.354059551223152,
+    0.354107282396222
+  ],
+  "atomic_charges_kind": null,
+  "atomic_spin_populations": null,
+  "atomic_spin_populations_kind": null,
+  "atomic_dipoles": null,
+  "atomic_quadrupoles": null,
+  "shell_populations": null,
+  "shell_atoms": null,
+  "shell_angular_momenta": null,
+  "point_charge_gradient": null,
+  "energy_components": {},
+  "scf_iterations": null,
+  "scf_s_squared": null,
+  "polarizability": null,
+  "bond_orders": null,
+  "bond_orders_kind": null,
+  "vibrational_analysis": null,
+  "thermochemistry": [],
+  "qcdata_version": "0.24.0a7"
+}

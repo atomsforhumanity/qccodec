@@ -112,3 +112,18 @@ def test_unknown_keyword_fails(run: Run, water: Structure) -> None:
     )
     assert not output.success
     assert "NotAnOption" in str(output.traceback)
+
+
+def test_scc_carried_on_unconverged_warns(run: Run, water: Structure) -> None:
+    """With ConvergentSCCOnly = No DFTB+ carries on: a success, warned."""
+    inp = _input(water, CalcType.gradient)
+    keywords = {
+        **inp.keywords,
+        "Hamiltonian": {"MaxSCCIterations": 3, "ConvergentSCCOnly": False},
+    }
+    output = run(
+        inp.model_copy(update={"keywords": keywords}),
+        case="water_dftb3_scc_not_converged_gradient",
+    )
+    assert [w.code for w in output.warnings] == ["loosely_converged"]
+    assert output.warnings[0].path == "Hamiltonian.SCCTolerance"

@@ -53,7 +53,9 @@ DFTB+ stops on any keyword it does not recognize, before calculating, and the co
 reports its message naming the input it ignored (kind ``input``, code
 ``unknown_key``). An SCC that does not converge is ``convergence``
 (``scf_not_converged``), an optimization that runs out of steps ``convergence``
-(``max_iter``); other errors DFTB+ reports are ``internal``. DFTB+ plans one thread
+(``max_iter``); other errors DFTB+ reports are ``internal``. With ``ConvergentSCCOnly =
+No`` DFTB+ carries on after an SCC that did not converge; the result then comes with
+the warning ``loosely_converged``, giving the last SCC error against ``SCCTolerance``. DFTB+ plans one thread
 unless ``threads`` asks for more (it reaches DFTB+ as ``OMP_NUM_THREADS``).
 """
 
@@ -70,6 +72,7 @@ from qcdata import (
     ExecutionInfo,
     Frame,
     ProgramInput,
+    ProgramWarning,
     Provenance,
     SinglePointData,
     Structure,
@@ -395,6 +398,41 @@ def failure(ctx: Context) -> str | None:
     if re.search(r"Geometry did NOT converge", stdout):
         return "DFTB+: geometry optimization did not converge within MaxSteps."
     return None
+
+
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    """Warn ``loosely_converged`` when DFTB+ carried on with an unconverged SCC.
+
+    DFTB+ stops at an SCC that does not converge unless ``ConvergentSCCOnly = No``;
+    the message gives the last SCC error against ``SCCTolerance``.
+    """
+    stdout = ctx.stdout or ""
+    accepted = stdout.count("SCC is NOT converged")
+    if not accepted or "ERROR!" in stdout:
+        return []
+    number = r"-?\d\.\d+E[-+]\d+"
+    errors = re.findall(
+        rf"^\s+\d+\s+{number}\s+{number}\s+({number})\s*$", stdout, flags=re.M
+    )
+    tolerance = re.search(r"SCC-tolerance:\s+(\S+)", stdout)
+    reached = ""
+    if errors and tolerance:
+        error, limit = float(errors[-1]), float(tolerance.group(1))
+        reached = (
+            f"; the last SCC error was {error:.3g} for an SCCTolerance of {limit:g}"
+        )
+    count = f"{accepted} SCCs" if accepted > 1 else "the SCC"
+    return [
+        ProgramWarning(
+            code="loosely_converged",
+            message=(
+                f"DFTB+ did not converge {count} and carried on because "
+                f"ConvergentSCCOnly is No{reached}."
+            ),
+            path="Hamiltonian.SCCTolerance",
+        )
+    ]
 
 
 @codec.parser(target=("provenance", "program_version"), required=False)
