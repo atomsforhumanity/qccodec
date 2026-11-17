@@ -285,7 +285,11 @@ def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
         return f"ORCA: {multiplicity.group(1)}."
     if re.search(r"The optimization did not converge but reached the maximum", stdout):
         return "ORCA: the optimization reached its maximum number of cycles."
-    response = unconverged_response(stdout)
+    # Only a Hessian is made of the response; a transition-state search's starting
+    # Hessian (calc_hess) is a guess the search does not depend on.
+    response = (
+        unconverged_response(stdout) if ctx.calctype == CalcType.hessian else None
+    )
     if response is not None:
         return response
     stopped = re.search(r"ORCA finished by error termination in (\w+)", stdout)
