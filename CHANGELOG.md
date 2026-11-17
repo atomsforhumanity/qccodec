@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a6] - 2026-11-17
+
+### Added
+
+- `run_subprocess(..., interrupt=)`: a check made about once a second while the program runs; an exception it returns kills the program and every process it started. One watcher thread makes this check and kills the program at its deadline, replacing the timer.
+
+### Fixed
+
+- A cancelled or stopped calculation ends its external program within about a second instead of waiting for it to finish. A stop fails with kind `stopped` (`qccodec.exceptions.StoppedError`) and keeps what the codec recovers from the output so far; a cancel fails with kind `timeout`. Through a runner, a submitted 31 s program ended 0.45 s after a cancel or a stop.
+
 ## [0.22.0a5] - 2026-11-17
 
 ### Changed

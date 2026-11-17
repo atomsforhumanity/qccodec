@@ -26,7 +26,7 @@ the stable release. Install the alpha with minimum versions of its matching pack
 (`--prerelease=allow` lets the resolver take pre-releases):
 
 ```sh
-uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a6" "qccodec>=0.22.0a5"
+uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a7" "qccodec>=0.22.0a6"
 ```
 
 You also need the program itself; each [program page](programs/index.md) says how to
