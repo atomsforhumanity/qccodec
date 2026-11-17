@@ -807,19 +807,27 @@ class Codec:
 def accuracy_record(target: Accuracy) -> dict[str, Any]:
     """The record of an accuracy target met by a calculation with nothing to converge.
 
-    Under the shared record key ``accuracy``: the target as given and no thresholds.
+    Under the shared record key ``accuracy``, as qcdata's conventions give it: the
+    target as given, no thresholds, and a convergence error of exactly zero for each
+    target, so a reader checks every program alike (each estimate at or below its
+    target).
 
     Args:
         target: The input's target (`Codec.accuracy`).
 
     Returns:
-        ``{"target": {...}, "thresholds": {}}``, the target's fields in Eh,
-        Eh/bohr and Eh/bohr^2 as given.
+        ``{"target": {...}, "thresholds": {}, "estimate": {...}}``: the target's
+        fields as given (Eh, Eh/bohr, Eh/bohr^2) and ``0.0`` for each.
     """
-    fields = ("energy", "gradient", "hessian")
+    given = {
+        name: value
+        for name in ("energy", "gradient", "hessian")
+        if (value := getattr(target, name)) is not None
+    }
     return {
-        "target": {f: getattr(target, f) for f in fields if getattr(target, f)},
+        "target": given,
         "thresholds": {},
+        "estimate": dict.fromkeys(given, 0.0),
     }
 
 

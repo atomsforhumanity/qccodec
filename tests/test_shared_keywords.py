@@ -157,7 +157,7 @@ def _model(fail: bool = False) -> Codec:
     )
 
 
-MET = {"accuracy": {"target": TARGET, "thresholds": {}}}
+MET = {"accuracy": {"target": TARGET, "thresholds": {}, "estimate": {"gradient": 0.0}}}
 
 
 def test_a_met_target_is_recorded(tmp_path: Any) -> None:
@@ -275,3 +275,16 @@ def test_per_calctype_and_open_schemas() -> None:
         # Non-SCC DFTB has nothing to converge, so DFTB+ may meet a target.
         shared = ["threads", "accuracy"] if name == "dftbplus" else ["threads"]
         assert list(schema["properties"]) == shared
+
+
+def test_the_record_of_a_met_target_estimates_zero_for_each() -> None:
+    """As qcdata's conventions give it, so every program's record reads alike."""
+    from qcdata import Accuracy
+
+    from qccodec.codec import accuracy_record
+
+    assert accuracy_record(Accuracy(energy=1e-8, hessian=1e-4)) == {
+        "target": {"energy": 1e-8, "hessian": 1e-4},
+        "thresholds": {},
+        "estimate": {"energy": 0.0, "hessian": 0.0},
+    }

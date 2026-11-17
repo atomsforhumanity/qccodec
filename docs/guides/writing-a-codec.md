@@ -51,7 +51,8 @@ The shared keyword `accuracy` (an accuracy target, `{"energy": ..., "gradient": 
 "hessian": ...}`) never reaches your encoder: `Codec.encode` reads it with qcdata's
 `Accuracy.from_keywords`. A calculation with nothing to converge (a force field, an ML
 potential) meets any target as it is: the adapter accepts it and records it in the
-output's `record`, `{"accuracy": {"target": {...}, "thresholds": {}}}`, and its
+output's `record` as met, `{"accuracy": {"target": {...}, "thresholds": {}, "estimate":
+{...}}}` with an estimate of `0.0` for each target, and its
 `settings_schema` lists `accuracy`. A calculation with convergence settings refuses it
 with kind `unsupported`, since no codec maps targets onto its program's thresholds yet.
 Say which with `Codec(..., converges=False)`, or a function of the input

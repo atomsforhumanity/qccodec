@@ -153,8 +153,9 @@ _ACCURACY_RECORD_SCHEMA: dict[str, Any] = {
     "properties": {
         "target": {"type": "object"},
         "thresholds": {"type": "object", "maxProperties": 0},
+        "estimate": {"type": "object"},
     },
-    "required": ["target", "thresholds"],
+    "required": ["target", "thresholds", "estimate"],
 }
 
 
