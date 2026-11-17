@@ -6,21 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
-### Fixed
+## [0.22.0a1] - 2026-11-17
+
+The first alpha of qccodec as the add-on that brings external programs into qccompute
+(`pip install qccompute[qccodec]`, or `pip install qccodec`). Every codec is a program
+that qccompute runs like any other. Breaking changes come without compatibility shims.
+
+### Added
+
+- `qccodec.program.CodecProgram`: each codec as a program registered under the `qccompute.programs` entry points. It handles input files, subprocesses with output capture and timeouts, file collection and parsing (`qccodec.run`, moved from qccompute). Codecs of Python libraries say `in_process=False` and run in qccompute's worker processes. geomeTRIC and Sella run their subprograms through the run context, and hand themselves to `qccompute.compute` when called directly.
+- `numerics(spec)`: an adapter's numerics identity is its executable's sha256, or the library's version.
+- `Codec.cap_threads`: an explicit thread request (ORCA `pal`, Psi4 `-n`, xtb `parallel`, CREST `threads`) larger than the calculation's grant is capped to the grant, with a `resource_capped` warning; `execution.threads` records what ran.
+
+### Changed
+
+- **Breaking:** qccodec depends on qccompute.
+- **Breaking:** executables are overridden with `QCCODEC_<PROGRAM>_EXECUTABLE` (was `QCCOMPUTE_*`), or `CodecProgram(executable=, environment=)`. A native `threads` of None means no request: the program runs with its grant.
+- **Breaking:** parsers write frequencies and modes to `vibrational_analysis` and Psi4's orbitals to `Orbitals` (qcdata 0.24). CREST rotamers are requested with keywords (`{"output": {"rotamers": true}}`).
+- `ProgramCalculator` accepts a `ProgramError` raised by its compute function.
+
+### Removed
+
+- **Breaking:** wavefunction propagation and file collection on `ProgramInput`s.
+
+
+### Fixed (since 0.21.0)
 
 - Installed codecs are found from package metadata once per process instead of on every lookup. The scan cost about 1.3 ms per `compute` call, most of the per-step overhead of fast in-process programs: a g-xTB gradient through `qccompute.compute` drops from 1.7 to 0.5 ms. A codec package installed after the first lookup needs a new process.
 
-### Added
+### Added (since 0.21.0)
 
 - `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.
 - `PythonInput.children_callback` and the `ComputeChildren` protocol (`qccodec.native`): a driver that needs many independent child calculations per step (a path optimization's images) names a keyword into which the runner injects `compute_children(inputs) -> outputs`, so the runner can batch machine-learned potentials and run programs side by side. Runners that do not support it leave the keyword out; drivers fall back to `child_callback`.
 
-### Changed
+### Changed (since 0.21.0)
 
 - IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_common.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
 - Moved documentation from `qccodec.docs.atomsforhumanity.org` to `qccodec.docs.afh.org`.
 
-### Fixed
+### Fixed (since 0.21.0)
 
 - geomeTRIC received its working directory as a `Path`, which its IRC edits as text between branches (`TypeError: Path.replace()`); it now gets a string.
 
