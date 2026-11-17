@@ -39,7 +39,7 @@ def test_toml_dict():
 
     assert toml_dict["input"] == "struct.xyz"
     assert toml_dict["runtype"] == "imtd-gc"
-    assert toml_dict.get("threads") is not None  # added implicitly if not set
+    assert "threads" not in toml_dict  # the runner's grant fills it in
 
     # Adds values correctly to existing "calculation" key
     assert toml_dict["calculation"]["level"][0]["method"] == "gfn2"

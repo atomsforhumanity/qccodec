@@ -206,3 +206,35 @@ def test_orbital_spin_is_psi4s_record(same: bool, spin: str) -> None:
     orbitals = _orbitals(levels)
     assert orbitals is not None and orbitals.spin == spin
     assert (orbitals.energies_b is None) == same
+
+
+@pytest.mark.parametrize(
+    ("error", "kind", "code"),
+    [
+        ("OptionError: Unknown Psi4 option(s): 'maxiterr'.", "input", "unknown_key"),
+        (
+            "SCFConvergenceError: Could not converge SCF",
+            "convergence",
+            "scf_not_converged",
+        ),
+        (
+            "OptimizationConvergenceError: Could not converge geometry",
+            "convergence",
+            "max_iter",
+        ),
+        (
+            "MissingMethodError: Method=hff is not available for any derivative level.",
+            "input",
+            None,
+        ),
+        (
+            "ModuleNotFoundError: Python module ddx not found. Solve by installing it",
+            "environment",
+            None,
+        ),
+        ("RuntimeError: something else", "internal", None),
+    ],
+)
+def test_psi4_failures_have_kinds(error: str, kind: str, code: str | None) -> None:
+    """The exception the driver recorded maps to an error kind."""
+    assert get_codec("psi4").classify(f"psi4: {error}") == (kind, code)

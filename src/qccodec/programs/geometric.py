@@ -42,8 +42,9 @@ Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
 Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
 the step's program runs wherever the runner places it. Called directly, the program
-hands itself to ``qccompute.compute``. The optimization declares the threads and GPUs
-its subprogram does, so lists of optimizations share the machine correctly.
+hands itself to ``qccompute.compute``. The optimization plans the threads and GPUs its
+subprogram asks for (its ``threads`` keyword, else its program's plan, whatever program
+it is), so lists of optimizations share the machine correctly.
 
 geomeTRIC runs in the caller's process: it writes its files in the calculation
 directory, its log (the ``geometric.nifty`` logger) goes to the output's ``logs``
@@ -234,15 +235,27 @@ def encode(inp: ProgramInput) -> PythonInput:
 
 
 def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int | None, int]:
-    """Return the threads and GPUs the gradient child declares; defaults if unknown."""
-    from ..registry import get_codec
+    """Return the threads and GPUs the gradient subprogram asks for.
+
+    The subprogram's ``threads`` keyword, else its program's plan (None: all the
+    runner has), whatever program it is (an external one, linus, axtb, a
+    ``FunctionProgram``); one thread and no GPU when it cannot be planned, which
+    computing it then reports.
+    """
+    from qccompute.program import find_program, plan_of
 
     try:
         child = ProgramInput.from_spec(spec, inp.structure, structures=inp.structures)
-        native = get_codec(child).encode(child)
+        program = find_program(child.program)
+        if program is None:
+            return 1, 0
+        resources = plan_of(program, child).resources
     except Exception:  # noqa: BLE001 - computing the child reports any problem
         return 1, 0
-    return native.threads, native.gpus
+    threads = child.keywords.get("threads")
+    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
+        threads = resources.threads
+    return threads, resources.gpus
 
 
 def make_engine(
@@ -531,5 +544,6 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'geometric').
-#: It runs in the caller's process, so its subprograms are found there too.
-program = CodecProgram(codec, library="geometric")
+#: It runs in the caller's process, so its subprograms are found there too, and plans
+#: the threads its subprogram does (None when that one asks for all).
+program = CodecProgram(codec, library="geometric", threads=None)

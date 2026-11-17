@@ -11,6 +11,10 @@ Inputs map to ORCA as follows:
   ``! tightscf``; ``False`` or ``None`` leaves it out. Any other non-dictionary value
   is an error, so nothing is dropped silently.
 - ``{"maxcore": 2000}`` and ``{"pal": 4}`` become ``%maxcore`` and ``%pal nprocs``.
+  ORCA runs serially unless ``pal`` is given, and plans one thread: its parallel
+  runs need OpenMPI's ``mpirun`` (without it they fail, kind ``environment``), so
+  they are asked for, never assumed. A runner that grants fewer threads than ``pal``
+  lowers it, with a ``resource_capped`` warning.
 - A keyword whose value is a dictionary becomes an input block:
   ``{"scf": {"maxiter": 200}}`` writes ``%scf maxiter 200 end``. Keys are kept as
   written; ORCA ignores case.
@@ -84,6 +88,7 @@ codec = Codec(
         (r"the SCF did not converge", "convergence", "scf_not_converged"),
         (r"optimization reached its maximum", "convergence", "max_iter"),
         (r"multiplicity .* impossible", "input", None),
+        (r"need OpenMPI's mpirun", "environment", None),
     ],
 )
 
@@ -204,7 +209,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             XYZ_FILENAME: inp.require_structure().to_xyz(),
         },
         "orca.inp",
-        threads=int(kw.get("pal", 1)),
+        threads=int(kw["pal"]) if "pal" in kw else None,
     )
 
 
@@ -221,6 +226,11 @@ def failure(ctx: Context) -> str | None:
     latter), so both are read from the output.
     """
     stdout = ctx.stdout or ""
+    if re.search(r"mpirun: (command )?not found", stdout):
+        return (
+            "ORCA's parallel runs (pal) need OpenMPI's mpirun on PATH; it was not "
+            "found."
+        )
     words = re.search(
         r"UNRECOGNIZED OR DUPLICATED KEYWORD\(S\) IN SIMPLE INPUT LINE\s*\n(.*?)\n\s*!{4,}",
         stdout,

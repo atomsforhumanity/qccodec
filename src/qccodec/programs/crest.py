@@ -12,8 +12,10 @@ Inputs map to CREST 3's TOML input as follows:
 - ``runtype`` defaults from the calculation type (``singlepoint``, ``numhess``,
   ``optimize``, ``imtd-gc``); a given ``runtype`` must match it, e.g. ``nci`` or
   ``entropy`` for conformer searches.
-- ``threads`` defaults to the number of CPUs, at most 16. CREST itself always runs
-  with ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
+- ``threads``: without it, CREST plans all the threads the runner has and runs with
+  what it is granted (the runner reads ``threads`` as the request, as for every
+  program); called directly, with CREST's own default. CREST itself always runs with
+  ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
 and normal modes), ``optimization``, and ``conformer_search``. CREST writes the normal
@@ -43,7 +45,6 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 import re
 from typing import Any
 
@@ -115,7 +116,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         },
         "input.toml",
         environment={"OMP_NUM_THREADS": "1"},
-        threads=int(toml_dict["threads"]),
+        threads=int(toml_dict["threads"]) if "threads" in toml_dict else None,
     )
 
 
@@ -200,8 +201,6 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
         raise EncoderError(
             f"CREST's output group takes only 'rotamers', not {unknown}."
         )
-    # Logical cores were 10% faster than physical cores, so psutil is not used.
-    toml_dict.setdefault("threads", min(os.cpu_count() or 16, 16))
     toml_dict["input"] = struct_filename
     if "runtype" not in toml_dict:
         if inp.calctype not in _DEFAULT_RUNTYPE:
@@ -424,4 +423,5 @@ def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
 codec.cap_threads = cap_threads
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'crest').
-program = CodecProgram(codec)
+#: CREST scales with threads: without ``threads`` it plans all the runner has.
+program = CodecProgram(codec, threads=None)

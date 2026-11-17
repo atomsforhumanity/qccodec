@@ -11,10 +11,15 @@ included.
 
 What qccompute grants a calculation (its `RunContext`) reaches the program like this:
 
-- ``threads``: a calculation that requests no threads (no ``parallel`` for xtb, nothing
-  for DFTB+) runs with the grant, through ``OMP_NUM_THREADS`` and the other numerical
-  libraries' variables; one that requests them (ORCA ``pal``, Psi4 ``-n``, CREST
-  ``threads``) runs with its request, which the runner packs by.
+- ``threads``: the plan asks for the input's request, its ``threads`` keyword (the
+  name every program shares) or the program's own setting (ORCA ``pal``, Psi4 ``-n``,
+  xtb ``parallel``; giving both is an error, code ``no_effect``), else the adapter's
+  default: 1, or None (all the runner has) for a program that scales with threads
+  (Psi4, CREST, and geomeTRIC or Sella whose subprogram does). The runner grants at
+  most that. A program with its own thread setting runs with the grant written into
+  it (the codec's ``cap_threads``), the others with it in ``OMP_NUM_THREADS`` and the
+  other numerical libraries' variables; a request larger than the grant is lowered
+  with a ``resource_capped`` warning.
 - ``gpus``: a program that uses GPUs sees the granted ones in ``CUDA_VISIBLE_DEVICES``.
 - ``timeout``: the program and every process it started are killed when it expires
   (kind ``timeout``).
@@ -30,9 +35,11 @@ program's own and pass through unchanged.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import os
 import shutil
+import subprocess
 import tempfile
 import time
 import traceback
@@ -60,8 +67,13 @@ from qcdata import (
 )
 
 from . import __version__
-from .codec import Codec
-from .exceptions import CalculationError, DependencyNotFoundError, EncoderError
+from .codec import STDOUT, VERSION_TARGET, Codec
+from .exceptions import (
+    BaseError,
+    CalculationError,
+    DependencyNotFoundError,
+    EncoderError,
+)
 from .native import (
     NativeInput,
     NativeOutput,
@@ -78,7 +90,12 @@ from .run import (
     stage_files,
 )
 
-__all__ = ["CodecProgram", "THREAD_VARIABLES", "executable_digest"]
+__all__ = [
+    "CodecProgram",
+    "THREAD_VARIABLES",
+    "executable_digest",
+    "executable_version",
+]
 
 #: Thread counts of numerical libraries; a calculation's threads go into these.
 THREAD_VARIABLES = (
@@ -111,6 +128,9 @@ class CodecProgram:
         command: The program's command, when it is not its name (``dftb+``).
         library: For a codec that calls a Python library: its distribution name,
             whose version is the program's numerics identity.
+        threads: The threads the program plans when its input requests none: 1, or
+            None for all the runner grants, for a program that scales with threads.
+            The codec writes the grant into the input with ``cap_threads``.
     """
 
     def __init__(
@@ -124,6 +144,7 @@ class CodecProgram:
         environment: Mapping[str, str] | None = None,
         command: str | None = None,
         library: str | None = None,
+        threads: int | None = 1,
     ) -> None:
         """Wrap a codec."""
         self.codec = codec
@@ -134,6 +155,7 @@ class CodecProgram:
         self.environment = dict(environment or {})
         self.command = command or self.name
         self.library = library
+        self.threads = threads
 
     def __repr__(self) -> str:
         """Show the program."""
@@ -142,41 +164,68 @@ class CodecProgram:
     # ------------------------------------------------------------------ protocol
 
     def version(self) -> str:
-        """Qccodec's version: the adapter's. The program's own is in provenance."""
-        return __version__
+        """The program's version: the library's, or what its executable reports.
+
+        An executable is asked once per process (``<executable> --version``, read
+        with the codec's version parser); a Python library's version is its
+        distribution's. FileInputs run any command, so qccodec's version stands in.
+
+        Returns:
+            The version as the program prints it (``6.7.1``, ``1.11``, ``0.7.0``),
+            ``unknown`` when the executable's answer names none, or ``not
+            installed``.
+        """
+        if self.library is not None:
+            from .programs._python import package_version
+
+            return package_version(self.library) or "not installed"
+        if self.name == "files":
+            return __version__
+        executable = self._executable()
+        if executable is None:
+            return "not installed"
+        return executable_version(executable, self.codec)
 
     def numerics(self, spec: Any = None) -> str:
-        """What produces the numbers: the sha256 of the executable that would run.
+        """What produces the numbers: the program's version and its executable's sha256.
 
-        A version string is not enough (the g-xTB build of xtb prints the version of
-        upstream xtb 6.7.1), so the executable file itself identifies the program,
-        hashed once per process per path. A codec that calls a Python library gives
-        the library's version; FileInputs run any command, so qccodec's version
-        stands in.
+        A version is not enough for an executable (the g-xTB build of xtb prints the
+        version of upstream xtb 6.7.1), so the executable file itself identifies the
+        program, hashed once per process per path. The file is not enough either when
+        it is a launcher (Psi4's ``psi4`` is a Python script that stays the same
+        while the library behind it changes), so the version comes first. A codec
+        that calls a Python library gives the library's version, as ``version()``.
 
         Args:
             spec: The input or subprogram spec; every spec of an external program
                 runs the same executable.
 
         Returns:
-            ``sha256:<hex>``, ``<library> <version>``, or ``not installed``.
+            ``<version> sha256:<64 hex digits>`` for an executable (``6.7.1
+            sha256:cab4...``), the version for a library (``0.7.0``) or for FileInputs
+            (qccodec's), or ``not installed``.
         """
-        if self.library is not None:
-            from .programs._python import package_version
+        if self.library is not None or self.name == "files":
+            return self.version()
+        executable = self._executable()
+        if executable is None:
+            return "not installed"
+        digest = executable_digest(executable)
+        if digest == "not installed":
+            return digest
+        return f"{executable_version(executable, self.codec)} {digest}"
 
-            return f"{self.library} {package_version(self.library) or 'not installed'}"
-        if self.name == "files":
-            return __version__
+    def _executable(self) -> str | None:
+        """The executable that would run, or None when there is none."""
         try:
-            executable = resolve_executable(
+            return resolve_executable(
                 self.name,
                 self.command,
                 {**os.environ, **self.environment},
                 self.executable,
             )
         except DependencyNotFoundError:
-            return "not installed"
-        return executable_digest(executable)
+            return None
 
     def capabilities(self) -> dict[str, Any]:
         """The codec's calctypes; batches when the codec batches; where it may run."""
@@ -204,16 +253,23 @@ class CodecProgram:
     def plan(self, inp: ProgramInput | FileInput) -> dict[str, Any]:
         """Encode the input without running it: its settings and resources.
 
+        The threads are the input's request (its ``threads`` keyword, or the
+        program's own setting such as ORCA's ``pal``), else the adapter's
+        ``threads`` (None: all the runner has).
+
         Raises:
             ProgramError: The codec refuses the input (kind ``input``, with a code
                 such as ``unknown_key``) or its calculation type (kind
                 ``unsupported``).
         """
-        native = self._encode(inp)
+        native, asked = self._encode_requested(inp)
         keywords = dict(inp.keywords) if isinstance(inp, ProgramInput) else {}
         return {
             "resolved": {"settings": keywords},
-            "resources": {"threads": native.threads or 1, "gpus": native.gpus},
+            "resources": {
+                "threads": asked or native.threads or self.threads,
+                "gpus": native.gpus,
+            },
         }
 
     def compute(
@@ -239,26 +295,25 @@ class CodecProgram:
 
             return qccompute.compute(inp)
         start = time.perf_counter()
-        native = self._encode(inp)
+        native, asked = self._encode_requested(inp)
         warnings: list[ProgramWarning] = []
+        requested = asked or native.threads
         grant = ctx.threads if ctx is not None else None
-        requested = native.threads
-        if (
-            grant
-            and requested
-            and requested > grant
-            and self.codec.cap_threads is not None
-            and isinstance(inp, ProgramInput)
-        ):
-            # A program uses the smaller of its request and its grant.
-            native = self._encode(self.codec.cap_threads(inp, grant))
-            warnings.append(
-                ProgramWarning(
-                    code="resource_capped",
-                    message=f"{self.name} asked for {requested} threads and was granted "
-                    f"{grant}; it ran with {grant}.",
+        use = asked  # called directly: the threads asked for, if any
+        if grant:
+            if requested and requested > grant:
+                use = grant  # a program uses the smaller of its request and its grant
+                warnings.append(
+                    ProgramWarning(
+                        code="resource_capped",
+                        message=f"{self.name} asked for {requested} threads and was "
+                        f"granted {grant}; it ran with {grant}.",
+                    )
                 )
-            )
+            elif not requested and self.threads is None:
+                use = grant  # a program that scales with threads uses all it got
+        if use is not None and use != native.threads:
+            native = self._with_threads(inp, native, use)
         if ctx is None:
             directory = Path(tempfile.mkdtemp(prefix="qccodec-"))
             try:
@@ -282,7 +337,9 @@ class CodecProgram:
         alone: list[int] = []
         for i, inp in enumerate(inputs):
             try:
-                key = self.codec.batch_key(inp)
+                # A thread request is honoured one input at a time.
+                threads = isinstance(inp, ProgramInput) and "threads" in inp.keywords
+                key = None if threads else self.codec.batch_key(inp)
             except Exception:  # noqa: BLE001 - computing it alone reports it
                 key = None
             if key is None:
@@ -321,6 +378,56 @@ class CodecProgram:
             return self.codec.encode(inp)
         except EncoderError as e:
             raise ProgramError.of(e.kind, str(e), code=e.code) from e
+
+    def _encode_requested(
+        self, inp: ProgramInput | FileInput
+    ) -> tuple[NativeInput, int | None]:
+        """Encode an input apart from its ``threads`` keyword; return what it asks.
+
+        ``threads`` is the request every program shares; the codec sees the input
+        without it, and the threads reach the program through its own setting
+        (`_with_threads`).
+
+        Raises:
+            ProgramError: The codec refuses the input; ``threads`` is not a positive
+                integer (kind ``input``); or the input also sets the program's own
+                thread count (``pal``, ``-n``, ``parallel``: code ``no_effect``).
+        """
+        if not isinstance(inp, ProgramInput) or "threads" not in inp.keywords:
+            return self._encode(inp), None
+        asked = inp.keywords["threads"]
+        if isinstance(asked, bool) or not isinstance(asked, int) or asked < 1:
+            raise ProgramError.of(
+                "input", f"threads is a positive integer, not {asked!r}."
+            )
+        native = self._encode(self._without_threads(inp))
+        if native.threads is not None:
+            raise ProgramError.of(
+                "input",
+                f"threads={asked} and the program's own thread count "
+                f"({native.threads}) are both given; keep one.",
+                code="no_effect",
+            )
+        return native, asked
+
+    @staticmethod
+    def _without_threads(inp: ProgramInput) -> ProgramInput:
+        """The input without its ``threads`` keyword."""
+        keywords = {k: v for k, v in inp.keywords.items() if k != "threads"}
+        return inp.model_copy(update={"keywords": keywords})
+
+    def _with_threads(
+        self, inp: ProgramInput | FileInput, native: NativeInput, threads: int
+    ) -> NativeInput:
+        """The invocation running with ``threads``.
+
+        Through the program's own setting (``cap_threads``: ORCA ``pal``, Psi4
+        ``-n``), else ``OMP_NUM_THREADS`` and the other libraries' variables.
+        """
+        cap = self.codec.cap_threads
+        if cap is not None and isinstance(inp, ProgramInput):
+            return self._encode(cap(self._without_threads(inp), threads))
+        return dataclasses.replace(native, threads=threads)
 
     def _environment(
         self, native: NativeInput, ctx: Any
@@ -546,6 +653,49 @@ class CodecProgram:
 
 
 _DIGESTS: dict[str, str] = {}
+_VERSIONS: dict[str, str] = {}
+
+
+def executable_version(executable: str, codec: Codec) -> str:
+    """Ask an executable for its version (``--version``), once per path per process.
+
+    The answer is read with the codec's version parser when it reads stdout (ORCA,
+    xtb, CREST, DFTB+ and TeraChem print their banner), else it is the first line of
+    the answer (Psi4 prints ``1.11``).
+
+    Args:
+        executable: The executable's path.
+        codec: The codec of the program.
+
+    Returns:
+        The version, or ``unknown`` when the answer names none.
+    """
+    if executable not in _VERSIONS:
+        try:
+            with tempfile.TemporaryDirectory(prefix="qccodec-version-") as directory:
+                answer = subprocess.run(
+                    [executable, "--version"],
+                    cwd=directory,
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    errors="replace",
+                    timeout=60,
+                )
+            text = answer.stdout + answer.stderr
+        except (OSError, subprocess.SubprocessError):
+            return "unknown"
+        parsers = [
+            spec.parser
+            for spec in codec.parsers
+            if spec.target == VERSION_TARGET and spec.file == STDOUT
+        ]
+        try:
+            found = parsers[0](text) if parsers else text.strip().splitlines()[0]
+        except (BaseError, IndexError):
+            found = ""
+        _VERSIONS[executable] = str(found).strip() or "unknown"
+    return _VERSIONS[executable]
 
 
 def executable_digest(executable: str) -> str:

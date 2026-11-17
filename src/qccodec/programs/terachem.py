@@ -33,7 +33,8 @@ The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another inpu
 its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
 stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
 ``input``; no usable GPU is ``backend``; any other unfinished job is ``internal``.
-TeraChem's keywords are passed through unchecked.
+TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
+work is on the GPUs it declares, so several can share a machine's GPUs.
 """
 
 from __future__ import annotations

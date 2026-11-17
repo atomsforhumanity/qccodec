@@ -59,8 +59,9 @@ meeting ``fmax`` fails, with its trajectory attached: kind ``convergence``, code
 
 Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
 the step's program runs wherever the runner places it. Called directly, the program
-hands itself to ``qccompute.compute``. The optimization declares the threads and GPUs
-its subprogram does, so lists of optimizations share the machine correctly.
+hands itself to ``qccompute.compute``. The optimization plans the threads and GPUs its
+subprogram asks for (its ``threads`` keyword, else its program's plan, whatever program
+it is), so lists of optimizations share the machine correctly.
 """
 
 from __future__ import annotations
@@ -501,4 +502,4 @@ codec = Codec(
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'sella').
 #: It runs in a worker process: importing Sella imports JAX and sets JAX's environment
 #: variables, Sella sets thread variables (max_cpu_threads), and its log is stdout.
-program = CodecProgram(codec, in_process=False, library="sella")
+program = CodecProgram(codec, in_process=False, library="sella", threads=None)

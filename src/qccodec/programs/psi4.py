@@ -26,7 +26,9 @@ Inputs map to Psi4 as follows:
     off. By default Psi4 detects whatever symmetry the input frame already has.
 
 - ``cmdline_args`` are appended to the ``psi4`` command, e.g. ``["-n", "4"]`` for
-  four threads or ``["--memory", "8GB"]``.
+  four threads or ``["--memory", "8GB"]``. Without ``-n``, Psi4 plans all the threads
+  the runner has and runs with what it is granted (``-n <grant>``); called directly,
+  with Psi4's default of one.
 
 Psi4's options are too many to list in the codec, but Psi4 checks every one itself:
 the driver sets them one at a time before calculating and reports each one Psi4 does
@@ -54,7 +56,8 @@ Failures and their kinds: an SCF that does not converge is ``convergence`` (code
 ``scf_not_converged``), optking out of iterations ``convergence`` (``max_iter``),
 another iterative procedure ``convergence``; an unknown option, method or basis set,
 an invalid value and a multiplicity the electrons cannot have are ``input``; a method
-Psi4 has but not for this calculation is ``unsupported``.
+Psi4 has but not for this calculation is ``unsupported``; an addon this Psi4 lacks
+(``ddx`` for ddCOSMO) is ``environment``.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with ``external_potentials`` either fail or come back wrong (they disagree
@@ -109,6 +112,7 @@ codec = Codec(
         (r"not available for any derivative level", "input", None),  # unknown method
         (r"ManagedMethodError|MissingMethodError", "unsupported", None),
         (r"ValidationError|UpgradeHelper", "input", None),
+        (r"ModuleNotFoundError|ImportError", "environment", None),  # an addon missing
     ],
 )
 
@@ -192,15 +196,15 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     )
 
 
-def _threads(cmdline_args: list[str]) -> int:
-    """Return the thread count given with ``-n``/``--nthread``, 1 by default."""
+def _threads(cmdline_args: list[str]) -> int | None:
+    """Return the thread count given with ``-n``/``--nthread``, None without one."""
     args = list(cmdline_args)
     for i, arg in enumerate(args):
         if arg in ("-n", "--nthread") and i + 1 < len(args):
             return int(args[i + 1])
         if arg.startswith("--nthread="):
             return int(arg.split("=", 1)[1])
-    return 1
+    return None
 
 
 def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:
@@ -385,4 +389,6 @@ def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
 codec.cap_threads = cap_threads
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'psi4').
-program = CodecProgram(codec)
+#: Psi4 scales with threads: without ``-n`` it plans all the runner has and runs with
+#: the grant.
+program = CodecProgram(codec, threads=None)

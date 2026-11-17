@@ -192,7 +192,7 @@ def test_file_inputs_return_every_file_written(tmp_path: Path) -> None:
     assert "done" in str(out.logs)
 
 
-def test_numerics_is_the_executables_digest(tmp_path: Path) -> None:
+def test_numerics_is_the_version_and_the_executables_digest(tmp_path: Path) -> None:
     import hashlib
 
     script = tmp_path / "prog"
@@ -200,9 +200,36 @@ def test_numerics_is_the_executables_digest(tmp_path: Path) -> None:
     script.chmod(0o755)
     expected = "sha256:" + hashlib.sha256(script.read_bytes()).hexdigest()
     assert executable_digest(str(script)) == expected
-    assert CodecProgram(codec, executable=str(script)).numerics(inp()) == expected
-    assert CodecProgram(codec, library="numpy").numerics(inp()).startswith("numpy ")
+    program = CodecProgram(codec, executable=str(script))
+    assert program.numerics(inp()) == f"prog version 6.7.1 {expected}"
+    import numpy
+
+    library = CodecProgram(codec, library="numpy")
+    assert library.numerics(inp()) == library.version() == numpy.__version__
     assert CodecProgram(codec, executable="/no/such").numerics(None) == "not installed"
+
+
+def test_version_is_the_programs(tmp_path: Path) -> None:
+    """An executable is asked with --version and read with the codec's parser."""
+    from qccodec.program import executable_version
+
+    script = tmp_path / "prog"
+    script.write_text("#!/bin/sh\necho 'banner'\necho 'Total energy: -1.5 prog'\n")
+    script.chmod(0o755)
+    versioned = Codec("versioned", calctypes={CalcType.energy})
+    versioned.parser(target=("provenance", "program_version"))(
+        lambda text: re_search(r"energy: (\S+)", text).group(1)
+    )
+    assert executable_version(str(script), versioned) == "-1.5"
+    plain = tmp_path / "plain"
+    plain.write_text("#!/bin/sh\necho '1.11'\n")
+    plain.chmod(0o755)
+    assert CodecProgram(codec, executable=str(plain)).version() == "1.11"
+    assert CodecProgram(codec, executable="/no/such").version() == "not installed"
+    silent = tmp_path / "silent"
+    silent.write_text("#!/bin/sh\n")
+    silent.chmod(0o755)
+    assert executable_version(str(silent), versioned) == "unknown"
 
 
 def _logs_and_writes(name: str, *, directory: Path) -> str:

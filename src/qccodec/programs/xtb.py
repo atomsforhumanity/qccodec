@@ -18,7 +18,8 @@ optimization level. A keyword that is not one of xtb's options is refused before
 runs (kind ``input``, code ``unknown_key``) with the closest option named, and so are
 flags the codec sets itself (``chrg``, ``uhf``, the method and run-type flags) and
 flags that would run something else or move the molecule (``cma``); xtb itself only
-warns about an unknown flag and runs without it. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
+warns about an unknown flag and runs without it. xtb plans one thread unless the
+input asks for more (``threads``, or xtb's own ``parallel``, not both). Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
 an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.

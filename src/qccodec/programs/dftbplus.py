@@ -53,7 +53,8 @@ DFTB+ stops on any keyword it does not recognize, before calculating, and the co
 reports its message naming the input it ignored (kind ``input``, code
 ``unknown_key``). An SCC that does not converge is ``convergence``
 (``scf_not_converged``), an optimization that runs out of steps ``convergence``
-(``max_iter``); other errors DFTB+ reports are ``internal``.
+(``max_iter``); other errors DFTB+ reports are ``internal``. DFTB+ plans one thread
+unless ``threads`` asks for more (it reaches DFTB+ as ``OMP_NUM_THREADS``).
 """
 
 from __future__ import annotations
