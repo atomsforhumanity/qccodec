@@ -11,7 +11,11 @@ adapter (`qccodec.CodecProgram`) encodes the input, runs the program in a scratc
 directory with its output captured and a deadline, and decodes the result. qccompute
 finds it by name, packs lists into the machine, and stores results. A thread request
 larger than the runner's grant (ORCA `pal`, Psi4 `-n`) is lowered to the grant, with a
-`resource_capped` warning.
+`resource_capped` warning; an ML potential that planned a GPU and was granted none runs
+on the CPU with a `backend_fallback` warning. No codec turns the shared keyword
+`accuracy` (an accuracy target) into its program's thresholds yet, so each refuses it:
+kind `unsupported`, or kind `input`, code `no_effect`, where the calculation has no
+convergence settings (ML potentials, GFN-FF single points).
 
 ## Install
 
