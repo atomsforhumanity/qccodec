@@ -4,16 +4,16 @@ Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST)
 
 How lists of Python calculations work (geomeTRIC, tblite, the ML potentials):
 
-- geomeTRIC runs in Python and takes over its process's output streams and working
-  directory while it runs, so qccompute runs it in a worker process
-  (``python -m qccompute.serve geometric``), several side by side for a list. This
-  script is never imported again and needs no ``if __name__ == "__main__":`` guard.
-  Workers stay alive between calls until the runner closes.
+- geomeTRIC runs in this process: it writes only in its calculation directory and
+  logs through one logger, so a list's optimizations run side by side in threads, and
+  a program registered in this script can be its gradient program. tblite and the ML
+  potentials run in worker processes instead (``python -m qccompute.serve``), which
+  stay alive between calls until the runner closes; this script is never imported
+  again there and needs no ``if __name__ == "__main__":`` guard.
 - A list is packed into the runner's threads (all the cores this process may use, or
   ``qccompute.Runner(threads=...)``): an optimization counts the threads of its
-  gradient program (CREST ``threads`` here). Each worker starts with
-  ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS`` and ``MKL_NUM_THREADS`` set to its
-  share, so numpy in each worker does not start a thread per core.
+  gradient program (CREST ``threads`` here). A worker sets each call's threads for
+  PyTorch and the BLAS and OpenMP runtimes, so numpy does not start a thread per core.
 - The gradient calculations run inside each optimization, through the runner.
 - Failures are reported as for any list: see examples/xtb/many_calculations.py.
 """
@@ -56,7 +56,7 @@ inputs = [
 ]
 
 start = time.perf_counter()
-outputs = compute(inputs)  # four workers, one optimization each
+outputs = compute(inputs)  # four optimizations side by side
 # with qccompute.Runner(threads=2) as runner:  # at most two at a time
 #     outputs = runner.compute(inputs)
 elapsed = time.perf_counter() - start

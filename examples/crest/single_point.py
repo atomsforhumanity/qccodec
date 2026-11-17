@@ -39,7 +39,7 @@ prog_input = ProgramInput(
     model=Model(method="gfn2"),  # or "gfn1", "gfn0", "gfnff"
     keywords={
         # Top-level CREST settings:
-        "threads": 1,  # default: number of CPUs, at most 16
+        "threads": 1,  # default: all the threads the runner grants
         # Settings for the method itself, one [[calculation.level]] table:
         "calculation": {
             "level": [

@@ -42,7 +42,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="gfnff"),  # or "gfn2" (slower)
     keywords={
-        "threads": 4,  # default: number of CPUs, at most 16
+        "threads": 4,  # default: all the threads the runner grants
         # "runtype": "nci",  # for non-covalent clusters; default "imtd-gc"
         # "topo": False,  # allow changes in bonding topology between conformers
         "calculation": {
