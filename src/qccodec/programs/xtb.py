@@ -201,7 +201,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         if method not in EMBEDDING_METHODS:
             raise EncoderError(
                 f"xtb applies point charges only with {sorted(EMBEDDING_METHODS)}; "
-                f"with {method} it ignores them without a warning."
+                f"with {method} it ignores them without a warning.",
+                kind="unsupported",
             )
         xcontrol = str(keywords.get("input", XCONTROL_FILE))
         keywords["input"] = xcontrol

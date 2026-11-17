@@ -155,11 +155,22 @@ def test_point_charges_extend_a_supplied_xcontrol() -> None:
 @pytest.mark.parametrize("method", ["gfn0", "gfnff", "gxtb"])
 def test_point_charges_rejected_where_xtb_ignores_them(method: str) -> None:
     """GFN0, GFN-FF, and g-xTB silently ignore $embedding, so the codec refuses."""
-    with pytest.raises(EncoderError, match="ignores them"):
+    with pytest.raises(EncoderError, match="ignores them") as e:
         _native(method=method, keywords={"external_potentials": POINT_CHARGES})
+    assert e.value.kind == "unsupported"
 
 
 def test_malformed_point_charges() -> None:
     """Entries must be [charge, [x, y, z]] with an optional element."""
     with pytest.raises(EncoderError, match="external_potentials"):
         _native(keywords={"external_potentials": [[1.0, [0.0, 0.0]]]})
+
+
+def test_unknown_flags_name_the_closest() -> None:
+    """A misspelled flag is refused before xtb runs, which would only warn."""
+    with pytest.raises(EncoderError, match="did you mean 'alpb'") as e:
+        _command(keywords={"alpbb": "water"})
+    assert (e.value.kind, e.value.code) == ("input", "unknown_key")
+    with pytest.raises(EncoderError, match="cma") as e:
+        _command(keywords={"cma": True})
+    assert e.value.code == "unknown_key"

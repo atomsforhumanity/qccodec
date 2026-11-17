@@ -203,7 +203,8 @@ def encode(inp: ProgramInput) -> PythonInput:
     constraints = keywords.pop("constraints", None)
     if constraints and "scan" in constraints:
         raise EncoderError(
-            "Constraint scans are not supported by this geomeTRIC integration."
+            "Constraint scans are not supported by this geomeTRIC integration.",
+            kind="unsupported",
         )
     threads, gpus = _child_resources(gradient_spec, inp)
     filename = "initial_geometry.xyz"

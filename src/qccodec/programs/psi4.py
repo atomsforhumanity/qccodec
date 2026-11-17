@@ -165,7 +165,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             "Psi4 1.11 supports external_potentials only for energies and gradients: "
             "its Hessians fail or are wrong, and its optimizations never leave the "
             "starting geometry. For QM/MM optimizations, run geomeTRIC with Psi4 "
-            "gradients as its child."
+            "gradients as its child.",
+            kind="unsupported",
         )
     job = {
         "calctype": inp.calctype.value,
