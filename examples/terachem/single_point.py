@@ -1,6 +1,6 @@
 """TeraChem single point: energy, gradient, or Hessian.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and ``terachem`` on PATH.
+Requires: ``pip install qccompute[qccodec]`` and ``terachem`` on PATH.
 TeraChem runs only on NVIDIA CUDA GPUs and needs a license file (from PetaChem). A
 Docker launcher script that provides ``terachem`` without an install, with the license
 given by TERACHEM_LICENSE_PATH, comes with the images at
@@ -73,9 +73,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=3600,  # seconds before TeraChem is killed
-    # collect_files=True,  # keep every output file in output.results.files
-    # collect_wfn=True,  # keep the orbitals (scr*/c0) for a later guess
-    # executables={"terachem": "/path/to/terachem"},  # or QCCOMPUTE_TERACHEM_EXECUTABLE
 )
 
 results = output.results
@@ -84,7 +81,7 @@ if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
     print("Hessian (Hartree/bohr^2), shape:", results.hessian.shape)
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)
+    print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
 print("Number of orbitals:", results.calcinfo_nmo)
 if results.extras.get("excited_states"):
     print("Excited states:", results.extras["excited_states"])

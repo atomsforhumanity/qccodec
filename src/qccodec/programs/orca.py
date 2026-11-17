@@ -27,7 +27,7 @@ coordinates and atom order. No input field carries atom indices.
 
 Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 ``/usr/bin/orca`` is the GNOME screen reader. qccompute always runs the absolute path;
-put ORCA first on ``PATH`` or set ``QCCOMPUTE_ORCA_EXECUTABLE``.
+put ORCA first on ``PATH`` or set ``QCCODEC_ORCA_EXECUTABLE``.
 """
 
 from __future__ import annotations

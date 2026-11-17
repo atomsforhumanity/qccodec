@@ -1,8 +1,8 @@
 """ORCA transition-state search (OptTS).
 
-Requires: ``pip install qccompute`` (it installs qccodec) and ORCA on PATH, ahead of
+Requires: ``pip install qccompute[qccodec]`` and ORCA on PATH, ahead of
 ``/usr/bin/orca`` (the GNOME screen reader on many Linux desktops); or set
-QCCOMPUTE_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.
+QCCODEC_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.
 
 Notes for ORCA transition-state searches (manual:
 https://www.faccts.de/docs/orca/6.0/manual/, "Transition State Searches"):
@@ -49,7 +49,7 @@ prog_input = ProgramInput(
     },
 )
 
-output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
+output = compute(prog_input)  # timeout=... (seconds)
 
 results = output.results
 print("Steps:", len(results.frames))

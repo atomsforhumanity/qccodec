@@ -34,10 +34,10 @@ one fails. Each Hessian geomeTRIC computes is attached to the frame at its geome
 transition states, and also the last frame for ``"first+last"`` or ``"last"``.
 Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
-With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.
+Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
+the step's program runs wherever the runner places it. Called directly, the program
+hands itself to ``qccompute.compute``. The optimization declares the threads and GPUs
+its subprogram does, so lists of optimizations share the machine correctly.
 """
 
 from __future__ import annotations
@@ -383,4 +383,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'geometric').
-program = CodecProgram(codec, in_process=False)
+program = CodecProgram(codec, in_process=False, library="geometric")

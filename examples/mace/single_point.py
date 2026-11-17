@@ -1,6 +1,6 @@
 """MACE single point: energy, gradient, or Hessian from a MACE potential.
 
-Requires: ``pip install qccompute mace-torch``, in an environment without
+Requires: ``pip install qccompute[qccodec] mace-torch``, in an environment without
 ``fairchem-core`` (the two need different versions of e3nn). MACE is a Python library,
 so nothing has to be on PATH: the model runs inside this Python process, on the GPU
 when PyTorch sees one. Models download on first use; later calculations in the same

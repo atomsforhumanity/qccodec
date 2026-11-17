@@ -1,6 +1,6 @@
 """TeraChem geometry optimization with its built-in optimizer.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and ``terachem`` on PATH.
+Requires: ``pip install qccompute[qccodec]`` and ``terachem`` on PATH.
 TeraChem runs only on NVIDIA CUDA GPUs and needs a license file (from PetaChem).
 
 Notes for TeraChem optimizations (manual: https://mtzweb.stanford.edu/terachem/):
@@ -62,7 +62,7 @@ prog_input = ProgramInput(
     },
 )
 
-output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
+output = compute(prog_input)  # timeout=... (seconds)
 
 results = output.results
 print("Steps:", len(results.frames))

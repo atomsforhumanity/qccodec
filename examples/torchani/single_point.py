@@ -1,6 +1,6 @@
 """TorchANI single point: energy, gradient, or Hessian from an ANI potential.
 
-Requires: ``pip install qccompute torchani``. TorchANI is a Python library, so nothing
+Requires: ``pip install qccompute[qccodec] torchani``. TorchANI is a Python library, so nothing
 has to be on PATH: the model runs inside this Python process, on the GPU when PyTorch
 sees one. Parameters download on first use; later calculations in the same process
 reuse the loaded model.

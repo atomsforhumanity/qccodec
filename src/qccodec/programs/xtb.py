@@ -6,8 +6,8 @@ The codec writes ``structure.xyz`` and runs::
 
 ``model.method`` selects the Hamiltonian: ``gfn0``, ``gfn1``, ``gfn2``, ``gfnff``, or
 ``gxtb``. g-xTB needs the xtb build distributed with g-xTB
-(https://github.com/grimme-lab/g-xtb); point qccompute at it with
-``executables={"xtb": ...}`` or ``QCCOMPUTE_XTB_EXECUTABLE``. GFN0 reads its parameter
+(https://github.com/grimme-lab/g-xtb); point qccodec at it with
+``QCCODEC_XTB_EXECUTABLE``. GFN0 reads its parameter
 file from the directory named by ``XTBPATH``.
 
 Keywords become command-line flags in xtb's own spelling: ``{"alpb": "water"}`` gives
@@ -257,8 +257,7 @@ def failure(ctx: Context) -> str | None:
         if "--gxtb" in unknown:
             message += (
                 " This xtb build has no g-xTB; run the xtb build from"
-                " https://github.com/grimme-lab/g-xtb (with qccompute, set"
-                " QCCOMPUTE_XTB_EXECUTABLE or executables={'xtb': path})."
+                " https://github.com/grimme-lab/g-xtb (set QCCODEC_XTB_EXECUTABLE to it)."
             )
         return message
     match = re.search(r"FAILED TO CONVERGE GEOMETRY OPTIMIZATION[^*\n]*", stdout)

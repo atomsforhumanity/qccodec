@@ -1,6 +1,6 @@
 """Psi4 single point: energy, gradient, or Hessian.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.
 ``conda install -c conda-forge psi4`` (add ``pyddx`` for ddX implicit solvent).
 
 How the codec talks to Psi4 (https://psicode.org/psi4manual/master/):
@@ -69,8 +69,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=3600,  # seconds before Psi4 is killed
-    # collect_files=True,  # keep every output file in output.results.files
-    # executables={"psi4": "/path/to/psi4"},  # or set QCCOMPUTE_PSI4_EXECUTABLE
 )
 
 results = output.results
@@ -78,7 +76,7 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)
+    print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
 print("Mulliken charges:", results.atomic_charges)
 print("Dipole (e*bohr):", results.scf_dipole_moment)
 print("Psi4 variables:", sorted(results.extras["psi4_variables"])[:5], "...")

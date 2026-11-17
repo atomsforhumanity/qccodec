@@ -352,4 +352,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'mace').
-program = CodecProgram(codec, in_process=False, gpu=True)
+program = CodecProgram(codec, in_process=False, gpu=True, library="mace-torch")

@@ -52,10 +52,10 @@ fails. Each Hessian from the Hessian program is attached to the frame at its geo
 steps, so every frame stays in the input's frame. A run that uses up ``steps`` without
 meeting ``fmax`` fails, with its trajectory attached.
 
-With qccompute, ``propagate_wfn=True`` starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.
+Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
+the step's program runs wherever the runner places it. Called directly, the program
+hands itself to ``qccompute.compute``. The optimization declares the threads and GPUs
+its subprogram does, so lists of optimizations share the machine correctly.
 """
 
 from __future__ import annotations
@@ -443,4 +443,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'sella').
-program = CodecProgram(codec, in_process=False)
+program = CodecProgram(codec, in_process=False, library="sella")

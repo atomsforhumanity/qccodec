@@ -30,15 +30,17 @@ program's quirks for that kind of calculation.
 
 ## Finding the program
 
-qccompute runs a program by name from `PATH`. To use a different build, or one that
-isn't on `PATH`, pass `compute(..., executables={"orca": "/path/to/orca"})` or set
-`QCCOMPUTE_ORCA_EXECUTABLE` (the program name in capitals).
+qccodec runs a program by name from `PATH`, always by its absolute path (recorded in
+`execution.extras["executable"]`). To use a different build, or one that isn't on
+`PATH`, set `QCCODEC_ORCA_EXECUTABLE` (the program name in capitals), or register
+`qccodec.CodecProgram(codec, executable="/path/to/orca")` in your process. A store
+tells builds apart by the sha256 of the executable file (the program's `numerics`).
 
 ## Programs that are Python libraries
 
 tblite and the machine-learned potentials (AIMNet2, FAIR-Chem, MACE, Orb, TorchANI)
-are Python libraries, not programs: qccompute calls them inside the calling Python
-process, so install the library next to qccompute instead of putting anything on
+are Python libraries, not programs: qccompute calls them in a worker process of the
+same Python, so install the library next to qccompute instead of putting anything on
 `PATH`. They share a few conventions:
 
 - **Models load once per process.** The first calculation downloads and loads the

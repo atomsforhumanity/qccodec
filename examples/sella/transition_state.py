@@ -1,6 +1,6 @@
 """Sella transition-state search driving another program's gradients and Hessians.
 
-Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the child
+Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the child
 program on PATH. This example uses xtb (GFN2-xTB): ``conda install -c conda-forge xtb``.
 
 Notes for Sella transition-state searches (https://github.com/zadorlab/sella):
@@ -60,4 +60,4 @@ check = compute(
         model=model,
     )
 )
-print("Lowest frequencies (cm^-1):", check.results.freqs_wavenumber[:3])
+print("Lowest frequencies (cm^-1):", check.results.vibrational_analysis.frequencies[:3])

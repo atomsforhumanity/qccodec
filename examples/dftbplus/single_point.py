@@ -1,6 +1,6 @@
 """DFTB+ single point: DFTB3, SCC-DFTB, or xTB energy, gradient, or Hessian.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and DFTB+ on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and DFTB+ on PATH, e.g.
 ``conda install -c conda-forge dftbplus`` (the program is ``dftb+``). The DFTB
 methods also need Slater-Koster parameter files, which DFTB+ does not ship: download
 sets from https://github.com/dftbparams (for example 3ob-3-1 and mio-1-1) into one
@@ -72,8 +72,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before DFTB+ is killed
-    # collect_files=True,  # keep detailed.out, results.tag, ... in output.results.files
-    # executables={"dftbplus": "/path/to/dftb+"},  # or QCCOMPUTE_DFTBPLUS_EXECUTABLE
 )
 
 results = output.results

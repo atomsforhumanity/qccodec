@@ -1,6 +1,6 @@
 """CREST geometry optimization with its built-in ANCopt optimizer.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and CREST 3 on PATH, the
+Requires: ``pip install qccompute[qccodec]`` and CREST 3 on PATH, the
 official static build from https://github.com/crest-lab/crest/releases (conda-forge's
 CREST 3.0.2 crashes in its optimizer). No separate xtb is needed.
 
@@ -52,8 +52,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before CREST is killed
-    # collect_files=True,  # keep every output file (crestopt.xyz, ...) in results.files
-    # executables={"crest": "/path/to/crest"},  # or QCCOMPUTE_CREST_EXECUTABLE
 )
 
 results = output.results

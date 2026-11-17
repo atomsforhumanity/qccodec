@@ -1,6 +1,6 @@
 """AIMNet2 single point: energy, gradient, or Hessian from a machine-learned potential.
 
-Requires: ``pip install qccompute aimnet``. AIMNet2 is a Python library, so nothing has
+Requires: ``pip install qccompute[qccodec] aimnet``. AIMNet2 is a Python library, so nothing has
 to be on PATH: the model runs inside this Python process, on the GPU when PyTorch sees
 one. Weights download on first use; later calculations in the same process reuse the
 loaded model, so an optimization or path pays the loading cost once.

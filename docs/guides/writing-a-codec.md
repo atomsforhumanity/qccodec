@@ -24,23 +24,28 @@ def parse_energy(stdout: str) -> float:
     return float(re_search(r"Total energy:\s+(-?\d+\.\d+)", stdout).group(1))
 ```
 
-If the program uses several CPU threads or a GPU, say so in the native input:
-`SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute runs
-lists of calculations side by side and uses these to keep within the machine's cores
-and give each GPU calculation its own device.
+If the input asks for several CPU threads or a GPU, say so in the native input:
+`SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute packs
+lists of calculations by these and gives each GPU calculation its own device. Leave
+`threads` out when the input asks for none: the program then runs with the runner's
+grant, through `OMP_NUM_THREADS`.
 
-Then run it with qccompute, either explicitly or by name after registering it:
+Then make it a program and run it with qccompute:
 
 ```python
 import qccodec, qccompute
 
-output = qccompute.compute(input_data, codec=codec)
-
-qccodec.register(codec)              # now resolvable as program="myprog",
-output = qccompute.compute(input_data)   # including as a geomeTRIC gradient child
+qccompute.register_program(qccodec.CodecProgram(codec))  # program="myprog"
+output = qccompute.compute(input_data)   # also as a geomeTRIC gradient subprogram
 ```
 
-`register()` also lets you override a built-in codec by name for the current process.
+A codec that calls a Python library (one that returns a `PythonInput`) takes over its
+process's output streams while it runs: make it `CodecProgram(codec, in_process=False)`
+and qccompute runs it in a worker process. A registered program reaches a worker only
+when it is defined at the top level of an importable module; publish it as an entry
+point (below) to be found everywhere. `CodecProgram(codec, executable=...,
+environment=...)` configures where the program is and what it runs with;
+`QCCODEC_<PROGRAM>_EXECUTABLE` does the first without code.
 
 ## Parsers
 
@@ -122,10 +127,12 @@ keywords, calculation type) and nothing about the structure; return `None` for i
 the library computes one at a time, such as Hessians. The built-in machine-learned
 potentials use `batch_signature` from `qccodec.programs._python` as their key.
 
-## Options and wavefunction propagation
+## Decode options
 
-A codec declares the decode options it accepts, with defaults. Callers override them
-per calculation and parsers read them from the context:
+A codec declares the decode options it accepts, with defaults. Callers of `decode` and
+`parse` override them, and parsers read them from the context. A choice that should be
+made per calculation belongs in the input's keywords instead (CREST's
+`{"output": {"rotamers": True}}`), which parsers read from `ctx.input_data`:
 
 ```python
 codec = Codec("crest", calctypes={...}, options={"collect_rotamers": False})
@@ -137,13 +144,9 @@ def parse_rotamers(ctx: Context) -> dict:
     ...
 
 decode("crest", "conformer_search", directory=d, input_data=inp, options={"collect_rotamers": True})
-qccompute.compute(inp, options={"collect_rotamers": True})
 ```
 
-Unknown option names raise `EncoderError`. For optimizers that chain calculations, a
-codec may set `codec.propagate_wfn = fn` where `fn(output, input_data)` returns a new
-input carrying the previous output's wavefunction as the initial guess; TeraChem copies
-`c0`/`ca0`/`cb0` and sets `guess`. qccompute calls it when `propagate_wfn=True`.
+Unknown option names raise `EncoderError`.
 
 ## Program versions
 
@@ -167,12 +170,16 @@ are tried in registration order and the first match wins. Pass `version=` to
 
 ## Codecs from other packages
 
-A package can ship a codec by publishing it as an entry point; `get_codec` and
-`qccompute.compute` then find it by program name with no registration call:
+A package can ship a codec by publishing it as entry points: the codec for
+`get_codec` and `decode`, and its program for `qccompute.compute`, which then finds it
+by name in every process with no registration call:
 
 ```toml
 [project.entry-points."qccodec.codecs"]
 myprog = "mypackage.codec:codec"
+
+[project.entry-points."qccompute.programs"]
+myprog = "mypackage.codec:program"   # program = qccodec.CodecProgram(codec)
 ```
 
 ## Testing a codec

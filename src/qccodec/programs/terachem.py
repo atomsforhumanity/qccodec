@@ -29,8 +29,8 @@ distances and degrees for angles. The codec writes them as TeraChem's
 ``indices`` to TeraChem's 1-based atom numbers and distances to angstrom. Scans are not
 supported. ``indices`` is the only input field that carries atom indices.
 
-The orbital files ``c0`` (or ``ca0``/``cb0``) can seed the next calculation: qccompute's
-``propagate_wfn=True`` does this between geomeTRIC steps. A run is a failure unless
+The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another input as
+its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
 stdout ends with ``Job finished:``.
 """
 

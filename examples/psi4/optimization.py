@@ -1,6 +1,6 @@
 """Psi4 geometry optimization with its built-in optimizer, optking.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.
 ``conda install -c conda-forge psi4``.
 
 Notes for Psi4 optimizations:
@@ -49,7 +49,7 @@ prog_input = ProgramInput(
     cmdline_args=["-n", "1", "--memory", "2GB"],
 )
 
-output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
+output = compute(prog_input)  # timeout=... (seconds)
 
 results = output.results
 print("Steps:", len(results.frames))

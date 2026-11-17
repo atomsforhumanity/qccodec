@@ -1,6 +1,6 @@
 """tblite single point: GFN2-xTB, GFN1-xTB, or IPEA1-xTB energy or gradient.
 
-Requires: ``pip install qccompute tblite`` (or ``conda install -c conda-forge
+Requires: ``pip install qccompute[qccodec] tblite`` (or ``conda install -c conda-forge
 tblite-python``). tblite is a Python library, so nothing has to be on PATH: the
 calculation runs inside this Python process.
 

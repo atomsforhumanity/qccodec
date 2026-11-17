@@ -62,9 +62,13 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert hessian.shape == (9, 9)
     assert np.allclose(hessian, hessian.T, atol=1e-5)
     assert np.allclose(
-        output.results.freqs_wavenumber, [1587.67, 3520.44, 3527.26], atol=1.0
+        output.results.vibrational_analysis.frequencies,
+        [1587.67, 3520.44, 3527.26],
+        atol=1.0,
     )
-    assert np.asarray(output.results.normal_modes_cartesian).shape == (3, 3, 3)
+    assert np.asarray(
+        output.results.vibrational_analysis.normal_modes_cartesian
+    ).shape == (3, 3, 3)
     check_normal_modes(output.results, list(water.symbols))
 
 
@@ -82,7 +86,7 @@ def test_hessian_modes_across_blocks(run: Run) -> None:
         ),
     )
     output = run(_input(ammonia, CalcType.hessian), case="ammonia_hessian")
-    assert len(output.results.freqs_wavenumber) == 6
+    assert len(output.results.vibrational_analysis.frequencies) == 6
     check_normal_modes(output.results, list(ammonia.symbols))
 
 

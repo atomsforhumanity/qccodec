@@ -17,16 +17,16 @@ These packages work together to make quantum chemistry fast, structured, and int
 - [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.afh.org)
 - [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities for [qcdata](https://github.com/atomsforhumanity/qcdata) structures.
 - [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program. [Documentation](https://qccodec.docs.afh.org)
-- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs quantum chemistry programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs using [qccodec](https://github.com/atomsforhumanity/qccodec) codecs and returns structured results. [Documentation](https://qccompute.docs.afh.org)
+- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs: one input or many, in process or in workers, with a calculation store; external programs come with `qccompute[qccodec]`. [Documentation](https://qccompute.docs.afh.org)
 - [BigChem](https://github.com/mtzgroup/bigchem) - Distributed execution of qccompute calculations across clusters of computers or the cloud.
 - [ChemCloud](https://github.com/mtzgroup/chemcloud-client) - A [web application](https://github.com/mtzgroup/chemcloud-server) and [Python client](https://github.com/mtzgroup/chemcloud-client) that expose a BigChem cluster securely over the internet.
 
 ## ✨ Basic Usage
 
-qccodec never runs programs itself; [qccompute](https://github.com/atomsforhumanity/qccompute) runs them and uses qccodec on both ends.
+Every codec is also a program [qccompute](https://github.com/atomsforhumanity/qccompute) runs by name: qccodec registers it under the `qccompute.programs` entry points, and runs the program in a scratch directory with its output captured, a deadline, and its threads and GPUs from the runner.
 
 ```sh
-python -m pip install qccompute   # also installs qccodec
+python -m pip install qccompute[qccodec]   # qccompute runs, qccodec brings the programs
 ```
 
 ```python
@@ -54,7 +54,7 @@ from pathlib import Path
 from qccodec import decode
 
 data = decode("terachem", "hessian", stdout=Path("tc.out").read_text())
-data.energy, data.hessian, data.freqs_wavenumber
+data.energy, data.hessian, data.vibrational_analysis
 ```
 
 ```sh

@@ -1,6 +1,6 @@
 """Orb single point: energy or gradient from an Orb potential.
 
-Requires: ``pip install qccompute orb-models``, in an environment without
+Requires: ``pip install qccompute[qccodec] orb-models``, in an environment without
 ``fairchem-core``. Orb is a Python library, so nothing has to be on PATH: the model
 runs inside this Python process, on the GPU when PyTorch sees one. Weights download on
 first use; later calculations in the same process reuse the loaded model.

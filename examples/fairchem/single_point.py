@@ -1,6 +1,6 @@
 """FAIR-Chem single point: energy, gradient, or Hessian from UMA or eSEN.
 
-Requires: ``pip install qccompute fairchem-core``, and access to the gated weights:
+Requires: ``pip install qccompute[qccodec] fairchem-core``, and access to the gated weights:
 request it at https://huggingface.co/facebook/UMA (or facebook/OMol25 for eSEN), then
 run ``hf auth login``. FAIR-Chem is a Python library, so nothing has to be on PATH: the
 model runs inside this Python process, on the GPU when PyTorch sees one. Later

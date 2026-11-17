@@ -1,6 +1,6 @@
 """Sella geometry optimization driving another program's gradients.
 
-Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the gradient
+Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the gradient
 program on PATH. This example uses xtb for fast GFN2-xTB gradients:
 ``conda install -c conda-forge xtb``.
 
@@ -63,8 +63,6 @@ prog_input = ProgramInput(
 
 output = compute(
     prog_input,
-    # propagate_wfn=True,  # TeraChem: start each step from the previous orbitals
-    # executables={"xtb": "/path/to/xtb"},  # the child's executable
 )
 
 results = output.results

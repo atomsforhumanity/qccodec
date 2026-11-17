@@ -1,6 +1,6 @@
 """TorchANI for many structures at once: a bond scan evaluated in batches.
 
-Requires: what examples/torchani/single_point.py requires, and qccompute 0.21.0 or newer.
+Requires: what examples/torchani/single_point.py requires.
 
 How batching works:
 

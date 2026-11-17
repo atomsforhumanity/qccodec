@@ -169,4 +169,4 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'tblite').
-program = CodecProgram(codec, in_process=False)
+program = CodecProgram(codec, in_process=False, library="tblite")

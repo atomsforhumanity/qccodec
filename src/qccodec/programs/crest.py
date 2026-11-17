@@ -20,7 +20,9 @@ and normal modes), ``optimization``, and ``conformer_search``. CREST writes the 
 modes to ``g98.out`` as mass-weighted vectors (two decimals) in a reoriented frame; the
 codec converts them to unit-length Cartesian displacements and rotates them back onto
 the input structure, as qcdata defines them. The Hessian is in the input's frame. Rotamers are parsed only
-with the decode option ``{"collect_rotamers": True}``; there can be thousands. CREST
+when the keywords ask for them, ``{"output": {"rotamers": True}}`` (the ``output`` group
+is the codec's, not written to CREST's input), or with the decode option
+``{"collect_rotamers": True}``; there can be thousands. CREST
 optimizes with the center of mass at the origin; the codec shifts optimization
 trajectories back into the input's frame. No input field carries atom indices.
 
@@ -139,6 +141,12 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
     if inp.model is None:
         raise EncoderError("crest input requires a scientific model.")
     toml_dict = copy.deepcopy(inp.keywords)
+    output = toml_dict.pop("output", {})  # what to return, not CREST's
+    unknown = sorted(set(output) - {"rotamers"}) if isinstance(output, dict) else None
+    if unknown or unknown is None:
+        raise EncoderError(
+            f"CREST's output group takes only 'rotamers', not {unknown}."
+        )
     # Logical cores were 10% faster than physical cores, so psutil is not used.
     toml_dict.setdefault("threads", min(os.cpu_count() or 16, 16))
     toml_dict["input"] = struct_filename
@@ -218,9 +226,13 @@ def parse_conformers(ctx: Context) -> dict[str, Any]:
 def parse_rotamers(ctx: Context) -> dict[str, Any]:
     """Parse the rotamers, each a frame with its energy, from ``crest_rotamers.xyz``.
 
-    Runs only with ``options={"collect_rotamers": True}``.
+    Runs only when the input's keywords ask for them (``{"output": {"rotamers":
+    true}}``), or with the decode option ``{"collect_rotamers": True}``.
     """
-    if not ctx.options["collect_rotamers"]:
+    asked = ctx.input_data is not None and bool(
+        (ctx.input_data.keywords.get("output") or {}).get("rotamers")
+    )
+    if not (asked or ctx.options["collect_rotamers"]):
         return {}
     if ctx.input_data is None:
         raise ParserError("Rotamer parsing requires input_data.")

@@ -114,20 +114,6 @@ def test_qmmm_optimization_with_psi4(run: Run) -> None:
         assert step.results.point_charge_gradient is not None
 
 
-@requires("terachem")
-def test_optimization_with_terachem_propagates_wavefunction(
-    run: Run, hydrogen: Structure
-) -> None:
-    """Each TeraChem step after the first starts from the previous wavefunction."""
-    inp = _input(hydrogen, CalcType.optimization, "terachem", HF_STO3G, purify="no")
-    output = run(inp, propagate_wfn=True)
-    assert isinstance(output.results, OptimizationData)
-    logs = output.results.frames[-1].logs
-    assert logs is not None
-    assert "Initial guess will be loaded from c0" in logs
-    assert output.results.energies[0] > output.results.energies[-1]
-
-
 # Ammonia near its planar inversion saddle point at GFN2-xTB (bohr).
 NEAR_PLANAR_AMMONIA = Structure(
     symbols=["N", "H", "H", "H"],

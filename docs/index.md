@@ -5,14 +5,17 @@ qccodec knows how to talk to quantum chemistry programs. For each program it has
 `ProgramInput` into the program's native input files and command, and turns the
 program's output back into structured qcdata results.
 
-qccodec never runs anything itself.
-[qccompute](https://qccompute.docs.afh.org) runs the program and uses
-the codec on both ends, so most scientists use the two together.
+Each codec is also a program that [qccompute](https://qccompute.docs.afh.org) runs:
+qccodec registers it under qccompute's `qccompute.programs` entry points, and its
+adapter (`qccodec.CodecProgram`) encodes the input, runs the program in a scratch
+directory with its output captured and a deadline, and decodes the result. qccompute
+finds it by name, packs lists into the machine, and stores results; qccodec never
+imports qccompute to run a program.
 
 ## Install
 
 ```sh
-python -m pip install qccompute   # also installs qccodec
+python -m pip install qccompute[qccodec]
 ```
 
 You also need the program itself; each [program page](programs/index.md) says how to

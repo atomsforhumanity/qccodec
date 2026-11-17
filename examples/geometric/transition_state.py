@@ -1,6 +1,6 @@
 """geomeTRIC transition-state search driving another program's gradients.
 
-Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the
+Requires: ``pip install qccompute[qccodec] qccodec[geometric]`` (geomeTRIC itself) and the
 gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:
 https://github.com/crest-lab/crest/releases (official static build).
 
@@ -75,7 +75,6 @@ prog_input = ProgramInput(
 
 output = compute(
     prog_input,
-    # propagate_wfn=True,  # TeraChem: start each step from the previous orbitals
     # timeout=3600,
 )
 

@@ -1,12 +1,11 @@
 """ORCA single point: energy, gradient, or Hessian.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and ORCA, free for academic
-use from https://orcaforum.kofo.mpg.de. Put the ORCA directory first on PATH, or point
-qccompute at it with QCCOMPUTE_ORCA_EXECUTABLE or ``executables={"orca": ...}``: on
-many Linux desktops ``/usr/bin/orca`` is the GNOME screen reader, not ORCA. Parallel
-runs (``pal``) also need the OpenMPI version ORCA was built with, and ORCA stops with
-"ORCA has to be called with full pathname" unless it runs by its absolute path, which
-qccompute does from the release after 0.15.0 (the one with ``executables=``).
+Requires: ``pip install qccompute[qccodec]`` and ORCA, free for academic use from
+https://orcaforum.kofo.mpg.de. Put the ORCA directory first on PATH, or point qccodec
+at it with QCCODEC_ORCA_EXECUTABLE: on many Linux desktops ``/usr/bin/orca`` is the
+GNOME screen reader, not ORCA. Parallel runs (``pal``) also need the OpenMPI version
+ORCA was built with, and ORCA stops with "ORCA has to be called with full pathname"
+unless it runs by its absolute path, which qccodec always does.
 
 How the codec talks to ORCA (manual: https://www.faccts.de/docs/orca/6.0/manual/):
 
@@ -64,8 +63,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=3600,  # seconds before ORCA is killed
-    # collect_files=True,  # keep every output file (orca.gbw, orca.hess, ...)
-    # executables={"orca": "/opt/orca/orca"},  # or set QCCOMPUTE_ORCA_EXECUTABLE
 )
 
 results = output.results
@@ -74,6 +71,11 @@ if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
     print("Hessian (Hartree/bohr^2), shape:", results.hessian.shape)
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)  # imaginary are negative
-    print("Normal modes (modes, atoms, xyz):", results.normal_modes_cartesian.shape)
+    print(
+        "Frequencies (cm^-1):", results.vibrational_analysis.frequencies
+    )  # imaginary are negative
+    print(
+        "Normal modes (modes, atoms, xyz):",
+        results.vibrational_analysis.normal_modes_cartesian.shape,
+    )
 print("ORCA version:", results.provenance.program_version)

@@ -3,7 +3,7 @@
 The codec writes ``dftb_in.hsd`` and ``geometry.xyz`` and runs ``dftb+`` in the
 calculation directory; results come from DFTB+'s machine-readable ``results.tag``.
 Install DFTB+ with ``conda install -c conda-forge dftbplus``; qccompute finds ``dftb+``
-on ``PATH`` (or set ``QCCOMPUTE_DFTBPLUS_EXECUTABLE``). Tested with DFTB+ 25.1, and the
+on ``PATH`` (or set ``QCCODEC_DFTBPLUS_EXECUTABLE``). Tested with DFTB+ 25.1, and the
 input pins HSD parser version 14.
 
 Inputs map to DFTB+ as follows:
@@ -517,4 +517,4 @@ def _xyz_frames(text: str, reference: Structure) -> list[Structure]:
 
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'dftbplus').
-program = CodecProgram(codec)
+program = CodecProgram(codec, command="dftb+")

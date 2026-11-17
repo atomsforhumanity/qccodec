@@ -1,6 +1,6 @@
 """Psi4 transition-state search with optking.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.
 ``conda install -c conda-forge psi4``.
 
 Notes for Psi4 transition-state searches:

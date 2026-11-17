@@ -30,6 +30,7 @@ program's own and pass through unchanged.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import tempfile
@@ -75,7 +76,7 @@ from .run import (
     stage_files,
 )
 
-__all__ = ["CodecProgram", "THREAD_VARIABLES"]
+__all__ = ["CodecProgram", "THREAD_VARIABLES", "executable_digest"]
 
 #: Thread counts of numerical libraries; a calculation's threads go into these.
 THREAD_VARIABLES = (
@@ -105,6 +106,9 @@ class CodecProgram:
         executable: The executable to run, instead of ``QCCODEC_<NAME>_EXECUTABLE`` or
             the codec's command on ``PATH``.
         environment: Environment variables for the program, over every default.
+        command: The program's command, when it is not its name (``dftb+``).
+        library: For a codec that calls a Python library: its distribution name,
+            whose version is the program's numerics identity.
     """
 
     def __init__(
@@ -116,6 +120,8 @@ class CodecProgram:
         gpu: bool = False,
         executable: str | None = None,
         environment: Mapping[str, str] | None = None,
+        command: str | None = None,
+        library: str | None = None,
     ) -> None:
         """Wrap a codec."""
         self.codec = codec
@@ -124,6 +130,8 @@ class CodecProgram:
         self.gpu = gpu
         self.executable = executable
         self.environment = dict(environment or {})
+        self.command = command or self.name
+        self.library = library
 
     def __repr__(self) -> str:
         """Show the program."""
@@ -134,6 +142,39 @@ class CodecProgram:
     def version(self) -> str:
         """Qccodec's version: the adapter's. The program's own is in provenance."""
         return __version__
+
+    def numerics(self, spec: Any = None) -> str:
+        """What produces the numbers: the sha256 of the executable that would run.
+
+        A version string is not enough (the g-xTB build of xtb prints the version of
+        upstream xtb 6.7.1), so the executable file itself identifies the program,
+        hashed once per process per path. A codec that calls a Python library gives
+        the library's version; FileInputs run any command, so qccodec's version
+        stands in.
+
+        Args:
+            spec: The input or subprogram spec; every spec of an external program
+                runs the same executable.
+
+        Returns:
+            ``sha256:<hex>``, ``<library> <version>``, or ``not installed``.
+        """
+        if self.library is not None:
+            from .programs._python import package_version
+
+            return f"{self.library} {package_version(self.library) or 'not installed'}"
+        if self.name == "files":
+            return __version__
+        try:
+            executable = resolve_executable(
+                self.name,
+                self.command,
+                {**os.environ, **self.environment},
+                self.executable,
+            )
+        except DependencyNotFoundError:
+            return "not installed"
+        return executable_digest(executable)
 
     def capabilities(self) -> dict[str, Any]:
         """The codec's calctypes; batches when the codec batches; where it may run."""
@@ -453,6 +494,28 @@ class CodecProgram:
             return outputs
         finally:
             shutil.rmtree(directory, ignore_errors=True)
+
+
+_DIGESTS: dict[str, str] = {}
+
+
+def executable_digest(executable: str) -> str:
+    """The sha256 of an executable file (symbolic links followed), once per path.
+
+    Args:
+        executable: The executable's path.
+
+    Returns:
+        ``sha256:<hex>``, or ``not installed`` when the file cannot be read.
+    """
+    if executable not in _DIGESTS:
+        try:
+            with open(os.path.realpath(executable), "rb") as f:
+                digest = "sha256:" + hashlib.file_digest(f, "sha256").hexdigest()
+        except OSError:
+            return "not installed"
+        _DIGESTS[executable] = digest
+    return _DIGESTS[executable]
 
 
 def _empty(inp: ProgramInput | FileInput) -> Data:

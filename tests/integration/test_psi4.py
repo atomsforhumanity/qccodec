@@ -72,7 +72,7 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert hessian.shape == (9, 9)
     assert np.allclose(hessian, hessian.T, atol=1e-8)
     assert np.allclose(results.gradient, GRADIENT, atol=1e-7)
-    assert results.vibrational_analysis.frequencies
+    assert len(results.vibrational_analysis.frequencies)
     modes = np.asarray(results.vibrational_analysis.normal_modes_cartesian)
     assert modes.shape == (len(results.vibrational_analysis.frequencies), 3, 3)
 
@@ -177,12 +177,13 @@ def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
     assert np.allclose(detected.gradient, off.gradient, atol=1e-8)
     assert detected.wavefunction is not None and off.wavefunction is not None
     assert np.allclose(
-        detected.wavefunction.scf_eigenvalues_a,
-        off.wavefunction.scf_eigenvalues_a,
+        detected.wavefunction.orbitals.energies_a,
+        off.wavefunction.orbitals.energies_a,
         atol=1e-8,
     )
     assert np.array_equal(
-        detected.wavefunction.scf_occupations_a, off.wavefunction.scf_occupations_a
+        detected.wavefunction.orbitals.occupations_a,
+        off.wavefunction.orbitals.occupations_a,
     )
 
 
