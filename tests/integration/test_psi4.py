@@ -58,6 +58,17 @@ def test_energy(run: Run, water: Structure) -> None:
     assert "SCF TOTAL ENERGY" in results.extras["psi4_variables"]
 
 
+def test_correlated_method_has_no_reference_dipole(run: Run, water: Structure) -> None:
+    """MP2 leaves dipole_moment empty: Psi4 holds only the HF reference's dipole."""
+    inp = _input(water, CalcType.energy, mp2_type="conv").model_copy(
+        update={"model": Model(method="mp2", basis="sto-3g")}
+    )
+    results = run(inp).results
+    assert isinstance(results, SinglePointData)
+    assert results.energy is not None and results.energy < ENERGY
+    assert results.dipole_moment is None
+
+
 def test_gradient_in_input_frame(run: Run, water: Structure) -> None:
     """The gradient is in the input's frame: Psi4 must not move or rotate the molecule."""
     output = run(_input(water, CalcType.gradient), case="water_gradient")

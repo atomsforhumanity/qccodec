@@ -45,7 +45,9 @@ frequencies, normal modes, and the gradient), ``optimization`` and
 ``transition_state`` (``psi4.optimize`` with optking; every step carries its energy
 and gradient). A transition-state search sets ``opt_type ts`` and, unless given,
 ``full_hess_every 0`` (an exact Hessian at the first step). Every single point also
-records Mulliken charges in ``atomic_charges`` when the method supports them, the
+records the dipole moment in ``dipole_moment`` for HF and DFT (after a correlated
+method such as MP2, Psi4 holds only the reference's dipole, so the codec leaves it
+out), Mulliken charges in ``atomic_charges`` when the method supports them, the
 gradient on external point charges in ``point_charge_gradient``, all scalar Psi4
 variables in ``extras["psi4_variables"]``, and the orbital levels in
 ``wavefunction.orbitals``: ``restricted`` when Psi4's wavefunction has one set of

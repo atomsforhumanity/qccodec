@@ -153,7 +153,10 @@ def _wavefunction_results(psi4: Any, wfn: Any, molecule: Any) -> dict[str, Any]:
             continue
         results[f"eigenvalues_{spin}"] = energies
         results[f"occupations_{spin}"] = occupations
-    _try(results, "dipole", lambda: psi4.variable("SCF DIPOLE"))
+    if isinstance(wfn, psi4.core.HF):
+        # The method's own dipole only for HF and DFT: after a correlated method
+        # Psi4's SCF DIPOLE and CURRENT DIPOLE both still hold the reference's.
+        _try(results, "dipole", lambda: psi4.variable("SCF DIPOLE"))
     try:
         psi4.oeprop(wfn, "MULLIKEN_CHARGES")
         _try(results, "mulliken_charges", wfn.atomic_point_charges)
