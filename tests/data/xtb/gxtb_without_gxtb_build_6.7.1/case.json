@@ -1,3 +1,5 @@
 {
-  "raises": "CalculationError"
+  "raises": "CalculationError",
+  "kind": "environment",
+  "code": null
 }

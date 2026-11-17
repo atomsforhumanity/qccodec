@@ -14,7 +14,11 @@ Keywords become command-line flags in xtb's own spelling: ``{"alpb": "water"}`` 
 ``--alpb water``, ``{"etemp": 1000}`` gives ``--etemp 1000``, a list gives several
 values (``{"alpb": ["water", "bar1M"]}``), ``True`` gives a bare flag, and ``False`` or
 ``None`` leaves the flag out. For optimizations, ``{"opt": "tight"}`` sets the
-optimization level. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
+optimization level. A keyword that is not one of xtb's options is refused before xtb
+runs (kind ``input``, code ``unknown_key``) with the closest option named, and so are
+flags the codec sets itself (``chrg``, ``uhf``, the method and run-type flags) and
+flags that would run something else or move the molecule (``cma``); xtb itself only
+warns about an unknown flag and runs without it. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
 an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.
@@ -32,6 +36,14 @@ the ``xcontrol`` file (appending to yours if you supply one); gradients then als
 ``point_charge_gradient`` from xtb's ``pcgrad``. Only GFN1- and GFN2-xTB apply point
 charges: GFN0, GFN-FF, and g-xTB ignore them without a warning, so the codec rejects
 them there.
+
+Failures and their kinds: an SCF that does not converge is ``convergence`` (code
+``scf_not_converged``), an optimization that runs out of cycles ``convergence``
+(``max_iter``), with its trajectory attached; atoms on top of each other, a
+multiplicity the number of electrons cannot have, and a solvent xtb has no
+parameters for are ``input``; an unknown option given in ``cmdline_args`` is
+``input`` (``unknown_key``); ``gxtb`` on an xtb build without g-xTB is
+``environment``.
 """
 
 from __future__ import annotations
@@ -55,7 +67,7 @@ from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
 from ..program import CodecProgram
 from ..utils import re_search
-from ._common import invocation, parse_g98_vibrations
+from ._common import invocation, parse_g98_vibrations, reject_unknown
 
 STRUCTURE_FILE = "structure.xyz"
 ENGRAD_FILE = "structure.engrad"
@@ -77,6 +89,20 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's message, which quotes xtb's error lines.
+    errors=[
+        (
+            r"Self consistent charge iterator did not converge|SCF not converged",
+            "convergence",
+            "scf_not_converged",
+        ),
+        (r"(?i)failed to converge geometry optimization", "convergence", "max_iter"),
+        (r"has no g-xTB", "environment", None),
+        (r"ignored unknown options", "input", "unknown_key"),
+        (r"(?i)very\* short distance", "input", None),
+        (r"unpaired electrons .* not consistent", "input", None),
+        (r"is not parametrized", "input", None),
+    ],
 )
 
 METHODS: dict[str, tuple[str, ...]] = {
@@ -92,32 +118,38 @@ RUNTYPES: dict[CalcType, str] = {
     CalcType.hessian: "--hess",
     CalcType.optimization: "--opt",
 }
-# Flags the codec sets itself from the input, or that would change the run type.
-RESERVED = {
-    "chrg",
-    "uhf",
-    "gfn",
-    "gfnff",
-    "gxtb",
-    "sp",
-    "grad",
-    "hess",
-    "ohess",
-    "bhess",
-    "md",
-    "omd",
-    "metadyn",
-    "siman",
-    "modef",
-    "path",
-    "dock",
-    "vip",
-    "vea",
-    "vipea",
-    "vomega",
-    "vfukui",
-    "scc",
-}
+# Every command-line option of xtb 6.7.1 (its prog_main_parseArguments) and of the
+# xtb build distributed with g-xTB, by long name.
+FLAGS = frozenset(
+    {
+        "acc", "alpb", "alpha", "bhess", "bias-input", "ceasefiles", "ceh", "charge",
+        "chrg", "citation", "cma", "coffee", "color", "copy", "cosmo", "cpcmx", "cut",
+        "cycles", "define", "dipole", "dipro", "driver", "efield", "enso", "esp",
+        "etemp", "ewin", "fod", "gb", "gbe", "gbsa", "gesc", "gff", "gfn", "gfn0",
+        "gfn1", "gfn2", "gfnff", "gmd", "grad", "gxtb", "help", "hess", "iff",
+        "input", "iterations", "json", "license", "lmo", "maxiterations", "mcgfnff",
+        "md", "mdopt", "metadyn", "metaopt", "modef", "molden", "mopac", "namespace",
+        "nat", "nocellopt", "nocopy", "norestart", "ohess", "omd", "oniom", "opt",
+        "orca", "parallel", "path", "pop", "ptb", "quadrupole", "raman", "restart",
+        "scc", "screen", "silent", "siman", "sp", "spinpol", "stm", "strict",
+        "tblite", "tm", "tmcosmo", "uhf", "vea", "verbose", "version",
+        "very-verbose", "vfukui", "vip", "vipea", "vomega", "vparam", "wbo",
+        "wrtopo", "xparam",
+    }
+)  # fmt: skip
+# Flags the codec sets itself from the input; flags that change the run type, run
+# another program, or stop before calculating; and those that move the molecule
+# (cma) or rename its output files (namespace).
+RESERVED = frozenset(
+    {
+        "chrg", "charge", "uhf", "gfn", "gfn0", "gfn1", "gfn2", "gfnff", "gff",
+        "mcgfnff", "gxtb", "ptb", "sp", "scc", "grad", "hess", "ohess", "bhess", "md",
+        "omd", "mdopt", "gmd", "metadyn", "metaopt", "siman", "modef", "path", "vip",
+        "vea", "vipea", "vomega", "vfukui", "dipro", "ceh", "enso", "screen",
+        "driver", "orca", "mopac", "tm", "help", "version", "citation", "license",
+        "define", "coffee", "cma", "namespace",
+    }
+)  # fmt: skip
 
 
 # ------------------------------------------------------------------ encoding
@@ -128,8 +160,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write the structure and build the xtb command line.
 
     Raises:
-        EncoderError: The model is missing or unknown, or a keyword names a flag the
-            codec sets itself.
+        EncoderError: The model is missing or unknown, a keyword is not an xtb option
+            (code ``unknown_key``, with the closest one), or it names a flag the
+            codec sets itself or one that would run something else.
     """
     if inp.model is None:
         raise EncoderError("xtb requires a model, e.g. {'method': 'gfn2'}.")
@@ -140,18 +173,24 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         )
     keywords = dict(inp.keywords)
     point_charges = keywords.pop("external_potentials", None)
-    reserved = sorted(RESERVED & {k.lower() for k in keywords})
+    reject_unknown("xtb", keywords, FLAGS)
+    reserved = sorted(RESERVED & set(keywords))
     if reserved:
         raise EncoderError(
             f"Keywords {reserved} are set from the input's calctype, model, and "
-            "structure; remove them."
+            "structure, or would run something other than this calculation; remove "
+            "them.",
+            code="unknown_key",
         )
 
     runtype: list[str] = [RUNTYPES[inp.calctype]]
     level = keywords.pop("opt", None)
     if level is not None:
         if inp.calctype != CalcType.optimization:
-            raise EncoderError("The 'opt' keyword sets the optimization level only.")
+            raise EncoderError(
+                "The 'opt' keyword sets the optimization level only.",
+                code="not_applicable",
+            )
         runtype.append(str(level))
 
     generated: dict[str, str | bytes] = {

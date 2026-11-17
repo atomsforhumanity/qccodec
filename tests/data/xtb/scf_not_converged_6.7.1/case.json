@@ -1,3 +1,5 @@
 {
-  "raises": "CalculationError"
+  "raises": "CalculationError",
+  "kind": "convergence",
+  "code": "scf_not_converged"
 }

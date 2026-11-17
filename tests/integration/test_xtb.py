@@ -9,7 +9,14 @@ from typing import Any
 
 import numpy as np
 import pytest
-from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramError,
+    ProgramInput,
+    Structure,
+)
 
 from qccodec.testing import check_normal_modes
 
@@ -154,10 +161,54 @@ def test_gxtb(run: Run, water: Structure, calctype: CalcType) -> None:
         assert np.asarray(output.results.hessian).shape == (9, 9)
 
 
+def test_unknown_keywords_fail_before_running(run: Run, water: Structure) -> None:
+    """A misspelled keyword is refused with the flag it was probably meant to be."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.energy, alpbb="water"))
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+    assert "did you mean 'alpb'" in e.value.error.message
+
+
 def test_unknown_option_fails(run: Run, water: Structure) -> None:
     """xtb only warns about unknown flags; the codec turns that into a failure."""
-    with pytest.raises(Exception, match="unknown options"):
-        run(_input(water, CalcType.energy, gfn2_typo=True))
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"cmdline_args": ["--alpbb", "water"]}
+    )
+    with pytest.raises(ProgramError, match="unknown options") as e:
+        run(inp, case="unknown_option")
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+
+
+@pytest.mark.parametrize(
+    ("case", "change", "keywords"),
+    [
+        ("overlapping_atoms", {"geometry": [[0, 0, 0], [0, 0, 0], [1.4, 0, 1.1]]}, {}),
+        ("impossible_multiplicity", {"multiplicity": 2}, {}),
+        ("unknown_solvent", {}, {"alpb": "watr"}),
+    ],
+)
+def test_input_failures(
+    run: Run,
+    water: Structure,
+    case: str,
+    change: dict[str, Any],
+    keywords: dict[str, Any],
+) -> None:
+    """Inputs xtb cannot run fail with kind input, so a store may reuse the failure."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    with pytest.raises(ProgramError) as e:
+        run(_input(structure, CalcType.energy, **keywords), case=case)
+    assert e.value.error.kind == "input", e.value.error
+
+
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """An SCF that runs out of iterations is kind convergence, code scf_not_converged."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.energy, iterations=1))
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
 
 
 def test_point_charges(run: Run, water: Structure) -> None:
