@@ -22,11 +22,11 @@ target into its program's thresholds yet.
 
 These pages document the alpha, at
 [qccodec.docs.afh.org/next](https://qccodec.docs.afh.org/next/); the site root documents
-the stable release. Install the alpha pinned with its matching packages
+the stable release. Install the alpha with minimum versions of its matching packages
 (`--prerelease=allow` lets the resolver take pre-releases):
 
 ```sh
-uv pip install --prerelease=allow "qcdata==0.24.0a6" "qccompute[qccodec]==0.23.0a5" "qccodec==0.22.0a4"
+uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a6" "qccodec>=0.22.0a5"
 ```
 
 You also need the program itself; each [program page](programs/index.md) says how to

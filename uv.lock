@@ -2610,7 +2610,7 @@ wheels = [
 
 [[package]]
 name = "qccodec"
-version = "0.22.0a4"
+version = "0.22.0a5"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
@@ -2659,8 +2659,8 @@ integration = [
 requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
-    { name = "qccompute", specifier = ">=0.23.0a4" },
-    { name = "qcdata", specifier = ">=0.24.0a7" },
+    { name = "qccompute", specifier = ">=0.23.0a6" },
+    { name = "qcdata", specifier = ">=0.24.0a8" },
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
     { name = "tcpb", marker = "extra == 'tcpb'", specifier = ">=0.16.0" },
@@ -2692,14 +2692,15 @@ integration = [{ name = "tblite", marker = "python_full_version < '3.15'", speci
 
 [[package]]
 name = "qccompute"
-version = "0.23.0a4"
+version = "0.23.0a6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "qcdata" },
+    { name = "threadpoolctl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7e/22/68fe84accbaaa1f2c401726693a098fc2759a0facc90980ec33fe6dd3d07/qccompute-0.23.0a4.tar.gz", hash = "sha256:15b5174629837ad137ba91262ef4ab4d0d77495a8c0d54dfbee30cc4bb3cfaed", size = 621285, upload-time = "2026-11-17T06:18:59.726Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/f5/daa9b689675794f55e523d1fed992ed5e71bebc0355e517a76432b43a728/qccompute-0.23.0a6.tar.gz", hash = "sha256:4b26ba67eec63a1bda154678e66869efb87ded1a9f2e793096340953bf59548d", size = 665773, upload-time = "2026-11-17T20:43:58.994Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/81/7a/54006de7aa7877aac2cd0aea08ce1480a8be72602928a33da30276108cd9/qccompute-0.23.0a4-py3-none-any.whl", hash = "sha256:53bcb89a179c08d068ef1dd87c4eb91c6b5ec928f9089310c17369ad66ae43af", size = 71148, upload-time = "2026-11-17T06:18:58.262Z" },
+    { url = "https://files.pythonhosted.org/packages/39/7e/ba0d2cad57b0d24fd723de93e2b50124df30df4d1cdfef2660f6a996930e/qccompute-0.23.0a6-py3-none-any.whl", hash = "sha256:5ccc753aa97724f91376861bf2912d477d12445b3d4cf4fec1ccd15b21a318f7", size = 90033, upload-time = "2026-11-17T20:43:57.461Z" },
 ]
 
 [[package]]
@@ -2713,7 +2714,7 @@ wheels = [
 
 [[package]]
 name = "qcdata"
-version = "0.24.0a7"
+version = "0.24.0a8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport" },
@@ -2727,9 +2728,9 @@ dependencies = [
     { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "typing-extensions", version = "4.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/7c/b0757933be96b00f805da1a4f2a15d4e9c757a865836bf4f098976f8d97b/qcdata-0.24.0a7.tar.gz", hash = "sha256:2958f20e70c9b9e50a7030f46c4a896f6f2a22b87efdaf4438888075a287f7b2", size = 1469988, upload-time = "2026-11-17T20:06:33.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/f2/4fbe4a87aa7eb372948ccd62bee02639608922261529b344391fb29f2fde/qcdata-0.24.0a8.tar.gz", hash = "sha256:9238744a5e0970f9560bf9a3c9210aacd04e7d7758306e26acd73f23f970c102", size = 1470313, upload-time = "2026-11-17T20:41:56.446Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/ff/8ad14d49084ac4e7f5dee275b4365ed640cf2e957fbeaaa188e71e1eebc2/qcdata-0.24.0a7-py3-none-any.whl", hash = "sha256:6a7abd22dab884a17e4b09ff1ee46bad1d4da72abba1e5470b27582251e57ceb", size = 80400, upload-time = "2026-11-17T20:06:31.89Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/d9/29f5e9e44bb76f1b4c35816553530fd1d5a5add8325827807c690abae254/qcdata-0.24.0a8-py3-none-any.whl", hash = "sha256:f91909c92208b8b7927db02bd7c439016c30053742c107f0919eef0ee58b1679", size = 80388, upload-time = "2026-11-17T20:41:54.957Z" },
 ]
 
 [[package]]

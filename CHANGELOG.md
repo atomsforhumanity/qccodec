@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a5] - 2026-11-17
+
+### Changed
+
+- **Breaking:** Hessians are never projected. xtb's (GFN1, GFN2, g-xTB, GFN-FF) are read from `hessian.out`, which xtb writes before it projects: against finite differences of the gradient, 1.6e-3–1.9e-2 Eh/bohr² before, 1.6e-5–1.2e-4 after. Psi4 refuses `fd_project true` for Hessians. Every other codec was checked unprojected at a displaced geometry.
+- **Breaking:** Psi4's `vibrational_analysis.projection` and `external` follow what Psi4 actually projected (it keeps rotations when the gradient rms is ≥ 1e-2).
+- **Breaking:** ORCA and Psi4 Hessians whose response (CP-SCF/CPHF) equations did not converge fail with `convergence`/`response_not_converged`; both programs carry on silently otherwise.
+- **Breaking:** a TeraChem SCF that does not converge is `convergence`/`scf_not_converged` (was `internal`), with its last energy. ORCA and Psi4 SCF failures keep the last iterate's energy (Psi4 also its orbitals).
+- **Breaking:** Psi4's in-core density-fitting `required_gib` is the `--memory` at which it fits.
+- Requires qcdata 0.24.0a8 and qccompute 0.23.0a6.
+
+### Added
+
+- `loosely_converged` warnings: ORCA `ConvIgnored true`, Psi4 `fail_on_maxiter false`, DFTB+ `ConvergentSCCOnly No`. Codecs warn from successful outputs through `@codec.warning` and `Codec.warnings()`.
+- CREST names "Calculation exited with error" (still kind `internal`; CREST exits 0 with a zero energy).
+- Integration checks of Hessians against finite differences for xtb, ORCA, Psi4, TeraChem and CREST.
+
+
 ## [0.22.0a4] - 2026-11-17
 
 ### Changed

@@ -26,12 +26,12 @@ These packages work together to make quantum chemistry fast, structured, and int
 
 Every codec is also a program [qccompute](https://github.com/atomsforhumanity/qccompute) runs by name: qccodec registers it under the `qccompute.programs` entry points, and runs the program in a scratch directory with its output captured, a deadline, and its threads and GPUs from the runner.
 
-This README describes the alpha, installed pinned with its matching packages
+This README describes the alpha, installed with minimum versions of its matching packages
 (`--prerelease=allow` lets the resolver take pre-releases; a plain `pip install qccodec`
 resolves the previous stable release):
 
 ```sh
-uv pip install --prerelease=allow "qcdata==0.24.0a6" "qccompute[qccodec]==0.23.0a5" "qccodec==0.22.0a4"
+uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a6" "qccodec>=0.22.0a5"
 ```
 
 ```python

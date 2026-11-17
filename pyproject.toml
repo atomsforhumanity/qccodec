@@ -1,6 +1,6 @@
 [project]
 name = "qccodec"
-version = "0.22.0a4"
+version = "0.22.0a5"
 description = "External quantum chemistry programs as qccompute programs: encode qcdata inputs into native input files, run the programs, and decode their outputs into qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
@@ -9,8 +9,8 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.24.0a7",
-    "qccompute>=0.23.0a4",
+    "qcdata>=0.24.0a8",
+    "qccompute>=0.23.0a6",
     "qcref>=0.4.0",
     "threadpoolctl>=3.1",
 ]
