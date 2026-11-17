@@ -1659,10 +1659,24 @@ anything else is <code>internal</code>, which means a bug. A failure that knows 
 <code>(message, details)</code> from the hook instead of the message alone, and <code>details</code> becomes
 the error's <code>ErrorInfo.details</code>: a program out of memory (kind <code>resource</code>, code
 <code>host_memory</code> or <code>device_memory</code>) gives <code>required_gib</code> and <code>available_gib</code> there when
-its output says what it needed, for the whole calculation (ORCA's per-process
+its output says what it needed, in the terms of the memory setting that would make it
+fit: the setting with which it fits and the one it ran with (ORCA's per-process
 <code>%maxcore</code> figures times its processes). Record a fixture case of each failure with
 <code>"raises": "CalculationError", "kind": ..., "code": ...</code> (and <code>"details"</code>) in its
-<code>case.json</code>.
+<code>case.json</code>. The shared codes come first: an SCF that does not converge is
+<code>scf_not_converged</code> (attach the last iteration's energy where the output gives it),
+response equations (CPHF/CPKS) that do not are <code>response_not_converged</code>.</p>
+<p>A result the program delivered but the caller should know about gets a warning from a
+second hook, which runs on every output:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="nd">@codec</span><span class="o">.</span><span class="n">warning</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">warnings</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProgramWarning</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="s2">&quot;SCF not converged, continuing&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ProgramWarning</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="s2">&quot;loosely_converged&quot;</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;... residual and rule ...&quot;</span><span class="p">)]</span>
+</code></pre></div>
+<p>An SCF the program accepted without meeting its thresholds is the shared
+<code>loosely_converged</code>, its message giving the residual reached and the rule that
+accepted it. List the codes in the case's <code>case.json</code> as <code>"warnings": [...]</code>.
 Programs driven through a Python API skip parsers entirely:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="n">codec</span> <span class="o">=</span> <span class="n">Codec</span><span class="p">(</span><span class="s2">&quot;mlp&quot;</span><span class="p">,</span> <span class="n">calctypes</span><span class="o">=</span><span class="p">{</span><span class="n">CalcType</span><span class="o">.</span><span class="n">energy</span><span class="p">,</span> <span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">},</span> <span class="n">encode</span><span class="o">=</span><span class="n">encode</span><span class="p">,</span> <span class="n">decode</span><span class="o">=</span><span class="n">decode</span><span class="p">)</span>
 </code></pre></div>

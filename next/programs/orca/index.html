@@ -1518,14 +1518,21 @@ and block settings are too many to list, but ORCA refuses an unknown one itself 
 calculating anything, and the codec reports that as kind <code>input</code>, code
 <code>unknown_key</code> (a misspelled method or basis set is <code>input</code> without a code).</p>
 <p>Failures and their kinds: an SCF that does not converge is <code>convergence</code> (code
-<code>scf_not_converged</code>); an optimization that runs out of cycles is <code>convergence</code>
-(<code>max_iter</code>), with its trajectory attached (ORCA itself reports it as a normal
-termination); a multiplicity the number of electrons cannot have is <code>input</code>; a
-module out of memory is <code>resource</code> (<code>host_memory</code>), with <code>required_gib</code> and
-<code>available_gib</code> in the error's <code>details</code> where ORCA prints what a step needed
-against <code>%maxcore</code> (the SCF's estimate, DLPNO's minimum): ORCA's per-process MB
-(2^20 bytes) times the processes, in GiB. Any other error termination is
-<code>internal</code>, with ORCA's error line.</p>
+<code>scf_not_converged</code>), with the energy of its last iteration; coupled-perturbed SCF
+equations (for analytic Hessians) that end with perturbations above their tolerance
+are <code>convergence</code> (<code>response_not_converged</code>), with the results ORCA wrote, since
+ORCA itself carries on with them; an optimization that runs out of cycles is
+<code>convergence</code> (<code>max_iter</code>), with its trajectory attached (ORCA itself reports it as
+a normal termination); a multiplicity the number of electrons cannot have is
+<code>input</code>; a module out of memory is <code>resource</code> (<code>host_memory</code>), with
+<code>required_gib</code> and <code>available_gib</code> in the error's <code>details</code> where ORCA prints
+what a step needed against <code>%maxcore</code> (the SCF's estimate, DLPNO's minimum), in
+the terms of ORCA's memory keyword: the <code>%maxcore</code> with which the step fits and the
+one it ran with, each times the processes (ORCA's per-process MB of 2^20 bytes), in
+GiB. Any other error termination is <code>internal</code>, with ORCA's error line.</p>
+<p>ORCA stops when the SCF does not converge unless <code>%scf ConvIgnored true</code> lets it
+carry on with the unconverged SCF; its results then come with the warning
+<code>loosely_converged</code>, whose message gives the last iteration's residuals.</p>
 <p>Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 <code>/usr/bin/orca</code> is the GNOME screen reader. qccompute always runs the absolute path;
 put ORCA first on <code>PATH</code> or set <code>QCCODEC_ORCA_EXECUTABLE</code>.</p>

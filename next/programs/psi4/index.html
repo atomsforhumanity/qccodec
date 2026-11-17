@@ -1523,6 +1523,15 @@ Psi4. The script calls the Psi4 driver for the calculation type and writes
 the driver sets them one at a time before calculating and reports each one Psi4 does
 not know (kind <code>input</code>, code <code>unknown_key</code>, with the closest option Psi4 has) and
 each value it does not take (kind <code>input</code>).</p>
+<p>Hessians are the full Cartesian second derivative: analytic, or from finite
+differences of gradients (or energies) in which Psi4 projects out only translations,
+as the codec leaves its <code>fd_project</code> unset. Setting <code>fd_project</code> true, which
+projects rotations out too, is refused for Hessians (kind <code>unsupported</code>). Psi4's
+harmonic analysis projects out rotations only where it judges the geometry
+stationary (gradient rms below 1e-2 Eh/bohr; <code>project_rot</code> overrides that);
+elsewhere it keeps the rotations among the modes, and the codec records
+<code>projection</code> as <code>translations</code> and flags them in <code>external</code>: the modes with
+the largest share in the mass-weighted rotational space.</p>
 <p>The molecule keeps the input's frame (<code>no_com</code>, <code>no_reorient</code>): Psi4 never moves
 or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
 input's coordinates, and symmetry detection only finds symmetry the frame already
@@ -1541,16 +1550,25 @@ variables in <code>extras["psi4_variables"]</code>, and the orbital levels in
 spatial orbitals for both spins (RHF, RKS, ROHF), <code>unrestricted</code> otherwise (UHF,
 UKS, CUHF), even when a UHF lands on the closed-shell solution.</p>
 <p>Failures and their kinds: an SCF that does not converge is <code>convergence</code> (code
-<code>scf_not_converged</code>), optking out of iterations <code>convergence</code> (<code>max_iter</code>),
+<code>scf_not_converged</code>), with its last iterate's energy and orbital levels; coupled-
+perturbed (CPHF/CPKS) equations that end above their tolerance are <code>convergence</code>
+(<code>response_not_converged</code>), with the results Psi4 computed from them, since Psi4 1.11
+goes on with them without a word when its solver runs out of iterations
+(<code>solver_maxiter</code>); optking out of iterations <code>convergence</code> (<code>max_iter</code>),
 another iterative procedure <code>convergence</code>; an unknown option, method or basis set,
 an invalid value and a multiplicity the electrons cannot have are <code>input</code>; a method
 Psi4 has but not for this calculation is <code>unsupported</code>; an addon this Psi4 lacks
 (<code>ddx</code> for ddCOSMO) is <code>environment</code>; a calculation out of memory is <code>resource</code>
 (<code>host_memory</code>), including a <code>--memory</code> below Psi4's minimum of 250 MiB. Its
-<code>details</code> give <code>required_gib</code> and <code>available_gib</code> where Psi4 prints them: for
-that minimum, and for density fitting's in-core tensors (<code>DFHelper Memory: AOs need
-1.142 GiB; user supplied 0.189 GiB</code>), where the calculation's budget is Psi4's memory
-and its need is at least the budget plus what the tensors lacked.</p>
+<code>details</code> give <code>required_gib</code> and <code>available_gib</code> where Psi4 prints them, in the
+terms of Psi4's memory setting (<code>--memory</code>): the memory with which the calculation
+fits, and the memory it ran with. For the minimum that is the minimum; for density
+fitting's in-core tensors (<code>DFHelper Memory: AOs need 1.142 GiB; user supplied 0.189
+GiB</code>), which get a fixed share of Psi4's memory (<code>scf_mem_safety_factor</code>, 0.75 by
+default), it is that memory scaled by what the tensors need over what they got.</p>
+<p>With <code>fail_on_maxiter</code> false Psi4 carries on after an SCF that did not converge;
+the result then comes with the warning <code>loosely_converged</code>, giving the last
+iteration's energy change and orbital gradient against Psi4's thresholds.</p>
 <p>Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with <code>external_potentials</code> either fail or come back wrong (they disagree
 with finite differences of its own gradients by about as much as the charges change

@@ -1508,9 +1508,16 @@ input asks for more (<code>threads</code>, or xtb's own <code>parallel</code>, n
 an <code>xcontrol</code> file supplied through <code>files</code> and named with <code>{"input":
 "xcontrol"}</code>; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.</p>
-<p>Hessians also fill frequencies and normal modes from <code>g98.out</code>, where xtb writes
-mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
-Cartesian displacements, as qcdata defines them.</p>
+<p>Hessians are xtb's numerical second derivatives (central differences of
+gradients) at the input geometry, with nothing projected out. xtb projects
+translations and rotations out of the Hessian it writes to <code>hessian</code>, which is
+wrong away from a stationary point, where the gradient fixes the Hessian's
+rotational part; so the codec has xtb also write the Hessian before projection
+(<code>$write hessian.out=true</code> in the <code>xcontrol</code> file, appended to yours if you
+supply one) and returns that one. Hessians also fill frequencies and normal modes
+from <code>g98.out</code> (with translations and rotations projected out), where xtb writes
+mass-weighted vectors rounded to two decimals; the codec converts them to
+unit-length Cartesian displacements, as qcdata defines them.</p>
 <p>One keyword is not an xtb flag: <code>external_potentials</code>, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: <code>[[charge, [x, y,
 z]], ...]</code> in bohr. An optional third entry, <code>[charge, [x, y, z], atomic_number]</code>,

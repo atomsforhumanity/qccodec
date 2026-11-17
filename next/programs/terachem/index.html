@@ -1492,11 +1492,16 @@ supported. <code>indices</code> is the only input field that carries atom indice
 <p>The orbital files <code>c0</code> (or <code>ca0</code>/<code>cb0</code>) of an output can seed another input as
 its guess (<code>codec.propagate_wfn(output, input)</code>). A run is a failure unless
 stdout ends with <code>Job finished:</code>. A basis set TeraChem has no file for is kind
-<code>input</code>; out of GPU memory is <code>resource</code> (<code>device_memory</code>), and out of its pinned
-host buffer <code>resource</code> (<code>host_memory</code>); no usable GPU is <code>backend</code>; any other
-unfinished job is <code>internal</code>. When an allocation overflows TeraChem's GPU buffer
-(<code>gpumem</code>, in megawords of 8 bytes), the error's <code>details</code> give the buffer as
-<code>available_gib</code> and what it held plus the allocation that failed as <code>required_gib</code>.
+<code>input</code>; an SCF that does not converge is <code>convergence</code> (<code>scf_not_converged</code>),
+with the energy of its last iteration, which TeraChem prints; coupled-perturbed
+equations that do not (TeraChem's <code>CPSCF</code>/<code>CPCIS failed to converge</code>) are
+<code>convergence</code> (<code>response_not_converged</code>); out of GPU memory is <code>resource</code>
+(<code>device_memory</code>), and out of its pinned host buffer <code>resource</code> (<code>host_memory</code>);
+no usable GPU is <code>backend</code>; any other unfinished job is <code>internal</code>. When an
+allocation overflows TeraChem's GPU buffer, the error's <code>details</code> are in the terms of
+TeraChem's memory keyword <code>gpumem</code> (the buffer, in megawords of 8 bytes) converted
+to GiB: <code>available_gib</code> the buffer it ran with, <code>required_gib</code> the buffer with
+which the allocation fits (what the buffer held plus the allocation that failed).
 TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
 work is on the GPUs it declares, so several can share a machine's GPUs.</p>
 <p>TeraChem often runs from a container image through a launcher script named

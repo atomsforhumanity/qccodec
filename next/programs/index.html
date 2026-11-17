@@ -610,6 +610,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hessians" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hessians
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#programs-that-are-python-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1449,6 +1460,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hessians" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hessians
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#programs-that-are-python-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1723,9 +1745,14 @@ and codes the codecs use:</p>
 <td></td>
 </tr>
 <tr>
-<td>the SCF did not converge</td>
+<td>the SCF did not converge (with its last iterate's energy where the program prints it)</td>
 <td><code>convergence</code></td>
 <td><code>scf_not_converged</code></td>
+</tr>
+<tr>
+<td>coupled-perturbed (CPHF/CPKS) equations did not converge, where the output tells</td>
+<td><code>convergence</code></td>
+<td><code>response_not_converged</code></td>
 </tr>
 <tr>
 <td>an optimizer ran out of iterations</td>
@@ -1761,7 +1788,25 @@ and codes the codecs use:</p>
 </table>
 <p>Each program page lists its own. A failure keeps everything recovered so far
 (<code>exc.output.results</code>, an optimization's trajectory), the program's log
-(<code>exc.output.logs</code>) and the traceback (<code>exc.output.traceback</code>).</p>
+(<code>exc.output.logs</code>) and the traceback (<code>exc.output.traceback</code>). A program out of memory
+(<code>resource</code>, <code>host_memory</code> or <code>device_memory</code>) gives <code>required_gib</code> and <code>available_gib</code>
+in <code>error.details</code> where its output says what it needed, in the terms of its own memory
+setting (ORCA's <code>%maxcore</code>, Psi4's <code>--memory</code>, TeraChem's <code>gpumem</code>): the setting with
+which the calculation fits and the one it ran with.</p>
+<p>A result the program accepted without meeting its convergence thresholds (an SCF it
+carried on with: ORCA's <code>ConvIgnored</code>, Psi4's <code>fail_on_maxiter</code> off, DFTB+'s
+<code>ConvergentSCCOnly = No</code>) succeeds with the warning <code>loosely_converged</code> in
+<code>output.warnings</code>, whose message gives the residual reached and the rule.</p>
+<h2 id="hessians">Hessians<a class="headerlink" href="#hessians" title="Permanent link">&para;</a></h2>
+<p><code>results.hessian</code> is the full Cartesian second derivative of the energy at the input
+geometry, never projected, as qcdata defines it, so it serves away from stationary
+points too (the start of a transition-state search, an IRC's updates). Every codec's
+Hessian is checked against central differences of the program's own gradients on a
+distorted water molecule. xtb projects translations and rotations out of the Hessian it
+writes, so its codec reads the one xtb writes before projecting; Psi4 projects
+rotations out of finite-difference Hessians only with <code>fd_project</code>, which its codec
+refuses for Hessians. Projection belongs to the harmonic analysis
+(<code>vibrational_analysis</code>), which records what it projected in <code>projection</code>.</p>
 <h2 id="programs-that-are-python-libraries">Programs that are Python libraries<a class="headerlink" href="#programs-that-are-python-libraries" title="Permanent link">&para;</a></h2>
 <p>tblite and the machine-learned potentials (AIMNet2, FAIR-Chem, MACE, Orb, TorchANI)
 are Python libraries, not programs: qccompute calls them in a worker process of the

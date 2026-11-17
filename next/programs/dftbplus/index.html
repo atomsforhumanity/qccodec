@@ -1513,7 +1513,9 @@ DFTB+ stops on any keyword it does not recognize, before calculating, and the co
 reports its message naming the input it ignored (kind <code>input</code>, code
 <code>unknown_key</code>). An SCC that does not converge is <code>convergence</code>
 (<code>scf_not_converged</code>), an optimization that runs out of steps <code>convergence</code>
-(<code>max_iter</code>); other errors DFTB+ reports are <code>internal</code>. DFTB+ plans one thread
+(<code>max_iter</code>); other errors DFTB+ reports are <code>internal</code>. With <code>ConvergentSCCOnly =
+No</code> DFTB+ carries on after an SCC that did not converge; the result then comes with
+the warning <code>loosely_converged</code>, giving the last SCC error against <code>SCCTolerance</code>. DFTB+ plans one thread
 unless <code>threads</code> asks for more (it reaches DFTB+ as <code>OMP_NUM_THREADS</code>).</p>
 
 
