@@ -1,0 +1,5 @@
+{
+  "raises": "CalculationError",
+  "kind": "convergence",
+  "code": "response_not_converged"
+}

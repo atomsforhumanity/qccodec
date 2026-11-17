@@ -17,7 +17,8 @@ inside ``main``, so the helpers can be tested without Psi4.
                   "symmetry": None}}           # point group, or None for Psi4's choice
 
 ``results.json`` holds plain numbers and lists (atomic units, bohr), plus ``error``
-(``"<exception name>: <message>"``) when the calculation raised. The script exits 0
+(``"<exception name>: <message>"``) when the calculation raised; an SCF that did not
+converge also leaves its last iterate's energy and wavefunction results. The script exits 0
 even then: ``results.json`` is the record of success, so the codec's failure hook
 reports Psi4's own message instead of a bare exit status. A nonzero exit therefore
 means Psi4 itself crashed. Options Psi4 does not know are reported as an
@@ -234,6 +235,15 @@ def main() -> None:
     except Exception as exc:
         traceback.print_exc(file=sys.stdout)
         results["error"] = f"{type(exc).__name__}: {exc}"
+        wfn = getattr(exc, "wfn", None)
+        if type(exc).__name__ == "SCFConvergenceError" and wfn is not None:
+            # The last iterate: its energy and what its wavefunction provides.
+            # wfn.energy() is set only on convergence; each iteration sets these.
+            _try(results, "energy", lambda: wfn.get_energies("Total Energy"))
+            try:
+                results.update(_wavefunction_results(psi4, wfn, wfn.molecule()))
+            except Exception:
+                pass
     with open(RESULTS_FILE, "w") as f:
         json.dump(results, f)
 

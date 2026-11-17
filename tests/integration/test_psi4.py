@@ -182,6 +182,42 @@ def test_failures_have_kinds(
     assert (e.value.error.kind, e.value.error.code) == (kind, code), e.value.error
 
 
+def test_scf_failure_keeps_its_last_iterate(run: Run, water: Structure) -> None:
+    """An SCF out of iterations fails with its last iterate's energy and orbitals."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.gradient, maxiter=3))
+    assert e.value.error.code == "scf_not_converged"
+    assert e.value.output is not None
+    results = e.value.output.results
+    assert np.isclose(results.energy, ENERGY, atol=0.05)
+    assert results.wavefunction.orbitals is not None
+
+
+def test_scf_carried_on_unconverged_warns(run: Run, water: Structure) -> None:
+    """With fail_on_maxiter false Psi4 carries on: a success, warned."""
+    output = run(
+        _input(water, CalcType.gradient, maxiter=3, fail_on_maxiter=False),
+        case="scf_fail_on_maxiter_off_gradient",
+    )
+    assert [w.code for w in output.warnings] == ["loosely_converged"]
+    assert "fail_on_maxiter" in output.warnings[0].message
+
+
+def test_unconverged_cphf_is_response_not_converged(run: Run, water: Structure) -> None:
+    """Psi4 goes on with CPHF equations out of iterations; the codec does not."""
+    with pytest.raises(ProgramError) as e:
+        run(
+            _input(water, CalcType.hessian, solver_maxiter=2),
+            case="cphf_not_converged",
+        )
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "response_not_converged",
+    )
+    assert e.value.output is not None
+    assert e.value.output.results.hessian is not None
+
+
 def test_optimization_out_of_iterations(run: Run, water: Structure) -> None:
     """optking out of iterations is convergence (max_iter), trajectory attached."""
     inp = _input(water, CalcType.optimization, geom_maxiter=2)

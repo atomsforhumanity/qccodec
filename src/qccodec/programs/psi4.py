@@ -65,16 +65,26 @@ spatial orbitals for both spins (RHF, RKS, ROHF), ``unrestricted`` otherwise (UH
 UKS, CUHF), even when a UHF lands on the closed-shell solution.
 
 Failures and their kinds: an SCF that does not converge is ``convergence`` (code
-``scf_not_converged``), optking out of iterations ``convergence`` (``max_iter``),
+``scf_not_converged``), with its last iterate's energy and orbital levels; coupled-
+perturbed (CPHF/CPKS) equations that end above their tolerance are ``convergence``
+(``response_not_converged``), with the results Psi4 computed from them, since Psi4 1.11
+goes on with them without a word when its solver runs out of iterations
+(``solver_maxiter``); optking out of iterations ``convergence`` (``max_iter``),
 another iterative procedure ``convergence``; an unknown option, method or basis set,
 an invalid value and a multiplicity the electrons cannot have are ``input``; a method
 Psi4 has but not for this calculation is ``unsupported``; an addon this Psi4 lacks
 (``ddx`` for ddCOSMO) is ``environment``; a calculation out of memory is ``resource``
 (``host_memory``), including a ``--memory`` below Psi4's minimum of 250 MiB. Its
-``details`` give ``required_gib`` and ``available_gib`` where Psi4 prints them: for
-that minimum, and for density fitting's in-core tensors (``DFHelper Memory: AOs need
-1.142 GiB; user supplied 0.189 GiB``), where the calculation's budget is Psi4's memory
-and its need is at least the budget plus what the tensors lacked.
+``details`` give ``required_gib`` and ``available_gib`` where Psi4 prints them, in the
+terms of Psi4's memory setting (``--memory``): the memory with which the calculation
+fits, and the memory it ran with. For the minimum that is the minimum; for density
+fitting's in-core tensors (``DFHelper Memory: AOs need 1.142 GiB; user supplied 0.189
+GiB``), which get a fixed share of Psi4's memory (``scf_mem_safety_factor``, 0.75 by
+default), it is that memory scaled by what the tensors need over what they got.
+
+With ``fail_on_maxiter`` false Psi4 carries on after an SCF that did not converge;
+the result then comes with the warning ``loosely_converged``, giving the last
+iteration's energy change and orbital gradient against Psi4's thresholds.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with ``external_potentials`` either fail or come back wrong (they disagree
@@ -99,6 +109,7 @@ from qcdata import (
     Orbitals,
     OrbitalSpin,
     ProgramInput,
+    ProgramWarning,
     Provenance,
     SinglePointData,
     Structure,
@@ -140,6 +151,12 @@ codec = Codec(
         (r"OptionError: Unknown Psi4 option", "input", "unknown_key"),
         (r"OptionError", "input", None),
         (r"SCFConvergenceError", "convergence", "scf_not_converged"),
+        (
+            r"CPHF did not converge|CPKS did not converge|coupled-perturbed .* did "
+            r"not converge",
+            "convergence",
+            "response_not_converged",
+        ),
         (r"OptimizationConvergenceError", "convergence", "max_iter"),
         (r"ConvergenceError", "convergence", None),
         (r"BasisSetNotFound|BasisSetNotDefined", "input", None),
@@ -311,7 +328,11 @@ def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
         return None
     error = results.get("error")
     if not error:
-        return None
+        # Only a Hessian is made of the response; an optimization's starting
+        # Hessian (full_hess_every) is a guess the search does not depend on.
+        return (
+            unconverged_response(stdout) if ctx.calctype == CalcType.hessian else None
+        )
     message = f"psi4: {error}"
     if re.search(_OUT_OF_MEMORY, message):
         return message, memory_details(stdout)
@@ -339,10 +360,88 @@ def memory_details(stdout: str) -> dict[str, Any]:
         return {}
     need, supplied = (float(v) for v in needs[-1])
     total = float(budget.group(1)) * _UNITS[budget.group(2)]
+    # The tensors get a fixed share of Psi4's memory, so the memory with which they
+    # fit scales with need / supplied: bounded for the three decimals Psi4 prints.
+    required = total * (need + 5e-4) / max(supplied - 5e-4, 1e-9)
     return {
-        "required_gib": round(total + need - supplied, 9),
+        "required_gib": round(required, 9),
         "available_gib": round(total, 9),
     }
+
+
+#: Psi4's coupled-perturbed solvers print a row per iteration, the last column but
+#: one the equations not yet converged: ``9  3.175e-07  1.349e-07  0  0``.
+_RESPONSE_ROW = re.compile(
+    r"^\s+(\d+)\s+(\S+e[-+]\d+)\s+(\S+e[-+]\d+)\s+(\d+)\s+\d+\s*$"
+)
+
+
+def unconverged_response(stdout: str) -> str | None:
+    """Read coupled-perturbed equations that ended above their tolerance.
+
+    Psi4 1.11's CPHF solver for analytic Hessians stops at ``solver_maxiter`` and goes
+    on with what it has. Each solve's last row counts the equations that remain;
+    a solve that printed no row stopped before finishing one iteration.
+
+    Returns:
+        The failure's message, or None when every solve converged.
+    """
+    for block in re.split(r"==> Coupled-Perturbed \w+ Solver <==", stdout)[1:]:
+        rows = []
+        for line in block.split("##")[0].splitlines():
+            row = _RESPONSE_ROW.match(line)
+            if row:
+                rows.append(row)
+        total = re.search(r"Number of equations\s*=\s*(\d+)", block)
+        tolerance = re.search(r"Convergence\s*=\s*(\S+)", block)
+        remain = int(rows[-1].group(4)) if rows else int(total.group(1)) if total else 1
+        if remain:
+            reached = f", max RMS {rows[-1].group(3)}" if rows else ""
+            return (
+                f"Psi4's coupled-perturbed equations did not converge: {remain} "
+                f"equations remained above the tolerance "
+                f"{tolerance.group(1) if tolerance else ''} after {len(rows)} "
+                f"iterations{reached}."
+            )
+    return None
+
+
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    """Warn ``loosely_converged`` when Psi4 carried on with an unconverged SCF.
+
+    Psi4 does that only with ``fail_on_maxiter`` false; the message gives the last
+    iteration's energy change and orbital gradient against Psi4's thresholds.
+    """
+    stdout = ctx.stdout or ""
+    accepted = re.findall(
+        r"Could not converge SCF iterations in (\d+) iterations\.\s*\n.*proceeding "
+        r"anyway",
+        stdout,
+    )
+    if not accepted:
+        return []
+    iteration = re.findall(r"@\S+ iter\s+\d+:\s+\S+\s+(\S+)\s+(\S+)", stdout)
+    e_tol = re.findall(r"Energy threshold\s*=\s*(\S+)", stdout)
+    d_tol = re.findall(r"Density threshold\s*=\s*(\S+)", stdout)
+    reached = ""
+    if iteration and e_tol and d_tol:
+        delta, gradient = iteration[-1]
+        reached = (
+            f": its last iteration changed the energy by {delta} Eh (threshold "
+            f"{e_tol[-1]}) with an orbital gradient of {gradient} (threshold "
+            f"{d_tol[-1]})"
+        )
+    count = f"{len(accepted)} SCFs" if len(accepted) > 1 else "the SCF"
+    return [
+        ProgramWarning(
+            code="loosely_converged",
+            message=(
+                f"Psi4 did not converge {count} in {accepted[-1]} iterations and "
+                f"carried on because fail_on_maxiter is false{reached}."
+            ),
+        )
+    ]
 
 
 @codec.parser(

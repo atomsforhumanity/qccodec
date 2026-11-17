@@ -55,7 +55,11 @@ def test_psi4_reads_a_density_fitting_need_against_its_memory() -> None:
         "    Memory:     2.0 GiB\n"
         "  DFTensor Memory: Qso construction needs 3.500 GiB; user supplied 1.500 GiB.\n"
     )
-    assert psi4.memory_details(stdout) == {"required_gib": 4.0, "available_gib": 2.0}
+    # The tensors got 1.5 of 2 GiB; they fit with 2 * 3.5 / 1.5 GiB (3.5/1.5 bounded
+    # for the printed rounding), not 2 + 3.5 - 1.5.
+    details = psi4.memory_details(stdout)
+    assert details["available_gib"] == 2.0
+    assert 2 * 3.5 / 1.5 < details["required_gib"] < 2 * 3.5 / 1.5 * 1.001
     assert psi4.memory_details("    Memory:     2.0 GiB\n") == {}
 
 
