@@ -152,8 +152,14 @@ codec = Codec(
 
 The first rule whose regular expression is found in the `CalculationError`'s message
 (the failure hook's explanation, or a decoder's) gives the failure its kind and code;
-anything else is `internal`, which means a bug. Record a fixture case of each failure
-with `"raises": "CalculationError", "kind": ..., "code": ...` in its `case.json`.
+anything else is `internal`, which means a bug. A failure that knows a number returns
+`(message, details)` from the hook instead of the message alone, and `details` becomes
+the error's `ErrorInfo.details`: a program out of memory (kind `resource`, code
+`host_memory` or `device_memory`) gives `required_gib` and `available_gib` there when
+its output says what it needed, for the whole calculation (ORCA's per-process
+`%maxcore` figures times its processes). Record a fixture case of each failure with
+`"raises": "CalculationError", "kind": ..., "code": ...` (and `"details"`) in its
+`case.json`.
 Programs driven through a Python API skip parsers entirely:
 
 ```python

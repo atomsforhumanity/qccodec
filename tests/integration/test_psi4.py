@@ -267,3 +267,36 @@ def test_projecting_rotations(run: Run, water: Structure) -> None:
     ).results.vibrational_analysis.frequencies
     assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
     assert len(projected) == 3  # 3N - 6
+
+
+def test_memory_below_psis_minimum_is_host_memory(run: Run, water: Structure) -> None:
+    """Psi4 stops at startup below 250 MiB; the details say so in GiB."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"cmdline_args": ["--memory", "100MB"]}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="memory_below_minimum")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    assert details["required_gib"] == pytest.approx(250 / 1024, rel=1e-5)
+    assert details["available_gib"] == pytest.approx(100e6 / 1024**3, rel=1e-2)
+
+
+def test_in_core_density_fitting_out_of_memory_is_host_memory(
+    run: Run, water: Structure
+) -> None:
+    """MemDF's tensors need more than Psi4's memory can give them."""
+    inp = ProgramInput(
+        program="psi4",
+        structure=water,
+        calctype=CalcType.energy,
+        model=Model(method="hf", basis="aug-cc-pv5z"),
+        keywords={"scf_type": "mem_df"},
+        cmdline_args=["--memory", "300MB"],
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="density_fitting_out_of_memory")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    assert details["available_gib"] == pytest.approx(300e6 / 1024**3, rel=1e-3)
+    assert details["required_gib"] > details["available_gib"]

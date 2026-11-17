@@ -1,0 +1,218 @@
+| Startfile from command line: tc.in
+
+
+|       ***********************************************************
+|       *                 TeraChem v1.9-2026.10.12-dev            *
+|       *                   Development Version                   *
+|       *           Chemistry at the Speed of Graphics!           *
+|       ***********************************************************
+|       * This program may only be used in connection with        *
+|       * a valid license from PetaChem, LLC. Use of this program *
+|       * or results thereof indicates acceptance of all terms    *
+|       * and conditions stated in the license and that a valid   *
+|       * license agreement between the user and PetaChem, LLC    *
+|       * exists. PetaChem, LLC does not warrant the correctness  *
+|       * of results or their suitability for any purpose.        *
+|       * Please email bugs, suggestions, and comments to         *
+|       *                  help@petachem.com                      *
+|       *                                                         *
+|       ***********************************************************
+
+
+|       ***********************************************************
+|       *  Compiled by root         2026-10-12T21:40:01+00:00     *
+|       *  Supported architecture SMs: 86 120                     *
+|       *  Build cuda_12.9.r12.9/compiler.35813241_0              *
+|       *  Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d  *
+|       ***********************************************************
+
+
+| Job started   Tue Nov 17 06:22:25 2026
+| On 25facc251219 (available memory: 25628 MB)
+
+| ######################################### RUNTIME INFO ##########################################
+| terachem  tc.in 
+
+|  NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  610.57.04  Release Build  (dvs-builder@U22-I3-AF05-32-1)  Wed Jul 29 02:45:17 UTC 2026
+|  GCC version:  gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
+
+|  	linux-vdso.so.1 (0x000076190422e000)
+|  	libcurl.so.4 => /lib/x86_64-linux-gnu/libcurl.so.4 (0x000076190417c000)
+|  	libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x0000761904160000)
+|  	libimf.so => /opt/terachem/lib/libimf.so (0x0000761903a00000)
+|  	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x0000761903919000)
+|  	libmpi.so.12 => /opt/terachem/lib/libmpi.so.12 (0x0000761902000000)
+|  	libdftbplus.so => /opt/terachem/lib/libdftbplus.so (0x0000761901cc8000)
+|  	libfsockets.so => /opt/terachem/lib/libfsockets.so (0x0000761904157000)
+|  	libxmlf90.so => /opt/terachem/lib/libxmlf90.so (0x0000761904130000)
+|  	libthcbox.so.1 => /opt/terachem/lib/libthcbox.so.1 (0x0000761900a1a000)
+|  	libthcfitbox.so.1 => /opt/terachem/lib/libthcfitbox.so.1 (0x0000761904095000)
+|  	libOpenMM.so => /opt/terachem/lib/libOpenMM.so (0x00007619005c1000)
+|  	libFlexiBLE.so => /opt/terachem/lib/libFlexiBLE.so (0x0000761903906000)
+|  	libs-dftd3.so.1 => /opt/terachem/lib/libs-dftd3.so.1 (0x000076190030e000)
+|  	libgpubox.so.1 => /opt/terachem/lib/libgpubox.so.1 (0x00007619038fb000)
+|  	libcpubox.so.1 => /opt/terachem/lib/libcpubox.so.1 (0x00007619038f5000)
+|  	libtensorbox.so.1 => /opt/terachem/lib/libtensorbox.so.1 (0x000076190389c000)
+|  	libiobox.so.1 => /opt/terachem/lib/libiobox.so.1 (0x0000761903892000)
+|  	libintbox.so.1 => /opt/terachem/lib/libintbox.so.1 (0x000076189959e000)
+|  	libatmx2cbox.so.1 => /opt/terachem/lib/libatmx2cbox.so.1 (0x00007618994dd000)
+|  	libperiodicbox.so.1 => /opt/terachem/lib/libperiodicbox.so.1 (0x000076187fe02000)
+|  	libsqmbox.so.1 => /opt/terachem/lib/libsqmbox.so.1 (0x000076187fa5c000)
+|  	libgridbox.so.1 => /opt/terachem/lib/libgridbox.so.1 (0x000076187d986000)
+|  	libdftbox.so.1 => /opt/terachem/lib/libdftbox.so.1 (0x0000761874056000)
+|  	libcibox.so.1 => /opt/terachem/lib/libcibox.so.1 (0x0000761873bcf000)
+|  	libccbox.so.1 => /opt/terachem/lib/libccbox.so.1 (0x0000761873755000)
+|  	libsimbox.so.1 => /opt/terachem/lib/libsimbox.so.1 (0x000076190386a000)
+|  	liboptbox.so.1 => /opt/terachem/lib/liboptbox.so.1 (0x0000761903835000)
+|  	libprotobuf.so.25 => /opt/terachem/lib/libprotobuf.so.25 (0x00007618732ec000)
+|  	libcommbox.so.1 => /opt/terachem/lib/libcommbox.so.1 (0x000076187328c000)
+|  	libssl.so.3 => /lib/x86_64-linux-gnu/libssl.so.3 (0x00007618731e6000)
+|  	libcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x0000761872da2000)
+|  	libcuda.so.1 => /lib/x86_64-linux-gnu/libcuda.so.1 (0x000076186c000000)
+|  	libcudart.so.12 => /opt/terachem/lib/libcudart.so.12 (0x000076186bc00000)
+|  	libcublas.so.12 => /opt/terachem/lib/libcublas.so.12 (0x0000761865400000)
+|  	libcufft.so.11 => /opt/terachem/lib/libcufft.so.11 (0x0000761853600000)
+|  	libcusparse.so.12 => /opt/terachem/lib/libcusparse.so.12 (0x0000761836400000)
+|  	libcusolver.so.11 => /opt/terachem/lib/libcusolver.so.11 (0x0000761824c00000)
+|  	libcublasLt.so.12 => /opt/terachem/lib/libcublasLt.so.12 (0x00007617f2a00000)
+|  	libnvJitLink.so.12 => /opt/terachem/lib/libnvJitLink.so.12 (0x00007617ecd79000)
+|  	libmkl_intel_ilp64.so.2 => /opt/terachem/lib/libmkl_intel_ilp64.so.2 (0x00007617ec249000)
+|  	libmkl_intel_thread.so.2 => /opt/terachem/lib/libmkl_intel_thread.so.2 (0x00007617e8ae7000)
+|  	libmkl_core.so.2 => /opt/terachem/lib/libmkl_core.so.2 (0x00007617e4732000)
+|  	libiomp5.so => /opt/terachem/lib/libiomp5.so (0x00007617e4200000)
+|  	libirng.so => /opt/terachem/lib/libirng.so (0x00007617e3e00000)
+|  	libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007617e3bd4000)
+|  	libcilkrts.so.5 => /opt/terachem/lib/libcilkrts.so.5 (0x00007617e3800000)
+|  	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x0000761872d7e000)
+|  	libintlc.so.5 => /opt/terachem/lib/libintlc.so.5 (0x00007617e3400000)
+|  	libsvml.so => /opt/terachem/lib/libsvml.so (0x00007617e1400000)
+|  	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007617e11d7000)
+|  	/lib64/ld-linux-x86-64.so.2 (0x0000761904230000)
+|  	libnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x0000761872cae000)
+|  	libidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x0000761872c8d000)
+|  	librtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x0000761872c6e000)
+|  	libssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x0000761872c00000)
+|  	libpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x0000761872bec000)
+|  	libgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x000076186bfac000)
+|  	libldap-2.5.so.0 => /lib/x86_64-linux-gnu/libldap-2.5.so.0 (0x000076186bf4c000)
+|  	liblber-2.5.so.0 => /lib/x86_64-linux-gnu/liblber-2.5.so.0 (0x0000761872bdb000)
+|  	libzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x000076186bb31000)
+|  	libbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x000076186bf3e000)
+|  	librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x0000761872bd6000)
+|  	libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x000076186bf39000)
+|  	libifport.so.5 => /opt/terachem/lib/libifport.so.5 (0x00007617e0e00000)
+|  	libifcoremt.so.5 => /opt/terachem/lib/libifcoremt.so.5 (0x000076186526a000)
+|  	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x000076186bf34000)
+|  	libunistring.so.2 => /lib/x86_64-linux-gnu/libunistring.so.2 (0x00007617e0c56000)
+|  	libgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007617e0a6b000)
+|  	libhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x000076186beec000)
+|  	libnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x000076186baeb000)
+|  	libgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x000076186ba69000)
+|  	libkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x0000761853535000)
+|  	libk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x000076186bebd000)
+|  	libcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x000076186beb7000)
+|  	libkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x000076186ba5b000)
+|  	libsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x000076186524f000)
+|  	libbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x0000761853512000)
+|  	libp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007618362c5000)
+|  	libtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x0000761865237000)
+|  	libkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x000076186ba54000)
+|  	libresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007618534fe000)
+|  	libffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007618362b8000)
+| #################################################################################################
+
+-----------------------------------
+Processed Input file:
+                      run energy
+              coordinates geometry.xyz
+                   charge 0
+                 spinmult 1
+                   method b3lyp
+                    basis 6-31gss
+                   purify no
+                   gpumem 1
+-----------------------------------
+Jobname: geometry
+Scratch data will be generated
+Scratch directory: ./scr.geometry
+| Random number seed: 461219943
+
+XYZ coordinates geometry.xyz
+Molden File Output: ./scr.geometry/geometry.molden
+Using basis set: 6-31gss
+dmrgstart not found
+Spin multiplicity: 1
+DIIS will use up to 10 vectors.
+Condition number limit for the DIIS overlap matrix is            0
+WF convergence threshold: 3.00e-05
+Using DIIS algorithm to converge WF
+Maximum number of SCF iterations: 100
+Incremental fock with rebuild every 8 iterations
+Will switch to conventional Fock if diffuse functions are detected
+X-matrix tolerance: 1.00e-04
+PRECISION: DYNAMIC
+TeraChem will select linear algebra engine
+Density matrix guess purification turned off
+DFT Functional requested: b3lyp
+Method: B3LYP 
+  Hartree-Fock exact exchange:          0.20 
+  Slater exchange functional:           0.80 
+  Becke 1988 exchange functional:       0.72 
+  Lee-Yang-Parr correlation functional: 0.81 
+  VWN(I) correlation functional:        0.19 
+Wavefunction: RESTRICTED
+DFT grid type: 1
+Using dynamic DFT grids.
+Initial guess generated by maximum overlap
+
+********************************************
+***** SINGLE POINT ENERGY CALCULATIONS *****
+********************************************
+Starting TensorBox...
+| TeraChem will select linear algebra engine
+| Using cuSolver for matrix diagonalization
+
+| using 1 out of 1 CUDA devices
+|   Device 0: NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97288MB, CC 12.0 -- CPU THREAD 0
+| -------------------------------------------------------------------
+| CPU Memory Available: 31586.62 MegaWords 
+| GPU Memory Available: 11905.04 MegaWords 
+| Maximum recommended basis set size: 39900 basis functions
+|  (limited by CPU memory)
+| -------------------------------------------------------------------
+| Initialize GPUBox with 1 MW of memory
+
+
+Basis set:       6-31gss
+Total atoms:     192
+Total charge:    0
+Total electrons: 640 (320-alpha, 320-beta)
+Number electrons modeled by ECPs: 0
+Total orbitals:  1600
+Total AO shells: 768 (448 S-shells; 256 P-shells; 64 D-shells; 0 F-shells; 0 G-shells)
+Spin multiplicity: 1
+Nuclear repulsion energy (QM atoms): 16568.572532102302 a.u.
+
+| Total AOs: 1600    Total MOs: 1600
+Setting up the DFT grid...
+| time to set the grid = 0.48 s
+DFT grid points: 178536 (929 points/atom)
+Setting up the DFT grid...
+| time to set the grid = 1.22 s
+DFT grid points: 497116 (2589 points/atom)
+
+                      *** Start SCF Iterations ***
+
+ Iter     DIIS Error       Energy change      Electrons        XC Energy           Energy        Time(s)
+----------------------------------------------------------------------------------------------------------
+| Skip purify step
+| THRESPDP set to 1.00e+00
+GPUbox: Allocation oversubscribes device buffer.
+Available: 8388608 Requested: 9070080
+Available: 8 MB Requested: 8 MB
+Try increasing gpumem in TeraChem.
+Error detected at line 60 in gpubox/src/gpubox.cpp
+Insufficient memory available in GPUBox::gpuAlloc.
+
+Terminated: Tue Nov 17 06:22:30 2026
+

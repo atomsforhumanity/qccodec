@@ -168,11 +168,13 @@ def _record_case(
     expected = _without_execution(json.loads(output.results.model_dump_json()))
     (dest / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
     if failure is not None:
-        settings = {
+        settings: dict[str, Any] = {
             "raises": "CalculationError",
             "kind": failure.error.kind.value,
             "code": failure.error.code,
         }
+        if failure.error.details:
+            settings["details"] = failure.error.details
         (dest / "case.json").write_text(json.dumps(settings, indent=2) + "\n")
     if output.logs is not None:
         (dest / "stdout").write_text(output.logs)

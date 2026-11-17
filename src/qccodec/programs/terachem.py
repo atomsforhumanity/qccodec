@@ -32,7 +32,11 @@ supported. ``indices`` is the only input field that carries atom indices.
 The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another input as
 its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
 stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
-``input``; no usable GPU is ``backend``; any other unfinished job is ``internal``.
+``input``; out of GPU memory is ``resource`` (``device_memory``), and out of its pinned
+host buffer ``resource`` (``host_memory``); no usable GPU is ``backend``; any other
+unfinished job is ``internal``. When an allocation overflows TeraChem's GPU buffer
+(``gpumem``, in megawords of 8 bytes), the error's ``details`` give the buffer as
+``available_gib`` and what it held plus the allocation that failed as ``required_gib``.
 TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
 work is on the GPUs it declares, so several can share a machine's GPUs.
 
@@ -77,6 +81,8 @@ codec = Codec(
     # Matched against the failure hook's messages below.
     errors=[
         (r"TeraChem has no basis set", "input", None),
+        (r"TeraChem ran out of GPU memory", "resource", "device_memory"),
+        (r"TeraChem ran out of host memory", "resource", "host_memory"),
         (r"TeraChem could not use a GPU", "backend", None),
     ],
 )
@@ -279,11 +285,11 @@ codec.propagate_wfn = propagate_wfn
 
 
 @codec.failure
-def failure(ctx: Context) -> str | None:
+def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
     """TeraChem prints ``Job finished:`` only when a calculation completed.
 
-    A missing basis set file and an unusable GPU are named; anything else is reported
-    as an unfinished job.
+    A missing basis set file, memory running out (`out_of_memory`) and an unusable GPU
+    are named; anything else is reported as an unfinished job.
     """
     stdout = ctx.stdout
     if stdout is None or calculation_succeeded(stdout):
@@ -291,6 +297,9 @@ def failure(ctx: Context) -> str | None:
     basis = re.search(r"Unable to open file \S*/basis/(\S+)", stdout)
     if basis:
         return f"TeraChem has no basis set {basis.group(1)!r}."
+    memory = out_of_memory(stdout)
+    if memory is not None:
+        return memory
     cuda = re.search(r"CUDA error: ([^,\n]+)", stdout)
     if cuda:
         return f"TeraChem could not use a GPU: {cuda.group(1)}."
@@ -564,6 +573,53 @@ def parse_version_control_details(stdout: str) -> str:
 def parse_terachem_version(stdout: str) -> str:
     """Parse the TeraChem version from stdout."""
     return re_search(r"TeraChem (v\S*)", stdout).group(1)
+
+
+def out_of_memory(stdout: str) -> tuple[str, dict[str, Any]] | None:
+    """Read TeraChem running out of GPU or host memory, with what it needed.
+
+    TeraChem allocates from a GPU buffer of ``gpumem`` megawords (8 MiB each,
+    ``Initialize GPUBox with N MW of memory``); an allocation that does not fit prints
+    the bytes free and requested. The buffer is what the calculation could use, and
+    it needed at least what the buffer held plus the allocation. A CUDA allocation
+    that fails outright says only that the device ran out.
+
+    Args:
+        stdout: TeraChem's output.
+
+    Returns:
+        The failure's message and details (``required_gib`` and ``available_gib``
+        for an overflowing GPU buffer), or None when memory did not run out.
+    """
+    overflow = re.search(
+        r"Allocation oversubscribes device buffer\.\s*\n"
+        r"Available: (\d+) Requested: (\d+)",
+        stdout,
+    )
+    if overflow:
+        free, requested = int(overflow.group(1)), int(overflow.group(2))
+        size = re.search(r"Initialize GPUBox with (\d+) MW of memory", stdout)
+        message = (
+            f"TeraChem ran out of GPU memory: an allocation of {requested / 2**20:.1f}"
+            f" MiB did not fit in the {free / 2**20:.1f} MiB free in its GPU buffer; "
+            "raise gpumem."
+        )
+        if size is None:
+            return message, {}
+        buffer = int(size.group(1)) * 8 * 2**20
+        return message, {
+            "required_gib": round((buffer - free + requested) / 2**30, 9),
+            "available_gib": round(buffer / 2**30, 9),
+        }
+    if re.search(
+        r"Failed to allocate GPU memory|CUDA error: out of memory"
+        r"|Insufficient memory available in GPUBox::gpuAlloc",
+        stdout,
+    ):
+        return "TeraChem ran out of GPU memory.", {}
+    if re.search(r"Allocation oversubscribes host buffer|GPUBox::cpuAlloc", stdout):
+        return "TeraChem ran out of host memory in its pinned buffer.", {}
+    return None
 
 
 def calculation_succeeded(stdout: str) -> bool:

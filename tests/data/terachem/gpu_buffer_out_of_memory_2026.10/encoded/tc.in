@@ -1,0 +1,8 @@
+run                  energy
+coordinates          geometry.xyz
+charge               0
+spinmult             1
+method               b3lyp
+basis                6-31gss
+purify               no
+gpumem               1

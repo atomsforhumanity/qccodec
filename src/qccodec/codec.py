@@ -46,7 +46,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 Encoder = Callable[[Any], NativeInput]
 Decoder = Callable[[Any, NativeOutput], Data]
-Failure = Callable[["Context"], "str | None"]
+#: A failure hook: None (no failure), why the program failed, or that and the
+#: failure's structured facts (`qcdata.ErrorInfo.details`: ``required_gib``, ...).
+Failure = Callable[["Context"], "str | tuple[str, dict[str, Any]] | None"]
 PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
 VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
@@ -307,10 +309,13 @@ class Codec:
         return func
 
     def failure(self, func: F) -> F:
-        """Register ``func(ctx) -> str | None`` returning a message if the program failed.
+        """Register ``func(ctx)`` returning a message if the program failed, else None.
 
         A message makes decoding recover partial data and then raise
-        ``CalculationError`` with that data attached.
+        ``CalculationError`` with that data attached. A failure with structured facts
+        returns ``(message, details)`` instead: ``details`` becomes the error's
+        `qcdata.ErrorInfo.details` (for ``host_memory`` and ``device_memory``,
+        ``required_gib`` and ``available_gib``, as qcdata's conventions name them).
         """
         self._failure = func
         return func
@@ -683,9 +688,15 @@ class Codec:
             options=self._merge_options(options),
         )
         data_type = get_data_type(ctx.calctype)
-        message = (
+        reported = (
             self._failure(ctx) if self._failure is not None and check_failure else None
         )
+        message: str | None
+        details: dict[str, Any] = {}
+        if isinstance(reported, tuple):
+            message, details = reported
+        else:
+            message = reported
         if message:
             ctx.failed = True
         collected: dict[str, Any] = {"provenance": {"program": self.program}}
@@ -768,7 +779,9 @@ class Codec:
             report_failure = not failed
         if message and report_failure:
             kind, code = self.classify(message)
-            raise CalculationError(message, data=partial(), kind=kind, code=code)
+            raise CalculationError(
+                message, data=partial(), kind=kind, code=code, details=details
+            )
         return collected if as_dict else partial()
 
     def _version_matches(self, spec: ParserSpec, version: str | None) -> bool | None:

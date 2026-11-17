@@ -1,0 +1,9 @@
+{
+  "raises": "CalculationError",
+  "kind": "resource",
+  "code": "host_memory",
+  "details": {
+    "required_gib": 0.361394531,
+    "available_gib": 0.279394531
+  }
+}

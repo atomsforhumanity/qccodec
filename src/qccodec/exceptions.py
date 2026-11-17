@@ -94,6 +94,9 @@ class CalculationError(ParserError):
             it knows (`Codec` ``errors``); anything else stays ``internal``.
         code: A code refining the kind (``scf_not_converged``, ``max_iter``,
             ``unknown_key``), if one applies.
+        details: Structured facts about the failure, as plain JSON
+            (`qcdata.ErrorInfo.details`): ``required_gib`` and ``available_gib`` for
+            ``host_memory`` and ``device_memory``.
     """
 
     def __init__(
@@ -103,11 +106,13 @@ class CalculationError(ParserError):
         *,
         kind: str = "internal",
         code: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
-        """Keep the explanation, recovered data, kind and code."""
+        """Keep the explanation, recovered data, kind, code and details."""
         super().__init__(message, data)
         self.kind: str = kind
         self.code: str | None = code
+        self.details: dict[str, Any] = dict(details or {})
 
 
 class DependencyNotFoundError(BaseError):

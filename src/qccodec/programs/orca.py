@@ -38,8 +38,12 @@ calculating anything, and the codec reports that as kind ``input``, code
 Failures and their kinds: an SCF that does not converge is ``convergence`` (code
 ``scf_not_converged``); an optimization that runs out of cycles is ``convergence``
 (``max_iter``), with its trajectory attached (ORCA itself reports it as a normal
-termination); a multiplicity the number of electrons cannot have is ``input``. Any
-other error termination is ``internal``, with ORCA's error line.
+termination); a multiplicity the number of electrons cannot have is ``input``; a
+module out of memory is ``resource`` (``host_memory``), with ``required_gib`` and
+``available_gib`` in the error's ``details`` where ORCA prints what a step needed
+against ``%maxcore`` (the SCF's estimate, DLPNO's minimum): ORCA's per-process MB
+(2^20 bytes) times the processes, in GiB. Any other error termination is
+``internal``, with ORCA's error line.
 
 Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 ``/usr/bin/orca`` is the GNOME screen reader. qccompute always runs the absolute path;
@@ -89,6 +93,7 @@ codec = Codec(
         (r"optimization reached its maximum", "convergence", "max_iter"),
         (r"multiplicity .* impossible", "input", None),
         (r"need OpenMPI's mpirun", "environment", None),
+        (r"ORCA ran out of memory", "resource", "host_memory"),
     ],
 )
 
@@ -217,13 +222,14 @@ def encode(inp: ProgramInput) -> SubprocessInput:
 
 
 @codec.failure
-def failure(ctx: Context) -> str | None:
+def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
     """Explain why ORCA stopped, including what it reports with exit status 0.
 
     ORCA refuses unknown simple-input words, input blocks and block settings itself,
     before calculating anything. It exits 0 when the SCF fails to converge and when
     an optimization runs out of cycles (``ORCA TERMINATED NORMALLY`` after the
-    latter), so both are read from the output.
+    latter), so both are read from the output. A module out of memory comes with
+    the memory it needed where ORCA prints it (`out_of_memory`).
     """
     stdout = ctx.stdout or ""
     if re.search(r"mpirun: (command )?not found", stdout):
@@ -271,6 +277,9 @@ def failure(ctx: Context) -> str | None:
         return "ORCA: the optimization reached its maximum number of cycles."
     stopped = re.search(r"ORCA finished by error termination in (\w+)", stdout)
     if stopped:
+        memory = out_of_memory(stdout, stopped.group(1))
+        if memory is not None:
+            return memory
         cycles = re.search(r"SCF NOT CONVERGED AFTER\s+(\d+) CYCLES", stdout)
         if cycles:
             return f"ORCA: the SCF did not converge in {cycles.group(1)} cycles."
@@ -278,6 +287,63 @@ def failure(ctx: Context) -> str | None:
         reason = f": {errors[0]}" if errors else ""
         return f"ORCA stopped with an error in {stopped.group(1)}{reason}"
     return None
+
+
+#: How ORCA modules report the memory a step needed against what it had, in ORCA's MB
+#: (2^20 bytes) per process: the SCF's estimate, DLPNO's minimum, and the batching
+#: of the correlated methods.
+_MEMORY_NEEDS = (
+    r"Memory available for [^:\n]*:\s*(?P<have>[\d.]+) MB\s*\n"
+    r"\s*Memory needed \(estimated\)\s*:\s*(?P<need>[\d.]+) MB",
+    r"MINIMUM REQUIRED:\s*(?P<need>[\d.]+) MB\s*\n\s*MAXCORE:\s*(?P<have>[\d.]+) MB",
+    r"Current MaxCore: (?P<have>\d+) MB -> Minimum MaxCore: (?P<need>\d+) MB",
+)
+_OUT_OF_MEMORY = (
+    r"not enough memory|out of memory|insufficient memory|present MaxCore"
+    r"|exceeds? MaxCore|increase MaxCore"
+)
+
+
+def out_of_memory(stdout: str, module: str) -> tuple[str, dict[str, Any]] | None:
+    """Read a module's out-of-memory error, with what it needed where ORCA says.
+
+    ORCA gives ``%maxcore`` to each process, so the calculation's need and budget
+    are the per-process figures times the processes it ran (``Program running with
+    N parallel MPI-processes``; one when it ran serially).
+
+    Args:
+        stdout: ORCA's output.
+        module: The module that stopped (``LEANSCF``, ``MDCI``).
+
+    Returns:
+        The failure's message and details (``required_gib`` and ``available_gib``
+        when the module printed them), or None when the module did not run out of
+        memory.
+    """
+    for pattern in _MEMORY_NEEDS:
+        found = re.search(pattern, stdout)
+        if found:
+            need, have = float(found["need"]), float(found["have"])
+            ranks = re.findall(r"Program running with\s+(\d+) parallel MPI", stdout)
+            n = int(ranks[-1]) if ranks else 1
+            message = (
+                f"ORCA ran out of memory in {module}: it needs {need:g} MB per process "
+                f"and %maxcore gives it {have:g} MB"
+                + (f" ({n} processes)" if n > 1 else "")
+                + "; raise maxcore."
+            )
+            details = {
+                "required_gib": round(need * n / 1024, 9),
+                "available_gib": round(have * n / 1024, 9),
+            }
+            return message, details
+    error = re.search(rf"^.*(?:{_OUT_OF_MEMORY}).*$", stdout, re.M | re.I)
+    if error is None:
+        return None
+    line = error.group(0)
+    start = re.search(r"\berror\b", line, re.I)  # after any "[file ...]:" prefix
+    reason = line[start.start() if start else 0 :].strip()
+    return f"ORCA ran out of memory in {module}: {reason}", {}
 
 
 @codec.parser(

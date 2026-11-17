@@ -59,7 +59,12 @@ Failures and their kinds: an SCF that does not converge is ``convergence`` (code
 another iterative procedure ``convergence``; an unknown option, method or basis set,
 an invalid value and a multiplicity the electrons cannot have are ``input``; a method
 Psi4 has but not for this calculation is ``unsupported``; an addon this Psi4 lacks
-(``ddx`` for ddCOSMO) is ``environment``.
+(``ddx`` for ddCOSMO) is ``environment``; a calculation out of memory is ``resource``
+(``host_memory``), including a ``--memory`` below Psi4's minimum of 250 MiB. Its
+``details`` give ``required_gib`` and ``available_gib`` where Psi4 prints them: for
+that minimum, and for density fitting's in-core tensors (``DFHelper Memory: AOs need
+1.142 GiB; user supplied 0.189 GiB``), where the calculation's budget is Psi4's memory
+and its need is at least the budget plus what the tensors lacked.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with ``external_potentials`` either fail or come back wrong (they disagree
@@ -72,6 +77,7 @@ optimizations, run geomeTRIC with Psi4 gradients as its child.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +100,18 @@ from ..native import SubprocessInput
 from ..program import CodecProgram
 from ._common import invocation, unit_modes, vibrations
 
+#: Psi4's failures for want of memory, in its own words.
+_OUT_OF_MEMORY = (
+    r"(?i)not enough memory|insufficient memory|out of memory|more memory"
+    r"|too little memory|memory error|MemoryError|requires at least .*memory"
+    r"|set_memory\(\): Requested"
+)
+#: set_memory's refusal of less than Psi4's minimum.
+_MINIMUM = (
+    r"set_memory\(\): Requested (?P<asked>[\d.]+(?:e[+-]?\d+)?) MiB [^;]*; "
+    r"minimum (?P<least>[\d.]+) MiB \([^)]*\)"
+)
+
 codec = Codec(
     "psi4",
     calctypes={
@@ -105,6 +123,8 @@ codec = Codec(
     },
     # The exception the driver recorded: "psi4: <name>: <message>".
     errors=[
+        # First: set_memory's minimum is a ValidationError.
+        (_OUT_OF_MEMORY, "resource", "host_memory"),
         (r"OptionError: Unknown Psi4 option", "input", "unknown_key"),
         (r"OptionError", "input", None),
         (r"SCFConvergenceError", "convergence", "scf_not_converged"),
@@ -237,17 +257,64 @@ def _results(ctx: Context) -> dict[str, Any]:
 
 
 @codec.failure
-def failure(ctx: Context) -> str | None:
-    """Report the exception the driver recorded, or a Psi4 crash before it wrote one."""
+def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
+    """Report the exception the driver recorded, or a Psi4 crash before it wrote one.
+
+    A failure out of memory comes with what was needed, where Psi4 prints it
+    (`memory_details`).
+    """
+    stdout = ctx.stdout or ""
     try:
         results = _results(ctx)
     except (FileNotFoundError, ValueError):
         # No results: Psi4 died before the driver could record anything.
-        if ctx.stdout and "Psi4 encountered an error" in ctx.stdout:
+        minimum = re.search(_MINIMUM, stdout)
+        if minimum:  # --memory below Psi4's minimum: it stops at startup
+            asked, least = float(minimum["asked"]), float(minimum["least"])
+            return (
+                f"psi4: {minimum.group(0)}",
+                {
+                    "required_gib": round(least / 1024, 9),
+                    "available_gib": round(asked / 1024, 9),
+                },
+            )
+        if "Psi4 encountered an error" in stdout:
             return "psi4 encountered an error before writing results. See logs."
         return None
     error = results.get("error")
-    return f"psi4: {error}" if error else None
+    if not error:
+        return None
+    message = f"psi4: {error}"
+    if re.search(_OUT_OF_MEMORY, message):
+        return message, memory_details(stdout)
+    return message
+
+
+_UNITS = {"": 1 / 1024**3, "Ki": 1 / 1024**2, "Mi": 1 / 1024, "Gi": 1.0, "Ti": 1024.0}
+
+
+def memory_details(stdout: str) -> dict[str, Any]:
+    """What a calculation out of memory needed, from Psi4's output, in GiB.
+
+    Density fitting prints its in-core tensors' need against the share of Psi4's
+    memory they were given (``DFHelper Memory: AOs need 1.142 GiB; user supplied
+    0.189 GiB``, ``DFTensor Memory: Qso construction needs ...``). The calculation's
+    budget is Psi4's memory (its header's ``Memory:``), and it needs at least that
+    budget plus what the tensors lacked.
+
+    Returns:
+        ``required_gib`` and ``available_gib``, or nothing when Psi4 printed no need.
+    """
+    needs = re.findall(r"needs? ([\d.]+) GiB; user supplied ([\d.]+) GiB", stdout)
+    budget = re.search(r"^\s*Memory:\s+([\d.]+) ([KMGT]i|)B\s*$", stdout, re.M)
+    if not needs or budget is None:
+        return {}
+    need, supplied = (float(v) for v in needs[-1])
+    total = float(budget.group(1)) * _UNITS[budget.group(2)]
+    return {
+        "required_gib": round(total + need - supplied, 9),
+        "available_gib": round(total, 9),
+    }
 
 
 @codec.parser(

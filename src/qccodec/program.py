@@ -1119,7 +1119,10 @@ def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
         )
     if isinstance(exc, CalculationError):
         return ErrorInfo(
-            kind=ErrorKind(exc.kind), message=str(exc).strip(), code=exc.code
+            kind=ErrorKind(exc.kind),
+            message=str(exc).strip(),
+            code=exc.code,
+            details=exc.details,
         )
     message = f"{type(exc).__name__}: {exc}"
     return ErrorInfo(kind=ErrorKind.internal, message=message.strip())

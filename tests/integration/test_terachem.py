@@ -6,6 +6,7 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
@@ -147,3 +148,31 @@ REFERENCE_HESSIAN_ROW_0 = [
     0.04171577173879733,
     0.1956319703780435,
 ]
+
+
+def test_a_full_gpu_buffer_is_device_memory(run: Run) -> None:
+    """64 waters in a 1-megaword buffer: the details give the buffer and its need."""
+    oxygen = [
+        [3.0 * i, 3.0 * j, 3.0 * k]
+        for i in range(4)
+        for j in range(4)
+        for k in range(4)
+    ]
+    geometry = [
+        atom
+        for x, y, z in oxygen
+        for atom in ([x, y, z], [x, y + 0.757, z + 0.587], [x, y - 0.757, z + 0.587])
+    ]
+    waters = Structure(
+        symbols=["O", "H", "H"] * len(oxygen),
+        geometry=np.array(geometry) / 0.52917721092,  # angstrom to bohr
+    )
+    inp = _input(
+        waters, CalcType.energy, Model(method="b3lyp", basis="6-31gss"), gpumem="1"
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="gpu_buffer_out_of_memory")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "device_memory")
+    details = e.value.error.details
+    assert details["available_gib"] == pytest.approx(8 / 1024)  # 1 MW of 8 bytes
+    assert details["required_gib"] > details["available_gib"]

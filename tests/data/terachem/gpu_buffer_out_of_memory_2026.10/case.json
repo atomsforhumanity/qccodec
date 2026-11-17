@@ -1,0 +1,9 @@
+{
+  "raises": "CalculationError",
+  "kind": "resource",
+  "code": "device_memory",
+  "details": {
+    "required_gib": 0.00844717,
+    "available_gib": 0.0078125
+  }
+}

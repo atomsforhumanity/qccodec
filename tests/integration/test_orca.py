@@ -164,3 +164,37 @@ def test_impossible_multiplicity(run: Run, water: Structure) -> None:
     with pytest.raises(ProgramError) as e:
         run(_input(doublet, CalcType.energy), case="impossible_multiplicity")
     assert e.value.error.kind == "input"
+
+
+@pytest.mark.parametrize(
+    ("case", "method", "maxcore", "figures"),
+    [
+        # The SCF estimates its need before it starts.
+        ("scf_out_of_memory", "RI-MP2 def2-TZVP def2-TZVP/C", 1, True),
+        # DLPNO prints its minimum against %maxcore.
+        ("dlpno_out_of_memory", "DLPNO-CCSD(T) def2-TZVP def2-TZVP/C", 5, True),
+        # Batching runs out with no figure to report.
+        ("mdci_out_of_memory", "CCSD(T) def2-TZVP", 5, False),
+    ],
+)
+def test_out_of_memory_is_host_memory(
+    run: Run, water: Structure, case: str, method: str, maxcore: int, figures: bool
+) -> None:
+    """With what it needed against %maxcore where ORCA prints both, in GiB."""
+    inp = ProgramInput(
+        program="orca",
+        structure=water,
+        calctype=CalcType.energy,
+        model=Model(method=method),
+        keywords={"maxcore": maxcore},
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    if figures:
+        assert details.keys() == {"required_gib", "available_gib"}
+        assert details["available_gib"] == pytest.approx(maxcore / 1024, rel=1e-3)
+        assert details["required_gib"] > details["available_gib"]
+    else:
+        assert details == {}
