@@ -29,6 +29,12 @@ Every codec is also a program [qccompute](https://github.com/atomsforhumanity/qc
 python -m pip install qccompute[qccodec]   # qccompute runs, qccodec brings the programs
 ```
 
+The current alphas are pre-releases, installed together:
+
+```sh
+uv pip install --prerelease=allow "qcdata==0.24.0a2" "qccompute[qccodec]==0.23.0a1" "qcstore==0.1.0a1"
+```
+
 ```python
 from qcdata import CalcType, Model, ProgramInput, Structure
 from qccompute import compute

@@ -238,7 +238,7 @@ def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int | None, 
     """Return the threads and GPUs the gradient subprogram asks for.
 
     The subprogram's ``threads`` keyword, else its program's plan (None: all the
-    runner has), whatever program it is (an external one, linus, axtb, a
+    runner has), whatever program it is (a codec, a program of its own package, a
     ``FunctionProgram``); one thread and no GPU when it cannot be planned, which
     computing it then reports.
     """
