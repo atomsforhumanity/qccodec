@@ -238,6 +238,70 @@ def test_failure_hook_recovers_then_raises(tmp_path: Path) -> None:
         )
 
 
+def test_error_rules_classify_reported_failures() -> None:
+    """The first rule whose pattern is found gives a failure its kind and code."""
+    codec = Codec(
+        "local",
+        {CalcType.energy},
+        errors=[
+            (r"SCF .* not converge", "convergence", "scf_not_converged"),
+            (r"(?i)unknown option", "input", "unknown_key"),
+            (r"not converge", "convergence", None),
+        ],
+    )
+    assert codec.classify("the SCF did not converge") == (
+        "convergence",
+        "scf_not_converged",
+    )
+    assert codec.classify("Unknown option --x") == ("input", "unknown_key")
+    assert codec.classify("geometry did not converge") == ("convergence", None)
+    assert codec.classify("segmentation fault") == ("internal", None)
+    codec.parser(target="energy")(lambda contents: -1.0)
+    codec.failure(lambda ctx: ctx.stdout if "FAIL" in (ctx.stdout or "") else None)
+    with pytest.raises(CalculationError) as raised:
+        codec.parse("energy", stdout="FAIL: the SCF did not converge")
+    assert (raised.value.kind, raised.value.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    with pytest.raises(CalculationError) as raised:
+        codec.parse("energy", stdout="FAIL: core dumped")
+    assert (raised.value.kind, raised.value.code) == ("internal", None)
+    with pytest.raises(RegistryError, match="kind"):
+        codec.add_error("x", "kind of bad")
+    with pytest.raises(RegistryError):
+        codec.add_error("(", "input")
+
+
+def test_decoder_failures_are_classified_unless_the_decoder_did(
+    prog_input_factory: Callable[..., ProgramInput],
+) -> None:
+    """A decoder's CalculationError gets the codec's kind unless it chose one."""
+    from qccodec import PythonOutput
+
+    def decode(inp: object, out: NativeOutput) -> SinglePointData:
+        assert isinstance(out, PythonOutput)
+        raise CalculationError(str(out.error), kind=out.value or "internal")
+
+    codec = Codec(
+        "local",
+        {CalcType.energy},
+        decode=decode,
+        errors=[(r"SCF not converged", "convergence", "scf_not_converged")],
+    )
+    inp = prog_input_factory(CalcType.energy, "local")
+    failure = RuntimeError("SCF not converged in 1 cycles")
+    with pytest.raises(CalculationError) as raised:
+        codec.decode(inp, PythonOutput(error=failure))
+    assert (raised.value.kind, raised.value.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    with pytest.raises(CalculationError) as raised:
+        codec.decode(inp, PythonOutput(value="input", error=failure))
+    assert (raised.value.kind, raised.value.code) == ("input", None)
+
+
 def test_duplicate_assignment_is_rejected() -> None:
     """Two directory parsers may not fill the same key."""
     codec = Codec("local", {CalcType.energy})

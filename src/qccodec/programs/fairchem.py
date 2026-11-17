@@ -63,6 +63,7 @@ from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
 from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
     SinglePoint,
     batch_signature,
@@ -72,7 +73,6 @@ from ._python import (
     package_version,
     pop_device,
     positions_angstrom,
-    reject_unknown,
     require_model,
     resolve_device,
     single_point_decoder,

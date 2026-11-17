@@ -9,7 +9,7 @@ inside the function so encoding and decoding work, and are testable, without the
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from typing import Any, TypedDict, cast
 
 from qcdata import CalcType, ProgramInput, Provenance, SinglePointData, Structure
@@ -130,21 +130,6 @@ def require_model(inp: ProgramInput, example: str) -> str:
             f"{inp.program} models have no basis set; remove basis {inp.model.basis!r}."
         )
     return inp.model.method
-
-
-def reject_unknown(
-    program: str, keywords: Mapping[str, Any], known: set[str] | frozenset[str]
-) -> None:
-    """Reject keywords the codec does not know, so typos fail instead of being ignored.
-
-    Raises:
-        EncoderError: Some keyword names are not in ``known``.
-    """
-    unknown = sorted(set(keywords) - known)
-    if unknown:
-        raise EncoderError(
-            f"Unknown {program} keywords {unknown}; supported: {sorted(known)}."
-        )
 
 
 def single_point_decoder(

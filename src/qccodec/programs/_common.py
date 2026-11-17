@@ -1,8 +1,10 @@
-"""Helpers shared by file-based program codecs."""
+"""Helpers shared by codecs: invocations, keyword checks, vibrations and paths."""
 
 from __future__ import annotations
 
+import difflib
 import re
+from collections.abc import Collection, Iterable
 from typing import Any
 
 import numpy as np
@@ -47,6 +49,55 @@ def invocation(
         threads=threads,
         gpus=gpus,
     )
+
+
+def suggest(name: str, known: Iterable[str]) -> str | None:
+    """Return the known name closest to a misspelled one, if any is close.
+
+    Case is ignored when comparing, and the known name is returned as spelled.
+    """
+    spelled = {k.lower(): k for k in known}
+    close = difflib.get_close_matches(name.lower(), list(spelled), n=1, cutoff=0.6)
+    return spelled[close[0]] if close else None
+
+
+def reject_unknown(
+    program: str,
+    keywords: Iterable[str],
+    known: Collection[str],
+    *,
+    where: str = "keyword",
+) -> None:
+    """Refuse names that are not settings of the program, so typos fail at once.
+
+    Every setting given must affect the calculation, and a misspelled one would
+    otherwise be ignored or reach the program as something else.
+
+    Args:
+        program: The program, for the message.
+        keywords: The names given.
+        known: The names the program accepts here.
+        where: What the names are, for the message (``keyword``, ``block``,
+            ``option in group 'calculation'``).
+
+    Raises:
+        EncoderError: Kind ``input``, code ``unknown_key``, naming each unknown name
+            with the closest known one, or listing the known names when none is
+            close.
+    """
+    unknown = sorted(set(keywords) - set(known))
+    if not unknown:
+        return
+    hints = {name: suggest(name, known) for name in unknown}
+    named = ", ".join(
+        f"{name!r} (did you mean {hint!r}?)" if hint else repr(name)
+        for name, hint in hints.items()
+    )
+    plural = "s" if len(unknown) > 1 else ""
+    message = f"Unknown {program} {where}{plural}: {named}."
+    if not any(hints.values()):
+        message += f" Known: {', '.join(sorted(known))}."
+    raise EncoderError(message, code="unknown_key")
 
 
 def parse_g98_freqs(contents: str) -> list[float]:

@@ -18,7 +18,8 @@ from qcdata import (
     Structure,
 )
 
-from qccodec import Codec, CodecProgram, SubprocessInput, re_search
+from qccodec import Codec, CodecProgram, PythonInput, SubprocessInput, re_search
+from qccodec.exceptions import CalculationError, EncoderError
 from qccodec.program import executable_digest
 
 H2 = Structure(
@@ -38,11 +39,17 @@ if mode == "sleep":
 print("Total energy: -1.5")
 """
 
-codec = Codec("fake", calctypes={CalcType.energy})
+codec = Codec(
+    "fake",
+    calctypes={CalcType.energy},
+    errors=[(r"SCF failed", "convergence", "scf_not_converged")],
+)
 
 
 @codec.encoder
 def _encode(inp: ProgramInput) -> SubprocessInput:
+    if "typo" in inp.keywords:
+        raise EncoderError("Unknown fake keyword 'typo'.", code="unknown_key")
     return SubprocessInput(
         (sys.executable, "-c", SCRIPT),
         files={"run.inp": str(inp.keywords.get("mode", "ok"))},
@@ -106,7 +113,8 @@ def test_a_request_larger_than_the_grant_is_capped(tmp_path: Path) -> None:
 def test_failures_raise_with_the_output_and_logs(tmp_path: Path) -> None:
     with pytest.raises(ProgramError) as e:
         program.compute(inp(mode="fail"), ctx(tmp_path))
-    assert e.value.error.kind is ErrorKind.internal
+    assert e.value.error.kind is ErrorKind.convergence  # the codec's errors rule
+    assert e.value.error.code == "scf_not_converged"
     assert e.value.error.message == "SCF failed"  # the codec's explanation leads
     assert e.value.output is not None and "failed to converge" in str(
         e.value.output.logs
@@ -122,6 +130,41 @@ def test_failures_raise_with_the_output_and_logs(tmp_path: Path) -> None:
     with pytest.raises(ProgramError) as e:
         missing.compute(inp())
     assert e.value.error.kind is ErrorKind.environment
+    with pytest.raises(ProgramError) as e:
+        program.compute(inp(typo=1))
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+
+
+def _raise(message: str) -> None:
+    raise RuntimeError(message)
+
+
+def _decode_library_failure(inp: Any, out: Any) -> Any:
+    raise CalculationError(f"library failed: {out.error}")
+
+
+library = Codec(
+    "library",
+    calctypes={CalcType.energy},
+    encode=lambda inp: PythonInput(_raise, args=("SCF not converged in 1 cycles",)),
+    decode=_decode_library_failure,
+    errors=[(r"SCF not converged", "convergence", "scf_not_converged")],
+)
+
+
+def test_a_libraries_exception_is_classified_by_the_codec(tmp_path: Path) -> None:
+    """The codec's explanation of a library's exception leads, with its kind."""
+    with pytest.raises(ProgramError) as e:
+        CodecProgram(library).compute(
+            ProgramInput(program="library", calctype=CalcType.energy, structure=H2),
+            ctx(tmp_path),
+        )
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    assert e.value.output is not None
+    assert "RuntimeError: SCF not converged" in str(e.value.output.traceback)
 
 
 def test_plans_declare_the_requested_resources() -> None:

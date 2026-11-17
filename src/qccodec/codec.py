@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,7 @@ from packaging.version import InvalidVersion, Version
 from qcdata import (
     CalcType,
     Data,
+    ErrorKind,
     Inputs,
     ProgramInput,
     ProgramOutput,
@@ -48,6 +50,9 @@ VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
 BatchKey = Callable[[ProgramInput], "Hashable | None"]
 CapThreads = Callable[[ProgramInput, int], ProgramInput]
+#: ``(pattern, kind, code)``: a failure whose message matches the regular expression
+#: ``pattern`` (``re.search``) is of that `qcdata.ErrorKind`, refined by ``code``.
+ErrorRule = tuple[str, str, str | None]
 
 
 @dataclass(frozen=True)
@@ -196,6 +201,13 @@ class Codec:
         cap_threads: ``(input_data, threads) -> ProgramInput``: the input with its
             thread request (ORCA ``pal``, Psi4 ``-n``) lowered to ``threads``, for a
             runner that grants fewer threads than the input asks for.
+        errors: The program's known failures, as ``(pattern, kind, code)`` rules
+            matched in order against the message of a `CalculationError` (the
+            failure hook's explanation, or a decoder's): the first rule whose
+            regular expression is found gives the failure its `qcdata.ErrorKind` and
+            code (``scf_not_converged``, ``max_iter``, ``unknown_key``, ...). A
+            failure no rule matches is kind ``internal``. Kinds decide which stored
+            failures a store reuses, so map every failure the program reports.
         parsers: Pre-built parser specifications.
     """
 
@@ -215,12 +227,14 @@ class Codec:
         batch_key: BatchKey | None = None,
         max_batch: int = 32,
         cap_threads: CapThreads | None = None,
+        errors: Iterable[ErrorRule] = (),
     ) -> None:
         """Create a codec; hooks may also be attached later with decorators.
 
         Raises:
-            RegistryError: Only one of ``encode_batch`` and ``batch_key`` is given, or
-                ``max_batch`` is not positive.
+            RegistryError: Only one of ``encode_batch`` and ``batch_key`` is given,
+                ``max_batch`` is not positive, or an error rule names no
+                `qcdata.ErrorKind` or holds an invalid regular expression.
         """
         self.program: str = program
         self.calctypes: frozenset[CalcType] = frozenset(CalcType(c) for c in calctypes)
@@ -241,6 +255,9 @@ class Codec:
         self._batch_key: BatchKey | None = batch_key
         self.max_batch: int = max_batch
         self.cap_threads: CapThreads | None = cap_threads
+        self.errors: list[ErrorRule] = []
+        for rule in errors:
+            self.add_error(*rule)
         if decode is not None:
             self.decoder(decode)
 
@@ -285,6 +302,34 @@ class Codec:
         """
         self._failure = func
         return func
+
+    def add_error(self, pattern: str, kind: str, code: str | None = None) -> None:
+        """Classify failures whose message matches ``pattern`` (see ``errors``).
+
+        Raises:
+            RegistryError: ``kind`` is not a `qcdata.ErrorKind` or ``pattern`` is not
+                a regular expression.
+        """
+        try:
+            ErrorKind(kind)
+            re.compile(pattern)
+        except (ValueError, re.error) as exc:
+            raise RegistryError(
+                f"Codec {self.program!r} error rule {pattern!r}: {exc}"
+            ) from exc
+        self.errors.append((pattern, kind, code))
+
+    def classify(self, message: str) -> tuple[str, str | None]:
+        """Return the kind and code of a failure from its message.
+
+        Returns:
+            The kind and code of the first ``errors`` rule whose pattern is found in
+            ``message``; ``("internal", None)`` when none is.
+        """
+        for pattern, kind, code in self.errors:
+            if re.search(pattern, message):
+                return kind, code
+        return "internal", None
 
     def parser(
         self,
@@ -461,13 +506,20 @@ class Codec:
             options: Overrides for this codec's declared ``options``.
 
         Raises:
-            CalculationError: The program failed and the failure hook says why.
+            CalculationError: The program failed and the failure hook (or the
+                decoder) says why; its kind and code come from the codec's
+                ``errors``.
             ParserError: A required output is missing or malformed in a run that
                 did not fail.
         """
         if self._decode is not None:
             self._merge_options(options)  # rejects unknown keys
-            return self._decode(input_data, native_output)
+            try:
+                return self._decode(input_data, native_output)
+            except CalculationError as exc:
+                if exc.kind == "internal" and exc.code is None:
+                    exc.kind, exc.code = self.classify(str(exc))
+                raise
         if not isinstance(input_data, ProgramInput):
             raise ParserError(f"Codec {self.program!r} has no decoder for file inputs.")
         return self.parse(
@@ -553,8 +605,9 @@ class Codec:
             ParserError: A required file is missing or a value is malformed.
             MatchNotFoundError: A required parser found no match.
             CalculationError: The failure hook explained a failure and
-                ``report_failure`` is true. Recovered data is attached to every
-                exception as ``.data``.
+                ``report_failure`` is true; its kind and code come from the codec's
+                ``errors``. Recovered data is attached to every exception as
+                ``.data``.
         """
         ctx = Context(
             codec=self,
@@ -650,7 +703,8 @@ class Codec:
         if report_failure is None:
             report_failure = not failed
         if message and report_failure:
-            raise CalculationError(message, data=partial())
+            kind, code = self.classify(message)
+            raise CalculationError(message, data=partial(), kind=kind, code=code)
         return collected if as_dict else partial()
 
     def _version_matches(self, spec: ParserSpec, version: str | None) -> bool | None:

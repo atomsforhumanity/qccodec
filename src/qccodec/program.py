@@ -204,8 +204,9 @@ class CodecProgram:
         """Encode the input without running it: its settings and resources.
 
         Raises:
-            ProgramError: The codec refuses the input (kind ``input``) or its
-                calculation type (kind ``unsupported``).
+            ProgramError: The codec refuses the input (kind ``input``, with a code
+                such as ``unknown_key``) or its calculation type (kind
+                ``unsupported``).
         """
         native = self._encode(inp)
         keywords = dict(inp.keywords) if isinstance(inp, ProgramInput) else {}
@@ -318,7 +319,7 @@ class CodecProgram:
         try:
             return self.codec.encode(inp)
         except EncoderError as e:
-            raise ProgramError.of("input", str(e)) from e
+            raise ProgramError.of(e.kind, str(e), code=e.code) from e
 
     def _environment(
         self, native: NativeInput, ctx: Any
@@ -378,7 +379,6 @@ class CodecProgram:
             else:
                 out = self._run_python(native, directory, env, ctx)
             logs = out.stdout
-            exit_status_only = out.failed and out.error is None
             if out.failed:
                 error = out.error or RuntimeError(
                     f"{self.name} failed with exit status "
@@ -392,8 +392,15 @@ class CodecProgram:
                 if isinstance(recovered, type(results)):
                     results = recovered
                 failed(exc)
-                if exit_status_only and isinstance(exc, CalculationError):
-                    # The codec explains a nonzero exit: lead with its reason.
+                if (
+                    out.failed
+                    and isinstance(exc, CalculationError)
+                    and not isinstance(
+                        out.error, TimeoutError | DependencyNotFoundError
+                    )
+                ):
+                    # The codec explains the failure (an exit status, a library's
+                    # exception): lead with its reason, which carries the kind.
                     failures.insert(0, failures.pop())
             if not isinstance(inp, ProgramInput):
                 results = FileData.model_validate(
@@ -557,17 +564,18 @@ def _empty(inp: ProgramInput | FileInput) -> Data:
 def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
     """The typed error of a failed run, from its primary failure.
 
-    Codecs do not classify a program's failures, so what the program reported, an
-    unexplained exit and a decoding failure are all kind ``internal``; a missing
-    executable is ``environment`` and a deadline ``timeout``. A trajectory whose last
-    step failed failed because of that subprogram: kind ``program``, with its error.
+    A missing executable is ``environment`` and a deadline ``timeout``. A trajectory
+    whose last step failed failed because of that subprogram: kind ``program``, with
+    its error. A failure the program reported has the kind and code its codec gives
+    it (`Codec` ``errors``); an unexplained exit, a failure no rule classifies and
+    unreadable output are kind ``internal``.
     """
     if isinstance(exc, TimeoutError):
         return ErrorInfo(kind=ErrorKind.timeout, message=str(exc))
     if isinstance(exc, DependencyNotFoundError):
         return ErrorInfo(kind=ErrorKind.environment, message=str(exc))
     if isinstance(exc, EncoderError):
-        return ErrorInfo(kind=ErrorKind.input, message=str(exc))
+        return ErrorInfo(kind=ErrorKind(exc.kind), message=str(exc), code=exc.code)
     frames: list[Frame] = []
     if isinstance(results, OptimizationData):
         frames = list(results.frames)
@@ -582,6 +590,9 @@ def _error_info(exc: Exception, results: Data | None) -> ErrorInfo:
             program=program,
             cause=cause,
         )
-    named = not isinstance(exc, CalculationError | DependencyNotFoundError)
-    message = f"{type(exc).__name__}: {exc}" if named else str(exc)
+    if isinstance(exc, CalculationError):
+        return ErrorInfo(
+            kind=ErrorKind(exc.kind), message=str(exc).strip(), code=exc.code
+        )
+    message = f"{type(exc).__name__}: {exc}"
     return ErrorInfo(kind=ErrorKind.internal, message=message.strip())

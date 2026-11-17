@@ -8,7 +8,8 @@ A *case* is a directory holding one program run and what a codec must make of it
         stdout          captured program output (optional)
         <files>         output files at their real relative paths, e.g. scr.geom/optim.xyz
         case.json       optional settings: {"options": {...}, "failed": true,
-                        "raises": "MatchNotFoundError", "directory": true}
+                        "raises": "CalculationError", "kind": "convergence",
+                        "code": "scf_not_converged", "directory": true}
         encoded/        optional: command.txt (one argument per line) and the native
                         input files codec.encode(input) must generate
 
@@ -71,6 +72,9 @@ class Case:
         options: Decode options passed to the codec.
         failed: Decode in recovery mode.
         raises: Name of the exception class the decode must raise, if any.
+        kind: The error kind the raised exception must carry (``CalculationError``
+            and ``EncoderError`` have one), if any.
+        code: The error code it must carry, if ``kind`` is given.
         encoded: The ``encoded/`` directory with expected native inputs, if present.
     """
 
@@ -83,6 +87,8 @@ class Case:
     options: dict[str, Any] = field(default_factory=dict)
     failed: bool = False
     raises: str | None = None
+    kind: str | None = None
+    code: str | None = None
     encoded: Path | None = None
 
     def __str__(self) -> str:
@@ -115,6 +121,8 @@ def load_case(path: str | Path) -> Case:
         options=dict(settings.get("options", {})),
         failed=bool(settings.get("failed", False)),
         raises=settings.get("raises"),
+        kind=settings.get("kind"),
+        code=settings.get("code"),
         encoded=encoded if encoded.is_dir() else None,
     )
 
@@ -314,8 +322,9 @@ def run_case(
 
     Verifies, in order: the encoded native inputs when ``encoded/`` exists; the full
     decode, which must produce ``expected.json`` or raise the exception named in
-    ``case.json`` with ``expected.json`` attached as partial data; and each registered
-    parser applied directly to its own file.
+    ``case.json`` (with its ``kind`` and ``code``, when given) with ``expected.json``
+    attached as partial data; and each registered parser applied directly to its own
+    file.
 
     Raises:
         AssertionError: With a description of the first mismatch.
@@ -334,6 +343,11 @@ def run_case(
         try:
             codec.parse(case.input_data.calctype, **kwargs)
         except exc_type as exc:
+            if case.kind is not None:
+                found = (getattr(exc, "kind", None), getattr(exc, "code", None))
+                assert found == (case.kind, case.code), (
+                    f"{case}: {case.raises} is {found}, not {(case.kind, case.code)}"
+                )
             if case.expected is not None:
                 assert_data_equal(
                     getattr(exc, "data", None),

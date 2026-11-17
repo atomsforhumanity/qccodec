@@ -44,10 +44,10 @@ from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
 from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
     SinglePoint,
     package_version,
-    reject_unknown,
     require_model,
     single_point_decoder,
 )
