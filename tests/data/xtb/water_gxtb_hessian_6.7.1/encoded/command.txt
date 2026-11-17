@@ -6,3 +6,5 @@ structure.xyz
 --uhf
 0
 --gxtb
+--input
+xcontrol

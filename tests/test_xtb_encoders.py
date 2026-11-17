@@ -5,7 +5,7 @@ import pytest
 from qcdata import CalcType, Model, ProgramInput, Structure
 
 from qccodec import get_codec
-from qccodec.exceptions import EncoderError
+from qccodec.exceptions import EncoderError, ParserError
 from qccodec.native import SubprocessInput
 
 WATER = Structure(
@@ -114,11 +114,13 @@ def test_unknown_method() -> None:
 POINT_CHARGES = [[-0.8, [0.0, 0.0, 5.0], 8], [0.4, [1.0, 1.0, 6.0]]]
 
 
-def _native(method: str = "gfn2", **kwargs: object) -> SubprocessInput:
+def _native(
+    method: str = "gfn2", calctype: CalcType = CalcType.gradient, **kwargs: object
+) -> SubprocessInput:
     inp = ProgramInput(
         program="xtb",
         structure=WATER,
-        calctype=CalcType.gradient,
+        calctype=calctype,
         model=Model(method=method),
         **kwargs,  # type: ignore[arg-type]
     )
@@ -174,3 +176,30 @@ def test_unknown_flags_name_the_closest() -> None:
     with pytest.raises(EncoderError, match="cma") as e:
         _command(keywords={"cma": True})
     assert e.value.code == "unknown_key"
+
+
+def test_hessians_ask_xtb_for_the_unprojected_hessian() -> None:
+    """A Hessian adds `$write hessian.out=true`, to a supplied xcontrol too."""
+    native = _native(calctype=CalcType.hessian)
+    assert "hessian.out=true" in str(native.files["xcontrol"])
+    assert native.command[-2:] == ("--input", "xcontrol")
+    fix = "$fix\n  atoms: 1\n$end\n"
+    native = _native(
+        calctype=CalcType.hessian,
+        keywords={"input": "detailed.inp"},
+        files={"detailed.inp": fix},
+    )
+    text = str(native.files["detailed.inp"])
+    assert text.startswith(fix) and "$write\n   hessian.out=true\n$end" in text
+    assert "xcontrol" not in _native(calctype=CalcType.gradient).files
+
+
+def test_hessian_is_read_column_by_column() -> None:
+    """hessian.out holds columns; an overflowing fixed-width value is an error."""
+    codec = get_codec("xtb")
+    parser = next(p.parser for p in codec.parsers if p.target == "hessian")
+    columns = [[1.0, 2.0], [3.0, 4.0]]  # not symmetric, to see the order
+    text = "\n".join(f"{a:16.10f}{b:16.10f}" for a, b in columns) + "\n"
+    assert parser(text) == [[1.0, 3.0], [2.0, 4.0]]
+    with pytest.raises(ParserError, match="Unreadable"):
+        parser("    1.0000000000****************\n    0.0000000000    1.0000000000\n")

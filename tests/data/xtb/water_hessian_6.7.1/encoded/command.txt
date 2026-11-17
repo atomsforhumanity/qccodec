@@ -7,3 +7,5 @@ structure.xyz
 0
 --gfn
 2
+--input
+xcontrol

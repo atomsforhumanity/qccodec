@@ -20,7 +20,7 @@ from qcdata import (
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("xtb")]
 
@@ -78,6 +78,18 @@ def test_hessian(run: Run, water: Structure) -> None:
         output.results.vibrational_analysis.normal_modes_cartesian
     ).shape == (3, 3, 3)
     check_normal_modes(output.results, list(water.symbols))
+
+
+@pytest.mark.parametrize("method", ["gfn2", "gfnff"])
+def test_hessian_is_not_projected(run: Run, water: Structure, method: str) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    xtb's own ``hessian`` file has translations and rotations projected out, which
+    differs from the true Hessian here by about the gradient (1e-2 Eh/bohr).
+    """
+    finite_difference_check(
+        run, _input(water, CalcType.gradient, method), atol=1e-4, hessian=True
+    )
 
 
 def test_hessian_modes_across_blocks(run: Run) -> None:
@@ -160,6 +172,9 @@ def test_gxtb(run: Run, water: Structure, calctype: CalcType) -> None:
     assert np.isclose(output.results.energy, -76.437424197961, atol=1e-6)
     if calctype == CalcType.hessian:
         assert np.asarray(output.results.hessian).shape == (9, 9)
+        finite_difference_check(
+            run, _input(water, CalcType.gradient, "gxtb"), atol=1e-4, hessian=True
+        )
 
 
 def test_unknown_keywords_fail_before_running(run: Run, water: Structure) -> None:

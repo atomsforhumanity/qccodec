@@ -27,9 +27,16 @@ an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.
 
-Hessians also fill frequencies and normal modes from ``g98.out``, where xtb writes
-mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
-Cartesian displacements, as qcdata defines them.
+Hessians are xtb's numerical second derivatives (central differences of
+gradients) at the input geometry, with nothing projected out. xtb projects
+translations and rotations out of the Hessian it writes to ``hessian``, which is
+wrong away from a stationary point, where the gradient fixes the Hessian's
+rotational part; so the codec has xtb also write the Hessian before projection
+(``$write hessian.out=true`` in the ``xcontrol`` file, appended to yours if you
+supply one) and returns that one. Hessians also fill frequencies and normal modes
+from ``g98.out`` (with translations and rotations projected out), where xtb writes
+mass-weighted vectors rounded to two decimals; the codec converts them to
+unit-length Cartesian displacements, as qcdata defines them.
 
 One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
@@ -78,6 +85,9 @@ ENGRAD_FILE = "structure.engrad"
 XCONTROL_FILE = "xcontrol"
 POINT_CHARGE_FILE = "pcharge"
 POINT_CHARGE_GRADIENT_FILE = "pcgrad"
+# xtb's Hessian before it projects out translations and rotations.
+HESSIAN_FILE = "hessian.out"
+WRITE_HESSIAN_GROUP = f"$write\n   {HESSIAN_FILE}=true\n$end\n"
 # xtb 6.7.1 reads $embedding for these Hamiltonians and silently ignores it otherwise.
 EMBEDDING_METHODS = {"gfn1", "gfn2"}
 EMBEDDING_GROUP = (
@@ -207,7 +217,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     generated: dict[str, str | bytes] = {
         STRUCTURE_FILE: inp.require_structure().to_xyz()
     }
-    files = dict(inp.files)
+    groups = ""  # appended to the xcontrol file
     if point_charges:
         if method not in EMBEDDING_METHODS:
             raise EncoderError(
@@ -215,13 +225,18 @@ def encode(inp: ProgramInput) -> SubprocessInput:
                 f"with {method} it ignores them without a warning.",
                 kind="unsupported",
             )
+        generated[POINT_CHARGE_FILE] = point_charge_file(point_charges)
+        groups += EMBEDDING_GROUP
+    if inp.calctype == CalcType.hessian:
+        groups += WRITE_HESSIAN_GROUP
+    files = dict(inp.files)
+    if groups:
         xcontrol = str(keywords.get("input", XCONTROL_FILE))
         keywords["input"] = xcontrol
-        generated[POINT_CHARGE_FILE] = point_charge_file(point_charges)
         user_xcontrol = files.pop(xcontrol, "")
         if isinstance(user_xcontrol, bytes):
             user_xcontrol = user_xcontrol.decode()
-        generated[xcontrol] = user_xcontrol + EMBEDDING_GROUP
+        generated[xcontrol] = user_xcontrol + groups
     inp = inp.model_copy(update={"files": files})
 
     arguments = (
@@ -367,14 +382,26 @@ def parse_engrad_gradient(contents: str) -> list[list[float]]:
     return [values[i : i + 3] for i in range(0, len(values), 3)]
 
 
-@codec.parser(file="hessian", target="hessian", calctypes=[CalcType.hessian])
+@codec.parser(file=HESSIAN_FILE, target="hessian", calctypes=[CalcType.hessian])
 def parse_hessian(contents: str) -> list[list[float]]:
-    """Parse the mass-unweighted Hessian (Hartree/Bohr^2) from the ``hessian`` file."""
-    values = [float(v) for v in contents.split("$hessian", 1)[1].split()]
+    """Parse the Hessian (Hartree/bohr^2) before projection from ``hessian.out``.
+
+    xtb writes the symmetrized Cartesian Hessian there column by column, before it
+    projects out translations and rotations for its ``hessian`` file and its
+    frequencies.
+
+    Raises:
+        ParserError: The values do not form a square matrix, or one did not fit
+            xtb's fixed-width format.
+    """
+    try:
+        values = [float(v) for v in contents.split()]
+    except ValueError as exc:
+        raise ParserError(f"Unreadable value in {HESSIAN_FILE}: {exc}") from None
     n = int(round(len(values) ** 0.5))
-    if n * n != len(values):
+    if n == 0 or n * n != len(values):
         raise ParserError(f"Expected a square Hessian, found {len(values)} values.")
-    return [values[i * n : (i + 1) * n] for i in range(n)]
+    return [values[i::n] for i in range(n)]
 
 
 codec.parser(
