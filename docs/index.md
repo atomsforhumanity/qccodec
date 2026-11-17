@@ -61,13 +61,20 @@ Copy one, delete what you don't need, and run it.
 | `program` | Calculation types | Notes |
 | --- | --- | --- |
 | [`crest`](programs/crest.md) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
-| [`geometric`](programs/geometric.md) | optimization, transition_state, irc | Drives any gradient program |
-| [`sella`](programs/sella.md) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program |
+| [`dftbplus`](programs/dftbplus.md) | energy, gradient, hessian, optimization | DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref |
+| [`geometric`](programs/geometric.md) | optimization, transition_state, irc | Drives any gradient program (`qccodec[geometric]`) |
+| [`sella`](programs/sella.md) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
 | [`orca`](programs/orca.md) | energy, gradient, hessian, optimization, transition_state | |
 | [`psi4`](programs/psi4.md) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
 | [`terachem`](programs/terachem.md) | energy, gradient, hessian, optimization | GPU quantum chemistry |
-| [`terachem-fe`, `terachem-pbs`](programs/terachem-servers.md) | energy, gradient | TeraChem servers through tcpb |
-| [`xtb`](programs/xtb.md) | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB |
+| [`terachem-fe`, `terachem-pbs`](programs/terachem-servers.md) | energy, gradient | TeraChem servers through tcpb (`qccodec[tcpb]`) |
+| [`xtb`](programs/xtb.md) | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB; point charges for QM/MM |
+| [`tblite`](programs/tblite.md) | energy, gradient | GFN1/GFN2/IPEA1-xTB as a Python library |
+| [`aimnet2`](programs/aimnet2.md) | energy, gradient, hessian | AIMNet2 machine-learned potentials |
+| [`fairchem`](programs/fairchem.md) | energy, gradient, hessian | UMA and eSEN (gated weights) |
+| [`mace`](programs/mace.md) | energy, gradient, hessian | MACE-OFF, MACE-MP, MACE-OMOL, custom models |
+| [`orb`](programs/orb.md) | energy, gradient | Orb v3 and OrbMol |
+| [`torchani`](programs/torchani.md) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
 
 ## Without qccompute
 

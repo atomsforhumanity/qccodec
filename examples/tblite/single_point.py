@@ -2,7 +2,7 @@
 
 Requires: ``pip install qccompute[qccodec] tblite`` (or ``conda install -c conda-forge
 tblite-python``). tblite is a Python library, so nothing has to be on PATH: the
-calculation runs inside this Python process.
+calculation runs in a qccompute worker process of this Python environment.
 
 How the codec talks to tblite (https://tblite.readthedocs.io/):
 

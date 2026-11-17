@@ -81,7 +81,7 @@ What they look like on one machine:
 | `psi4` | `1.11` | `1.11 sha256:c0edf90d4f8a53c8e7c3e759cbd33e2efbf48f699ddb458c2f45444c35686ef0` |
 | `tblite` | `0.7.0` | `0.7.0` |
 | `geometric` | `1.1.1` | `1.1.1` |
-| `files` (`FileInput`) | qccodec's | qccodec's |
+| `files` (`FileInput`) | qccodec's | `sha256:...` of the command's executable |
 
 A program that is not installed reports `not installed` for both, and an executable
 whose answer to `--version` names no version reports `unknown`. To look a result up in
@@ -129,8 +129,10 @@ same Python, so install the library next to qccompute instead of putting anythin
   GPU): the `QCCODEC_MAX_MODELS` most recently used stay loaded (2 by default; raise it
   on large GPUs, or set 0 to load every time), and `qccodec.clear_model_cache()`
   unloads them all.
-- **`device` picks the hardware**: `"cpu"`, `"cuda"`, or `"cuda:1"`. Without it, a GPU
-  is used when PyTorch sees one.
+- **`device` picks the hardware**: `"cpu"`, `"cuda"`, or `"cuda:1"`. Without it, or with
+  `"cuda"`, the calculation asks the runner for one GPU and runs on the one it is
+  granted, or on the CPU when the runner has none to give; `resolved.settings` records
+  the device it ran on. An explicit index (`"cuda:1"`) asks the runner for none.
 - **One thread unless asked.** Each plans one CPU thread; `{"threads": n}` asks for
   more, which the worker's numerical libraries get.
 - **Keywords are checked.** Each codec accepts a short list of settings and rejects

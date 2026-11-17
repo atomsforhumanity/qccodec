@@ -90,7 +90,7 @@ Each program has a documentation page and a runnable example script for every ca
 | [`orb`](https://qccodec.docs.afh.org/next/programs/orb/) | energy, gradient | Orb v3 and OrbMol |
 | [`torchani`](https://qccodec.docs.afh.org/next/programs/torchani/) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
 
-The last six run in the calling Python process: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
+The last six are Python libraries, which qccompute runs in a worker process of the same Python environment: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
 
 To support a new program, see [Writing a codec](https://qccodec.docs.afh.org/next/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md).
 

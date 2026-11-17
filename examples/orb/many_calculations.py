@@ -6,7 +6,7 @@ How batching works:
 
 - Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,
   model, and keywords are evaluated in batches, one model call for up to
-  ``get_codec("orb").max_batch`` (32) structures, in this Python process. On a GPU
+  ``get_codec("orb").max_batch`` (32) structures, in one worker process. On a GPU
   that is many times faster than one call per structure.
 - Each structure's results are what computing it alone gives, to the model's precision.
   Structures in one batch may differ in size, composition, and charge.
@@ -56,7 +56,7 @@ inputs = [
         model=Model(method="orb-v3-conservative-omol"),
         keywords={
             # "precision": "float64",  # GPU default float32-high differs in the last digits
-            # "device": "cpu",  # or "cuda"; leave out to use a GPU when present
+            # "device": "cpu",  # or "cuda"; leave out for the GPU the runner grants
         },
     )
     for r in distances
