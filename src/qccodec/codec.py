@@ -214,8 +214,10 @@ class Codec:
         converges: Whether a calculation has convergence settings an accuracy
             target could set (an SCF): True, False (a force field, an ML
             potential), or a function of the input (xtb: not for GFN-FF). It decides
-            how ``encode`` refuses the shared keyword ``accuracy``, which no codec
-            maps onto its program's thresholds yet.
+            what becomes of the shared keyword ``accuracy`` (`accuracy`): a
+            calculation without convergence settings meets any target as it is; one
+            with them refuses it, since no codec maps targets onto its program's
+            thresholds yet.
         parsers: Pre-built parser specifications.
     """
 
@@ -428,17 +430,15 @@ class Codec:
     def encode(self, input_data: Inputs) -> NativeInput:
         """Translate an input into a native invocation without executing it.
 
-        The shared keyword ``accuracy`` (`qcdata.Accuracy.from_keywords`) is checked
-        here for every codec: a valid target is refused, as kind ``unsupported``
-        when the calculation has convergence settings (``converges``) and kind
-        ``input``, code ``no_effect``, when it has none; ``null`` is the default and
-        is left out before the codec's encoder sees the input.
+        The shared keyword ``accuracy`` is checked here for every codec
+        (`accuracy`) and left out before the codec's encoder sees the input: the
+        program never sees it.
 
         Raises:
             EncoderError: The codec has no encoder, the input's program or
-                calculation type is not supported, the input sets ``accuracy``, or
-                the encoder returned something other than a ``SubprocessInput`` or
-                ``PythonInput``.
+                calculation type is not supported, the input sets an ``accuracy``
+                the calculation cannot honour, or the encoder returned something
+                other than a ``SubprocessInput`` or ``PythonInput``.
         """
         if self._encode is None:
             raise EncoderError(f"Codec {self.program!r} has no encoder.")
@@ -452,10 +452,8 @@ class Codec:
                     f"{self.program} does not support {input_data.calctype.value}."
                 )
             if "accuracy" in input_data.keywords:
-                self._refuse_accuracy(input_data)
-                keywords = dict(input_data.keywords)
-                del keywords["accuracy"]
-                input_data = input_data.model_copy(update={"keywords": keywords})
+                self.accuracy(input_data)
+                input_data = _without_accuracy(input_data)
         native = self._encode(input_data)
         if not isinstance(native, (SubprocessInput, PythonInput)):
             raise EncoderError(
@@ -464,13 +462,24 @@ class Codec:
             )
         return native
 
-    def _refuse_accuracy(self, inp: ProgramInput) -> None:
-        """Refuse an accuracy target, which no codec maps onto its program's thresholds.
+    def accuracy(self, inp: ProgramInput) -> Accuracy | None:
+        """Read the input's accuracy target, refusing one the calculation cannot honour.
+
+        The shared keyword ``accuracy`` is read with `qcdata.Accuracy.from_keywords`,
+        as every program reads it; ``null`` sets no target. A calculation without
+        convergence settings (``converges`` false: an ML potential, a GFN-FF or
+        non-SCC DFTB single point) meets any target as it is, so it accepts one and
+        records it as met (`accuracy_record`). One with convergence settings refuses
+        it, since no codec turns a target into its program's thresholds yet.
+
+        Returns:
+            The target the calculation accepts, or None when it sets none.
 
         Raises:
-            EncoderError: Kind ``input`` for a value that is not a target (from
-                `qcdata.Accuracy.from_keywords`); ``no_effect`` for a calculation
-                without convergence settings; else kind ``unsupported``.
+            EncoderError: Kind ``input`` for a value that is not a target (the
+                reader's code: ``unknown_key``, ``no_effect`` for an object with no
+                target); kind ``unsupported`` for a target of a calculation with
+                convergence settings.
         """
         try:
             target = Accuracy.from_keywords(inp.keywords)
@@ -479,37 +488,38 @@ class Codec:
                 e.error.message, kind=e.error.kind.value, code=e.error.code
             ) from e
         if target is None:
-            return
+            return None
         converges = self.converges
         if callable(converges):
             converges = converges(inp)
-        if not converges:
+        if converges:
             raise EncoderError(
-                f"{self.program} has no convergence settings for this calculation, so "
-                "an accuracy target has no effect; remove accuracy.",
-                code="no_effect",
+                f"{self.program} cannot turn an accuracy target into its own "
+                "convergence thresholds; remove accuracy and set the program's "
+                "thresholds instead.",
+                kind="unsupported",
             )
-        raise EncoderError(
-            f"{self.program} cannot turn an accuracy target into its own convergence "
-            "thresholds; remove accuracy and set the program's thresholds instead.",
-            kind="unsupported",
-        )
+        return target
 
     def batch_key(self, input_data: Inputs) -> Hashable | None:
         """Return the key under which an input may share a batch, or None.
 
         None when the codec cannot batch, the input is not a ``ProgramInput`` this
         codec computes, or the codec computes this input alone (for example a
-        Hessian, where libraries take one structure at a time).
+        Hessian, where libraries take one structure at a time), or the input sets an
+        ``accuracy`` the codec refuses, so that its refusal names the input.
         """
         if (
             self._batch_key is None
             or not isinstance(input_data, ProgramInput)
             or input_data.program != self.program
             or input_data.calctype not in self.calctypes
-            or "accuracy" in input_data.keywords  # alone, so encode refuses it
         ):
             return None
+        try:
+            self.accuracy(input_data)
+        except EncoderError:
+            return None  # computed alone, so encode refuses it
         return self._batch_key(input_data)
 
     def encode_batch(self, inputs: Sequence[ProgramInput]) -> PythonInput:
@@ -534,7 +544,7 @@ class Codec:
             raise EncoderError(
                 f"{self.program} inputs in one batch must share a batch key."
             )
-        native = self._encode_batch(inputs)
+        native = self._encode_batch([_without_accuracy(inp) for inp in inputs])
         if not isinstance(native, PythonInput):
             raise EncoderError(
                 f"{self.program} batch encoder must return PythonInput, not "
@@ -792,6 +802,33 @@ class Codec:
                 f"available: {sorted(self.options)}"
             )
         return {**self.options, **(options or {})}
+
+
+def accuracy_record(target: Accuracy) -> dict[str, Any]:
+    """The record of an accuracy target met by a calculation with nothing to converge.
+
+    Under the shared record key ``accuracy``: the target as given and no thresholds.
+
+    Args:
+        target: The input's target (`Codec.accuracy`).
+
+    Returns:
+        ``{"target": {...}, "thresholds": {}}``, the target's fields in Eh,
+        Eh/bohr and Eh/bohr^2 as given.
+    """
+    fields = ("energy", "gradient", "hessian")
+    return {
+        "target": {f: getattr(target, f) for f in fields if getattr(target, f)},
+        "thresholds": {},
+    }
+
+
+def _without_accuracy(inp: ProgramInput) -> ProgramInput:
+    """The input without its ``accuracy`` keyword, which programs never see."""
+    if "accuracy" not in inp.keywords:
+        return inp
+    keywords = {k: v for k, v in inp.keywords.items() if k != "accuracy"}
+    return inp.model_copy(update={"keywords": keywords})
 
 
 def _assign(data: dict[str, Any], target: Target, value: Any) -> None:

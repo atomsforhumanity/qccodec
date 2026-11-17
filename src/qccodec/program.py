@@ -74,7 +74,7 @@ from qcdata import (
 )
 
 from . import __version__
-from .codec import STDOUT, VERSION_TARGET, Codec
+from .codec import STDOUT, VERSION_TARGET, Codec, accuracy_record
 from .exceptions import (
     BaseError,
     CalculationError,
@@ -127,6 +127,31 @@ _THREADS_SCHEMA: dict[str, Any] = {
     "description": "CPU threads the calculation may use; the runner's grant caps it.",
     "x-tier": "common",
     "x-concern": "resource",
+}
+#: The shared keyword ``accuracy``, listed where a codec accepts it (`Codec.accuracy`).
+_ACCURACY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "energy": {"type": "number", "exclusiveMinimum": 0, "x-unit": "Eh"},
+        "gradient": {"type": "number", "exclusiveMinimum": 0, "x-unit": "Eh/bohr"},
+        "hessian": {"type": "number", "exclusiveMinimum": 0, "x-unit": "Eh/bohr^2"},
+    },
+    "additionalProperties": False,
+    "minProperties": 1,
+    "description": "An accuracy target (qcdata.Accuracy). A calculation with no "
+    "convergence settings meets it as it is and records it; one with convergence "
+    "settings refuses it.",
+    "x-tier": "common",
+    "x-concern": "convergence",
+}
+#: The record of a calculation that met an accuracy target (`accuracy_record`).
+_ACCURACY_RECORD_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "target": {"type": "object"},
+        "thresholds": {"type": "object", "maxProperties": 0},
+    },
+    "required": ["target", "thresholds"],
 }
 
 
@@ -341,13 +366,16 @@ class CodecProgram:
     def settings_schema(self, calctype: CalcType) -> dict[str, Any]:
         """The keywords the program takes for a calctype, where the codec knows them.
 
-        Every program takes the shared ``threads``. A codec that knows all of its
-        program's keywords (``keywords``) lists them in the program's own spelling and
-        allows no others; the rest pass the program's keywords through unlisted, and
-        the program checks them when it runs.
+        Every program takes the shared ``threads``, and the shared ``accuracy`` where
+        a calculation may have no convergence settings (`Codec.accuracy`). A codec
+        that knows all of its program's keywords (``keywords``) lists them in the
+        program's own spelling and allows no others; the rest pass the program's
+        keywords through unlisted, and the program checks them when it runs.
         """
         known = self.keywords(calctype) if callable(self.keywords) else self.keywords
         properties: dict[str, Any] = {"threads": _THREADS_SCHEMA}
+        if self.codec.converges is not True:
+            properties["accuracy"] = _ACCURACY_SCHEMA
         if known is None:
             return {
                 "type": "object",
@@ -365,8 +393,25 @@ class CodecProgram:
         }
 
     def record_schema(self, calctype: CalcType) -> dict[str, Any]:
-        """No record: external programs report through their results."""
-        return {"type": "object", "properties": {}}
+        """The record: an accuracy target met, where the codec accepts one.
+
+        External programs report through their results; the record holds only the
+        shared key ``accuracy`` of a calculation with no convergence settings that
+        was given a target (`Codec.accuracy`).
+        """
+        if self.codec.converges is True:
+            return {"type": "object", "properties": {}}
+        return {"type": "object", "properties": {"accuracy": _ACCURACY_RECORD_SCHEMA}}
+
+    def _record(self, inp: ProgramInput | FileInput) -> dict[str, Any]:
+        """The run's record: the accuracy target the calculation met, if it had one.
+
+        Only for an input the codec encoded, so its target is one the codec accepts.
+        """
+        if not isinstance(inp, ProgramInput) or "accuracy" not in inp.keywords:
+            return {}
+        target = self.codec.accuracy(inp)
+        return {} if target is None else {"accuracy": accuracy_record(target)}
 
     def plan(self, inp: ProgramInput | FileInput) -> dict[str, Any]:
         """Encode the input without running it: its settings and resources.
@@ -663,6 +708,7 @@ class CodecProgram:
             timings={"total": round(time.perf_counter() - start, 6)},
             extras={"executable": executable} if executable else {},
         )
+        record = self._record(inp)
         if not failures:
             return ProgramOutput(
                 input_data=inp,
@@ -672,6 +718,7 @@ class CodecProgram:
                 logs=logs,
                 warnings=warnings,
                 execution=execution,
+                record=record,
             )
         info = _error_info(failures[0][0], results)
         trace = "\nAdditional failure:\n".join(t for _, t in failures)
@@ -684,6 +731,7 @@ class CodecProgram:
                 logs=logs,
                 warnings=warnings,
                 execution=execution,
+                record=record,
             )
         except Exception:  # noqa: BLE001 - partial results that break the contract
             output = ProgramOutput.failure(
@@ -693,6 +741,7 @@ class CodecProgram:
                 logs=logs,
                 warnings=warnings,
                 execution=execution,
+                record=record,
             )
         raise ProgramError(info, output=output) from failures[0][0]
 
@@ -815,6 +864,7 @@ class CodecProgram:
                             logs=native.stdout,
                             warnings=warnings,
                             execution=execution,
+                            record=self._record(inp),
                         )
                     )
                 except Exception as exc:  # noqa: BLE001 - this input's failure
@@ -825,6 +875,7 @@ class CodecProgram:
                             traceback="".join(traceback.format_exception(exc)),
                             logs=native.stdout,
                             execution=execution,
+                            record=self._record(inp),
                         )
                     )
             return outputs

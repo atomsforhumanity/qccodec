@@ -8,7 +8,7 @@ import pytest
 from qcdata import CalcType, ErrorKind, Model, ProgramError, ProgramInput, ProgramSpec
 from qcdata.utils import water
 
-from qccodec import Codec, SubprocessInput, get_codec
+from qccodec import Codec, PythonInput, SubprocessInput, get_codec
 from qccodec.exceptions import EncoderError
 from qccodec.program import CodecProgram
 
@@ -32,17 +32,21 @@ def _input(
         program=program,
         calctype=calctype,
         structure=water,
-        model=Model(method=method) if method else None,
+        # DFTB+'s non-SCC DFTB needs its Slater-Koster set.
+        model=Model(method=method, basis="3ob-3-1" if method == "DFTB" else None)
+        if method
+        else None,
         keywords=keywords,
         subprograms=subprograms,
     )
 
 
-# Every codec refuses a target: none maps it onto its program's thresholds yet.
-REFUSALS = [
+# A calculation with nothing to converge meets a target as it is; one with convergence
+# settings refuses it, since no codec maps a target onto its program's thresholds yet.
+TARGETS = [
     ("xtb", "gfn2", CalcType.energy, "unsupported"),
-    ("xtb", "gfnff", CalcType.gradient, "no_effect"),
-    ("xtb", "gfn-ff", CalcType.hessian, "no_effect"),
+    ("xtb", "gfnff", CalcType.gradient, "met"),
+    ("xtb", "gfn-ff", CalcType.hessian, "met"),
     ("xtb", "gfnff", CalcType.optimization, "unsupported"),  # the optimizer's
     ("orca", "hf", CalcType.energy, "unsupported"),
     ("psi4", "hf", CalcType.gradient, "unsupported"),
@@ -50,36 +54,41 @@ REFUSALS = [
     ("crest", "gfnff", CalcType.conformer_search, "unsupported"),
     ("tblite", "gfn2", CalcType.energy, "unsupported"),
     ("dftbplus", "GFN2-xTB", CalcType.energy, "unsupported"),
-    ("dftbplus", "DFTB", CalcType.gradient, "no_effect"),
+    ("dftbplus", "DFTB", CalcType.gradient, "met"),
     ("dftbplus", "DFTB", CalcType.optimization, "unsupported"),
     ("geometric", None, CalcType.optimization, "unsupported"),
     ("sella", None, CalcType.optimization, "unsupported"),
-    ("aimnet2", "aimnet2", CalcType.energy, "no_effect"),
-    ("torchani", "ANI2x", CalcType.gradient, "no_effect"),
-    ("mace", "mace-off:small", CalcType.energy, "no_effect"),
-    ("orb", "orb-v3-conservative-inf-omat", CalcType.energy, "no_effect"),
-    ("fairchem", "uma-s-1p1", CalcType.hessian, "no_effect"),
+    ("aimnet2", "aimnet2", CalcType.energy, "met"),
+    ("torchani", "ANI2x", CalcType.gradient, "met"),
+    ("mace", "mace-off-small", CalcType.energy, "met"),
+    ("orb", "orb-v3-conservative-inf-omat", CalcType.energy, "met"),
+    ("fairchem", "uma-s-1p1", CalcType.hessian, "met"),
     ("terachem-fe", "hf", CalcType.energy, "unsupported"),
     ("terachem-pbs", "hf", CalcType.gradient, "unsupported"),
 ]
 
 
 @pytest.mark.parametrize(
-    ("program", "method", "calctype", "refusal"),
-    REFUSALS,
-    ids=[f"{p}-{m}-{c.value}" for p, m, c, _ in REFUSALS],
+    ("program", "method", "calctype", "outcome"),
+    TARGETS,
+    ids=[f"{p}-{m}-{c.value}" for p, m, c, _ in TARGETS],
 )
-def test_every_codec_refuses_an_accuracy_target(
-    program: str, method: str | None, calctype: CalcType, refusal: str
+def test_a_target_is_met_without_convergence_settings_else_refused(
+    program: str, method: str | None, calctype: CalcType, outcome: str
 ) -> None:
-    """Unsupported where the calculation converges something, else no_effect."""
+    """Met (and never passed to the program) where nothing converges, else unsupported."""
     inp = _input(program, method, calctype, accuracy=TARGET)
+    codec = get_codec(program)
+    if outcome == "met":
+        assert codec.accuracy(inp) is not None
+        settings = {"slater_koster_dir": "/data/skf"} if program == "dftbplus" else {}
+        assert codec.encode(
+            _input(program, method, calctype, accuracy=TARGET, **settings)
+        ) == codec.encode(_input(program, method, calctype, **settings))
+        return
     with pytest.raises(EncoderError) as e:
-        get_codec(program).encode(inp)
-    if refusal == "no_effect":
-        assert (e.value.kind, e.value.code) == ("input", "no_effect")
-    else:
-        assert (e.value.kind, e.value.code) == ("unsupported", None)
+        codec.encode(inp)
+    assert (e.value.kind, e.value.code) == ("unsupported", None)
 
 
 codec = Codec("fake", calctypes={CalcType.energy, CalcType.gradient})
@@ -125,23 +134,73 @@ def test_programs_refuse_it_in_their_plan() -> None:
     with pytest.raises(ProgramError) as e:
         program.plan(_input("fake", "m", threads=2, accuracy=TARGET))
     assert e.value.error.kind is ErrorKind.unsupported
-    without = CodecProgram(Codec("fake", calctypes={CalcType.energy}, converges=False))
-    without.codec.encoder(_encode)
-    with pytest.raises(ProgramError) as e:
-        without.plan(_input("fake", "m", accuracy=TARGET))
-    assert (e.value.error.kind, e.value.error.code) == ("input", "no_effect")
 
 
-def test_inputs_with_a_target_are_not_batched() -> None:
-    """Computed alone, so the codec's refusal names the input."""
-    aimnet2 = get_codec("aimnet2")
-    assert aimnet2.batch_key(_input("aimnet2", "aimnet2", CalcType.gradient))
-    assert (
-        aimnet2.batch_key(
-            _input("aimnet2", "aimnet2", CalcType.gradient, accuracy=TARGET)
-        )
-        is None
+def _value(fail: bool = False) -> dict[str, Any]:
+    if fail:
+        raise RuntimeError("the model failed")
+    return {"energy": -1.0, "version": "1.0"}
+
+
+def _model(fail: bool = False) -> Codec:
+    """A library with nothing to converge, which batches."""
+    from qccodec.programs._python import single_point_decoder
+
+    return Codec(
+        "model",
+        calctypes={CalcType.energy},
+        encode=lambda inp: PythonInput(_value, args=(fail,)),
+        decode=single_point_decoder("model"),
+        encode_batch=lambda inputs: PythonInput(lambda: [_value()] * len(inputs)),
+        batch_key=lambda inp: "all",
+        converges=False,
     )
+
+
+MET = {"accuracy": {"target": TARGET, "thresholds": {}}}
+
+
+def test_a_met_target_is_recorded(tmp_path: Any) -> None:
+    """In the record, as met with no thresholds; also on a failure, and in a batch."""
+    program = CodecProgram(_model())
+    out = program.compute(_input("model", "m", accuracy=TARGET))
+    assert out.success and out.record == MET
+    assert out.input_data.keywords == {"accuracy": TARGET}  # the input as given
+    assert program.compute(_input("model", "m")).record == {}
+    assert program.plan(_input("model", "m", accuracy=TARGET))["resources"]
+    with pytest.raises(ProgramError) as e:
+        program.compute(_input("model", "m", accuracy={"energy": 0.0}))
+    assert e.value.error.kind is ErrorKind.input  # still read as a target
+    failing = CodecProgram(_model(fail=True))
+    with pytest.raises(ProgramError) as e:
+        failing.compute(_input("model", "m", accuracy=TARGET))
+    assert e.value.output is not None and e.value.output.record == MET
+    batch = program.compute_batch(
+        [_input("model", "m", accuracy=TARGET), _input("model", "m")]
+    )
+    assert [o.record for o in batch] == [MET, {}]
+    assert all(o.execution.extras.get("batch_size") for o in batch)
+
+
+def test_only_inputs_with_a_refused_target_are_computed_alone() -> None:
+    """A target the codec meets shares a batch; one it refuses names its input."""
+    aimnet2 = get_codec("aimnet2")
+    accepted = _input("aimnet2", "aimnet2", CalcType.gradient, accuracy=TARGET)
+    assert aimnet2.batch_key(accepted)
+    assert (
+        aimnet2.encode_batch([accepted]).args
+        == aimnet2.encode_batch([_input("aimnet2", "aimnet2", CalcType.gradient)]).args
+    )  # the library never sees it
+    bare = _input("aimnet2", "aimnet2", CalcType.gradient, accuracy=1e-6)
+    assert aimnet2.batch_key(bare) is None
+    converging = Codec(
+        "model",
+        calctypes={CalcType.energy},
+        encode_batch=lambda inputs: PythonInput(list),
+        batch_key=lambda inp: "all",
+    )
+    assert converging.batch_key(_input("model", "m")) == "all"
+    assert converging.batch_key(_input("model", "m", accuracy=TARGET)) is None
 
 
 # ------------------------------------------------------------------ settings schema
@@ -182,8 +241,9 @@ def test_a_listed_schema_is_what_the_encoder_takes(
     schema = _program(program).settings_schema(calctype)
     assert schema["additionalProperties"] is False
     assert schema["properties"]["threads"]["x-concern"] == "resource"
-    assert "accuracy" not in schema["properties"]  # refused by every codec
     codec = get_codec(program)
+    # Listed where a calculation may have nothing to converge.
+    assert ("accuracy" in schema["properties"]) is (codec.converges is not True)
     for name in set(schema["properties"]) - {"threads"}:
         try:
             codec.encode(_input(program, method, calctype, **{name: 1}))
@@ -212,4 +272,6 @@ def test_per_calctype_and_open_schemas() -> None:
     for name in ("orca", "psi4", "terachem", "crest", "dftbplus"):
         schema = _program(name).settings_schema(CalcType.energy)
         assert schema["additionalProperties"] is True  # passed through unlisted
-        assert list(schema["properties"]) == ["threads"]
+        # Non-SCC DFTB has nothing to converge, so DFTB+ may meet a target.
+        shared = ["threads", "accuracy"] if name == "dftbplus" else ["threads"]
+        assert list(schema["properties"]) == shared

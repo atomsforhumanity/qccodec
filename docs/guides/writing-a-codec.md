@@ -46,11 +46,13 @@ its own keywords.
 
 The shared keyword `accuracy` (an accuracy target, `{"energy": ..., "gradient": ...,
 "hessian": ...}`) never reaches your encoder: `Codec.encode` reads it with qcdata's
-`Accuracy.from_keywords` and refuses it, since no codec maps targets onto its
-program's thresholds yet. The refusal is kind `unsupported` for a calculation with
-convergence settings and kind `input`, code `no_effect`, for one without (a force
-field, an ML potential): say which with `Codec(..., converges=False)`, or a function
-of the input (`converges=lambda inp: inp.model.method != "gfnff"`).
+`Accuracy.from_keywords`. A calculation with nothing to converge (a force field, an ML
+potential) meets any target as it is: the adapter accepts it and records it in the
+output's `record`, `{"accuracy": {"target": {...}, "thresholds": {}}}`, and its
+`settings_schema` lists `accuracy`. A calculation with convergence settings refuses it
+with kind `unsupported`, since no codec maps targets onto its program's thresholds yet.
+Say which with `Codec(..., converges=False)`, or a function of the input
+(`converges=lambda inp: inp.model.method != "gfnff"`); the default is `True`.
 
 Then make it a program and run it with qccompute:
 
