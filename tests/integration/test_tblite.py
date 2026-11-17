@@ -6,6 +6,7 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     ProgramSpec,
     Structure,
@@ -96,3 +97,33 @@ def test_geometric_optimization_with_tblite_gradients(
     final = trajectory[-1].results
     assert final.energy is not None and final.energy < ENERGY
     assert final.gradient is not None and np.abs(final.gradient).max() < 5e-4
+
+
+@pytest.mark.parametrize(
+    ("keywords", "change", "kind"),
+    [
+        ({"max-iter": 1}, {}, "convergence"),
+        ({}, {"geometry": [[0, 0, 0], [0, 0, 0], [1.4, 0, 1.1]]}, "input"),
+        ({}, {"multiplicity": 2}, "input"),
+        ({"alpb-solvation": "watr"}, {}, "input"),
+    ],
+)
+def test_failures_have_kinds(
+    run: Run,
+    water: Structure,
+    keywords: dict[str, object],
+    change: dict[str, object],
+    kind: str,
+) -> None:
+    """tblite's failures are classified, so a store reuses only input-determined ones."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    inp = ProgramInput(
+        program="tblite",
+        calctype=CalcType.energy,
+        structure=structure,
+        model=Model(method="gfn2"),
+        keywords=keywords,
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp)
+    assert e.value.error.kind == kind, e.value.error

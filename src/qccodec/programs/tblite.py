@@ -30,8 +30,13 @@ optimizations. Every result records Mulliken partial charges in ``atomic_charges
 and the dipole moment (e bohr) in ``scf_dipole_moment``.
 
 tblite never moves or reorients the molecule, so gradients are in the input's frame.
-No input field carries atom indices. An SCF that does not converge raises
-``CalculationError`` with tblite's message.
+No input field carries atom indices.
+
+A keyword that is not a tblite setting or interaction is refused before tblite runs
+(kind ``input``, code ``unknown_key``) with the closest name. Failures and their
+kinds: an SCF that does not converge is ``convergence`` (``scf_not_converged``); atoms
+on top of each other, a multiplicity the number of electrons cannot have, and an
+unknown solvent are ``input``; elements beyond radon are ``unsupported``.
 """
 
 from __future__ import annotations
@@ -166,6 +171,14 @@ codec = Codec(
     calctypes={CalcType.energy, CalcType.gradient},
     encode=encode,
     decode=single_point_decoder("tblite"),
+    # tblite's own messages (TBLiteRuntimeError), quoted by the decoder.
+    errors=[
+        (r"SCF not converged", "convergence", "scf_not_converged"),
+        (r"Too close interatomic distances", "input", None),
+        (r"unpaired electrons .* not compatible", "input", None),
+        (r"not found among database of solvents", "input", None),
+        (r"No support for elements", "unsupported", None),
+    ],
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'tblite').

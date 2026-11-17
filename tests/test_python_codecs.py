@@ -153,6 +153,41 @@ def test_decoder_reports_library_errors() -> None:
     assert e.value.data.provenance.program == "tblite"
 
 
+@pytest.mark.parametrize(
+    ("message", "kind", "code"),
+    [
+        ("SCF not converged in 1 cycles", "convergence", "scf_not_converged"),
+        ("Too close interatomic distances found", "input", None),
+        (
+            "Total number of electrons (8) and number unpaired electrons (1) is not "
+            "compatible",
+            "input",
+            None,
+        ),
+        (
+            "String value for epsilon was not found among database of solvents",
+            "input",
+            None,
+        ),
+        ("No support for elements with Z >86.", "unsupported", None),
+        ("something else", "internal", None),
+    ],
+)
+def test_tblite_failures_have_kinds(message: str, kind: str, code: str | None) -> None:
+    """tblite 0.7's messages (TBLiteRuntimeError) map to error kinds."""
+    out = PythonOutput(error=RuntimeError(message))
+    with pytest.raises(CalculationError) as e:
+        get_codec("tblite").decode(_input("tblite"), out)
+    assert (e.value.kind, e.value.code) == (kind, code)
+
+
+def test_tblite_unknown_keyword_names_the_closest() -> None:
+    """A misspelled tblite setting is refused with code unknown_key."""
+    with pytest.raises(EncoderError, match="did you mean 'max-iter'") as e:
+        _encode(_input("tblite", keywords={"max_iter": 5}))
+    assert (e.value.kind, e.value.code) == ("input", "unknown_key")
+
+
 def test_cached_model_loads_once() -> None:
     """A model is built on first use and shared afterwards."""
     calls: list[int] = []
