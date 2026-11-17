@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.21.1] - 2026-11-17
+
 ### Added
 
 - `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.
@@ -13,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Requires `qcdata<0.24`. The next releases of the qc* stack change these interfaces without compatibility, so this release line keeps resolving to a working set.
 - IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_common.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
 - Moved documentation from `qccodec.docs.atomsforhumanity.org` to `qccodec.docs.afh.org`.
 
