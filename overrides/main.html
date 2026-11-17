@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{#- The next branch's docs are built with DOCS_SITE_URL ending in /next/ (mkdocs.yml). -#}
+{% block announce -%}
+  {%- if config.site_url.endswith("/next/") -%}
+    Pre-release documentation for the next version (alpha). The stable docs are at the
+    <a href="{{ config.site_url[:-5] }}">site root</a>.
+  {%- endif -%}
+{%- endblock %}
