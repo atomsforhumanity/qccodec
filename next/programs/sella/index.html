@@ -1540,9 +1540,9 @@ meeting <code>fmax</code> fails, with its trajectory attached: kind <code>conver
 <code>max_iter</code>, as does an IRC branch that does not reach a minimum.</p>
 <p>Each step is a calculation of the subprogram through the runner (<code>ctx.compute</code>), so
 the step's program runs wherever the runner places it. Called directly, the program
-hands itself to <code>qccompute.compute</code>. The optimization plans the threads and GPUs its
-subprogram asks for (its <code>threads</code> keyword, else its program's plan, whatever program
-it is), so lists of optimizations share the machine correctly.</p>
+hands itself to <code>qccompute.compute</code>. Its subprogram runs on the optimization's thread
+count (unless the subprogram sets <code>threads</code>), and the optimization plans the GPUs its
+subprogram's plan asks for; its own Python holds its thread pools at one thread.</p>
 
 
 

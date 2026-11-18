@@ -1514,9 +1514,9 @@ Psi4. The script calls the Psi4 driver for the calculation type and writes
 </li>
 <li>
 <p><code>cmdline_args</code> are appended to the <code>psi4</code> command, e.g. <code>["-n", "4"]</code> for
-  four threads or <code>["--memory", "8GB"]</code>. Without <code>-n</code>, Psi4 plans all the threads
-  the runner has and runs with what it is granted (<code>-n &lt;grant&gt;</code>); called directly,
-  with Psi4's default of one.</p>
+  four threads or <code>["--memory", "8GB"]</code>. Without <code>-n</code> (or <code>threads</code>), Psi4 runs
+  on the calculation's thread count (<code>-n &lt;count&gt;</code>); called directly, with Psi4's
+  default of one.</p>
 </li>
 </ul>
 <p>Psi4's options are too many to list in the codec, but Psi4 checks every one itself:

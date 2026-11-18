@@ -1503,8 +1503,9 @@ optimization level. A keyword that is not one of xtb's options is refused before
 runs (kind <code>input</code>, code <code>unknown_key</code>) with the closest option named, and so are
 flags the codec sets itself (<code>chrg</code>, <code>uhf</code>, the method and run-type flags) and
 flags that would run something else or move the molecule (<code>cma</code>); xtb itself only
-warns about an unknown flag and runs without it. xtb plans one thread unless the
-input asks for more (<code>threads</code>, or xtb's own <code>parallel</code>, not both). Detailed input (<code>$constrain</code>, <code>$fix</code>, <code>$wall</code>, ...) goes in
+warns about an unknown flag and runs without it. xtb runs on one thread unless the
+input asks for more (<code>threads</code>, or xtb's own <code>parallel</code>, not both): it nests OpenMP
+threads and slows down badly otherwise, so parallelize over calculations instead. Detailed input (<code>$constrain</code>, <code>$fix</code>, <code>$wall</code>, ...) goes in
 an <code>xcontrol</code> file supplied through <code>files</code> and named with <code>{"input":
 "xcontrol"}</code>; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.</p>
@@ -1517,7 +1518,9 @@ rotational part; so the codec has xtb also write the Hessian before projection
 supply one) and returns that one. Hessians also fill frequencies and normal modes
 from <code>g98.out</code> (with translations and rotations projected out), where xtb writes
 mass-weighted vectors rounded to two decimals; the codec converts them to
-unit-length Cartesian displacements, as qcdata defines them.</p>
+unit-length Cartesian displacements, as qcdata defines them. A Hessian also carries the
+energy and the gradient at the input geometry: the codec adds <code>--grad</code> to <code>--hess</code>,
+which costs one more gradient beside the Hessian's displaced ones.</p>
 <p>One keyword is not an xtb flag: <code>external_potentials</code>, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: <code>[[charge, [x, y,
 z]], ...]</code> in bohr. An optional third entry, <code>[charge, [x, y, z], atomic_number]</code>,
@@ -1748,18 +1751,19 @@ with <code>python script.py</code>. They live in the repository's
 <span class="sd">- Pass ``compute`` a list of inputs to get a list of outputs in the same order. Each</span>
 <span class="sd">  calculation runs in its own process and directory, so several run at once in</span>
 <span class="sd">  threads; no ``if __name__ == &quot;__main__&quot;:`` guard is needed.</span>
-<span class="sd">- A list is packed into the runner&#39;s threads: all the cores this process may use for</span>
-<span class="sd">  ``qccompute.compute``, or ``qccompute.Runner(threads=...)``. Each calculation counts</span>
-<span class="sd">  the threads it asks for: here xtb&#39;s ``parallel`` (``-P``), for ORCA ``pal``, for</span>
-<span class="sd">  Psi4 ``-n``, for CREST ``threads``; one when it asks for none. With 16 cores and</span>
-<span class="sd">  ``parallel`` 2, eight xtb calculations run at once. GPU programs (TeraChem) get</span>
-<span class="sd">  their own GPUs through ``CUDA_VISIBLE_DEVICES``.</span>
+<span class="sd">- A list shares the runner&#39;s threads (all the cores this process may use for</span>
+<span class="sd">  ``qccompute.compute``, or ``qccompute.Runner(threads=...)``): each calculation gets</span>
+<span class="sd">  its ``threads`` keyword, else its part of them, and never more run at once. With 16</span>
+<span class="sd">  cores and ``threads`` 2, eight xtb calculations run at once (xtb itself runs on one</span>
+<span class="sd">  thread unless asked). GPU programs (TeraChem) get their own GPUs through</span>
+<span class="sd">  ``CUDA_VISIBLE_DEVICES``.</span>
 <span class="sd">- The inputs may mix programs, methods, and calculation types.</span>
 <span class="sd">- Every calculation runs first. Then, if any failed, ``qcdata.ProgramErrors`` (an</span>
 <span class="sd">  ``ExceptionGroup``) is raised: each error is a ``qcdata.ProgramError`` whose</span>
 <span class="sd">  ``output`` is the failed output, and ``.results`` holds every output in input</span>
 <span class="sd">  order. With ``raise_exc=False`` the outputs are returned as they are; check</span>
-<span class="sd">  ``output.success``. ``runner.as_completed(inputs)`` yields them as they finish.</span>
+<span class="sd">  ``output.success``. For outputs as they finish, ``runner.submit`` each input (with</span>
+<span class="sd">  ``threads``) and use ``concurrent.futures.as_completed``.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
@@ -1789,7 +1793,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
         <span class="n">structure</span><span class="o">=</span><span class="n">water</span><span class="p">(</span><span class="n">r</span><span class="p">),</span>
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
-        <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;parallel&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>  <span class="c1"># threads for each xtb, packed into the runner&#39;s</span>
+        <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>  <span class="c1"># each xtb&#39;s threads, out of the runner&#39;s</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>
 <span class="p">]</span>

@@ -1495,10 +1495,10 @@
   <code>! tightscf</code>; <code>False</code> or <code>None</code> leaves it out. Any other non-dictionary value
   is an error, so nothing is dropped silently.</li>
 <li><code>{"maxcore": 2000}</code> and <code>{"pal": 4}</code> become <code>%maxcore</code> and <code>%pal nprocs</code>.
-  ORCA runs serially unless <code>pal</code> is given, and plans one thread: its parallel
-  runs need OpenMPI's <code>mpirun</code> (without it they fail, kind <code>environment</code>), so
-  they are asked for, never assumed. A runner that grants fewer threads than <code>pal</code>
-  lowers it, with a <code>resource_capped</code> warning.</li>
+  ORCA runs serially unless <code>pal</code> (or <code>threads</code>) is given, whatever the
+  calculation's thread count: its parallel runs need OpenMPI's <code>mpirun</code> (without
+  it they fail, kind <code>environment</code>), so they are asked for, never assumed. A count
+  smaller than <code>pal</code> lowers it, with a <code>resource_capped</code> warning.</li>
 <li>A keyword whose value is a dictionary becomes an input block:
   <code>{"scf": {"maxiter": 200}}</code> writes <code>%scf maxiter 200 end</code>. Keys are kept as
   written; ORCA ignores case.</li>
@@ -1506,8 +1506,10 @@
   Setting <code>coords</code>, or <code>method</code>/<code>basis</code> inside a block, is an error.</li>
 <li><code>cmdline_args</code> are appended to the <code>orca</code> command.</li>
 </ul>
-<p>Calculation types: <code>energy</code>, <code>gradient</code>, <code>hessian</code> (also the gradient when ORCA
-writes it, and the harmonic frequencies and normal modes from <code>&lt;basename&gt;.hess</code>:
+<p>Calculation types: <code>energy</code>, <code>gradient</code>, <code>hessian</code> (also the gradient where ORCA
+gives it: <code>keywords={"engrad": True}</code> asks for it beside <code>! freq</code>, which also
+tightens ORCA's SCF convergence; and the harmonic frequencies and normal modes from
+<code>&lt;basename&gt;.hess</code>:
 unit-length Cartesian displacements without translations and rotations, imaginary
 frequencies negative), <code>optimization</code>, and <code>transition_state</code> (<code>OptTS</code>; give ORCA a
 starting Hessian, e.g. <code>{"geom": {"calc_hess": True}}</code>). ORCA keeps the input's

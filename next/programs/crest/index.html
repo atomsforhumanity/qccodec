@@ -1496,10 +1496,10 @@
 <li><code>runtype</code> defaults from the calculation type (<code>singlepoint</code>, <code>numhess</code>,
   <code>optimize</code>, <code>imtd-gc</code>); a given <code>runtype</code> must match it, e.g. <code>nci</code> or
   <code>entropy</code> for conformer searches.</li>
-<li><code>threads</code>: without it, CREST plans all the threads the runner has and runs with
-  what it is granted (the runner reads <code>threads</code> as the request, as for every
-  program); called directly, with CREST's own default. CREST itself always runs with
-  <code>OMP_NUM_THREADS=1</code> and parallelizes over its own threads.</li>
+<li><code>threads</code>: without it, CREST runs on the calculation's thread count (the shared
+  <code>threads</code> keyword sets it, as for every program); called directly, with CREST's
+  own default. CREST itself always runs with <code>OMP_NUM_THREADS=1</code> and parallelizes
+  over its own threads.</li>
 </ul>
 <p>Calculation types: <code>energy</code>, <code>gradient</code>, <code>hessian</code> (numerical: also frequencies
 and normal modes), <code>optimization</code>, and <code>conformer_search</code>. CREST writes the normal
@@ -1654,7 +1654,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;gfn1&quot;, &quot;gfnff&quot;</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># default: all the threads the runner grants</span>
+        <span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># default: the calculation&#39;s thread count</span>
         <span class="s2">&quot;calculation&quot;</span><span class="p">:</span> <span class="p">{</span>
             <span class="c1"># ANCopt settings:</span>
             <span class="s2">&quot;optlev&quot;</span><span class="p">:</span> <span class="s2">&quot;tight&quot;</span><span class="p">,</span>  <span class="c1"># convergence level</span>
@@ -1729,7 +1729,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfnff&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;gfn2&quot; (slower)</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># default: all the threads the runner grants</span>
+        <span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># default: the calculation&#39;s thread count</span>
         <span class="c1"># &quot;runtype&quot;: &quot;nci&quot;,  # for non-covalent clusters; default &quot;imtd-gc&quot;</span>
         <span class="c1"># &quot;topo&quot;: False,  # allow changes in bonding topology between conformers</span>
         <span class="s2">&quot;calculation&quot;</span><span class="p">:</span> <span class="p">{</span>

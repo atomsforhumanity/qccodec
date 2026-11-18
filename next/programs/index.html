@@ -1612,34 +1612,39 @@ program's quirks for that kind of calculation.</p>
 <code>PATH</code>, set <code>QCCODEC_ORCA_EXECUTABLE</code> (the program name in capitals), or register
 <code>qccodec.CodecProgram(codec, executable="/path/to/orca")</code> in your process.</p>
 <h2 id="threads">Threads<a class="headerlink" href="#threads" title="Permanent link">&para;</a></h2>
-<p><code>keywords={"threads": n}</code> asks for <code>n</code> CPU threads, for every program; the codec
-writes it in the program's own spelling (ORCA's <code>pal</code>, Psi4's <code>-n</code>, xtb's <code>parallel</code>,
-CREST's <code>threads</code>) or sets <code>OMP_NUM_THREADS</code>. Giving both <code>threads</code> and the program's
-own setting is an error. Without a request, a program plans what suits it, and the
-runner grants at most that:</p>
+<p><code>keywords={"threads": n}</code> sets a calculation's thread count, for every program; the
+codec writes it in the program's own spelling (ORCA's <code>pal</code>, Psi4's <code>-n</code>, xtb's
+<code>parallel</code>, CREST's <code>threads</code>) or sets <code>OMP_NUM_THREADS</code>. Giving both <code>threads</code> and the
+program's own setting is an error. Without it, a calculation runs on its caller's whole
+count (<a href="https://qccompute.docs.afh.org/next/threads/">qccompute's Threads page</a>), and a
+program uses all of it unless it caps itself:</p>
 <table>
 <thead>
 <tr>
 <th>program</th>
-<th>plans without a request</th>
+<th>without <code>threads</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Psi4, CREST</td>
-<td>all the threads the runner has</td>
+<td>Psi4, CREST, tblite, DFTB+, the machine-learned potentials on the CPU</td>
+<td>the calculation's count</td>
 </tr>
 <tr>
 <td>geomeTRIC, Sella</td>
-<td>what their gradient subprogram plans</td>
+<td>their own Python on one thread; their gradient subprogram gets the count</td>
+</tr>
+<tr>
+<td>xtb</td>
+<td>one: it nests OpenMP threads and slows down badly with more</td>
 </tr>
 <tr>
 <td>ORCA</td>
-<td>one (parallel ORCA needs OpenMPI's <code>mpirun</code>, so <code>pal</code> is asked for, never assumed)</td>
+<td>one: parallel ORCA needs OpenMPI's <code>mpirun</code>, so <code>pal</code> is asked for, never assumed</td>
 </tr>
 <tr>
-<td>xtb, tblite, DFTB+, TeraChem (its work is on its GPUs), the machine-learned potentials</td>
-<td>one</td>
+<td>TeraChem, a machine-learned potential on a GPU</td>
+<td>one (a calculation given GPUs gets one thread)</td>
 </tr>
 </tbody>
 </table>
@@ -1828,8 +1833,9 @@ same Python, so install the library next to qccompute instead of putting anythin
   <code>"cuda"</code>, the calculation asks the runner for one GPU and runs on the one it is
   granted, or on the CPU when the runner has none to give; <code>resolved.settings</code> records
   the device it ran on. An explicit index (<code>"cuda:1"</code>) asks the runner for none.</li>
-<li><strong>One thread unless asked.</strong> Each plans one CPU thread; <code>{"threads": n}</code> asks for
-  more, which the worker's numerical libraries get.</li>
+<li><strong>Threads.</strong> On a GPU a calculation gets one CPU thread unless it asks; on the CPU,
+  its whole count. The worker's numerical libraries (PyTorch's threads among them) get
+  it for each call.</li>
 <li><strong>Keywords are checked.</strong> Each codec accepts a short list of settings and rejects
   anything else, so a misspelled option fails instead of being ignored.</li>
 <li><strong>Charge and spin</strong> reach models that understand them (AIMNet2-NSE, FAIR-Chem's
