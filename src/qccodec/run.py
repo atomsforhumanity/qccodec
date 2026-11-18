@@ -368,6 +368,10 @@ def run_python(
         threads: CPU threads of this call, for the numerical libraries already
             loaded in this process (`thread_limits`); a library the call loads reads
             them from ``environment`` (``OMP_NUM_THREADS``). None leaves them alone.
+            A call that runs subprograms (the request has a child callback) holds
+            them at one thread whatever this says: its threads are its children's,
+            and an idle OpenBLAS thread spins for about 0.1 s after each call, beside
+            a child that uses them all.
         update_func: Optional callback receiving the completed log twice, as both
             all output and new output. Called once for nonempty logs after capture
             is restored; Python execution does not provide live updates.
@@ -382,6 +386,8 @@ def run_python(
     runtime-specific buffers. Use separate processes for concurrent calculations.
     """
     output = PythonOutput(directory=directory)
+    if request.child_callback or request.children_callback:
+        threads = 1  # a parent's own pools: its threads are its children's
     try:
         overrides = {**request.environment, **(environment or {})}
         with tempfile.TemporaryFile(

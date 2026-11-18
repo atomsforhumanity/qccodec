@@ -23,6 +23,11 @@ def report_threads() -> dict[str, Any]:
     }
 
 
+def report_parent_threads(compute_child: Any) -> dict[str, Any]:
+    """`report_threads` for a function that runs subprograms (a child callback)."""
+    return report_threads()
+
+
 class _Here(CodecProgram):
     """A CodecProgram whose class lives here: a worker finds a registered program in
     its class's module."""

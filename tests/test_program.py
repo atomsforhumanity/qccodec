@@ -591,6 +591,30 @@ def test_each_python_call_runs_with_its_own_threads(
     )
 
 
+def test_a_python_call_that_runs_subprograms_holds_its_own_threads_at_one(
+    tmp_path: Path,
+) -> None:
+    """A parent's BLAS runs on one thread whatever its grant: the grant is its children's.
+
+    Idle OpenBLAS threads spin after each call, so a parent at its whole grant (Sella in
+    a worker, over a Psi4 or CREST child) kept them busy beside the child.
+    """
+    from threadpoolctl import threadpool_info
+
+    from tests.worker_programs import report_parent_threads
+
+    if not any(i["user_api"] == "blas" for i in threadpool_info()):
+        pytest.skip("numpy's BLAS is not one threadpoolctl controls")
+    parent = PythonInput(report_parent_threads, child_callback="compute_child")
+    no_child: Any = lambda *a, **k: None  # never called  # noqa: E731
+    seen = [
+        run_python(parent, tmp_path, compute_child=no_child, threads=n)
+        for n in (4, None)
+    ]
+    assert [o.error for o in seen] == [None, None]
+    assert [o.value["extras"]["blas_threads"][0] for o in seen] == [1, 1]
+
+
 def test_one_worker_serves_calls_with_different_threads() -> None:
     """A worker is pooled by program, so each call applies its own threads."""
     import qccompute
