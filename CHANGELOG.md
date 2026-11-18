@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0a7] - 2026-11-18
+
+### Fixed
+
+- A Python program that runs subprograms (Sella in a worker) holds its own BLAS, OpenMP and PyTorch thread pools at one thread. They were at the call's threads, the whole grant for a Psi4 or CREST child, and idle OpenBLAS threads spinning after each call oversubscribed the CPUs beside the child.
+
 ## [0.22.0a6] - 2026-11-17
 
 ### Added

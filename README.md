@@ -31,7 +31,7 @@ This README describes the alpha, installed with minimum versions of its matching
 resolves the previous stable release):
 
 ```sh
-uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a7" "qccodec>=0.22.0a6"
+uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0a7" "qccodec>=0.22.0a7"
 ```
 
 ```python
