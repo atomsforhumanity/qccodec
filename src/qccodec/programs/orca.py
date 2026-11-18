@@ -22,8 +22,10 @@ Inputs map to ORCA as follows:
   Setting ``coords``, or ``method``/``basis`` inside a block, is an error.
 - ``cmdline_args`` are appended to the ``orca`` command.
 
-Calculation types: ``energy``, ``gradient``, ``hessian`` (also the gradient when ORCA
-writes it, and the harmonic frequencies and normal modes from ``<basename>.hess``:
+Calculation types: ``energy``, ``gradient``, ``hessian`` (also the gradient where ORCA
+gives it: ``keywords={"engrad": True}`` asks for it beside ``! freq``, which also
+tightens ORCA's SCF convergence; and the harmonic frequencies and normal modes from
+``<basename>.hess``:
 unit-length Cartesian displacements without translations and rotations, imaginary
 frequencies negative), ``optimization``, and ``transition_state`` (``OptTS``; give ORCA a
 starting Hessian, e.g. ``{"geom": {"calc_hess": True}}``). ORCA keeps the input's
@@ -486,7 +488,7 @@ def parse_gradient(stdout: str) -> list[list[float]]:
 
 @codec.parser(target="gradient", calctypes=[CalcType.hessian], required=False)
 def parse_gradient_hessian(stdout: str) -> list[list[float]]:
-    """Parse the gradient from a Hessian job; analytic Hessian jobs omit it."""
+    """Parse the gradient of a Hessian job that asked for one (``engrad``); else none."""
     return parse_gradient(stdout)
 
 

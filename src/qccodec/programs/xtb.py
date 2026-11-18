@@ -37,7 +37,9 @@ rotational part; so the codec has xtb also write the Hessian before projection
 supply one) and returns that one. Hessians also fill frequencies and normal modes
 from ``g98.out`` (with translations and rotations projected out), where xtb writes
 mass-weighted vectors rounded to two decimals; the codec converts them to
-unit-length Cartesian displacements, as qcdata defines them.
+unit-length Cartesian displacements, as qcdata defines them. A Hessian also carries the
+energy and the gradient at the input geometry: the codec adds ``--grad`` to ``--hess``,
+which costs one more gradient beside the Hessian's displaced ones.
 
 One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
@@ -206,6 +208,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         )
 
     runtype: list[str] = [RUNTYPES[inp.calctype]]
+    if inp.calctype == CalcType.hessian:
+        runtype.append("--grad")  # the gradient at the same point, from the same run
     level = keywords.pop("opt", None)
     if level is not None:
         if inp.calctype != CalcType.optimization:
@@ -375,7 +379,11 @@ def parse_energy(stdout: str) -> float:
     return float(re_search(r"TOTAL ENERGY\s+(-?\d+\.\d+) Eh", stdout).group(1))
 
 
-@codec.parser(file=ENGRAD_FILE, target="gradient", calctypes=[CalcType.gradient])
+@codec.parser(
+    file=ENGRAD_FILE,
+    target="gradient",
+    calctypes=[CalcType.gradient, CalcType.hessian],
+)
 def parse_engrad_gradient(contents: str) -> list[list[float]]:
     """Parse the gradient (Hartree/Bohr) from xtb's ORCA-style ``.engrad`` file."""
     block = re_search(r"# The current gradient in Eh/bohr\n#\n([\s\S]*?)\n#", contents)

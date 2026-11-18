@@ -68,6 +68,9 @@ def test_hessian(run: Run, water: Structure) -> None:
     output = run(_input(water, CalcType.hessian), case="water_hessian")
     hessian = np.asarray(output.results.hessian)
     assert hessian.shape == (9, 9)
+    # The gradient at the same point comes with it, from the same run (--grad).
+    gradient = run(_input(water, CalcType.gradient)).results.gradient
+    assert np.allclose(output.results.gradient, gradient, atol=1e-6)
     assert np.allclose(hessian, hessian.T, atol=1e-5)
     assert np.allclose(
         output.results.vibrational_analysis.frequencies,

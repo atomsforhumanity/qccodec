@@ -95,7 +95,7 @@
    C. Plett, P. Pracht, F. Pultar, J. Seibert, P. Shushkov, S. Spicher,
    M. Stahn, M. Steiner, T. Strunk, J. Stückrath, T. Rose, and J. Unsleber
    
- * started run on 2026/11/17 at 19:50:36.440     
+ * started run on 2026/11/18 at 01:20:33.283     
    ID    Z sym.   atoms
     1    8 O      1
     2    1 H      2, 3
@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gxtb --input xcontrol
+          program call               : xtb structure.xyz --hess --grad --chrg 0 --uhf 0 --gxtb --input xcontrol
           coordinate file            : structure.xyz
           omp threads                :                     1
 
@@ -143,19 +143,19 @@ Post processing:
  - increment                              0.000 sec (  0%)
  - repulsion                              0.000 sec (  0%)
  - dispersion                             0.000 sec (  2%)
- - coulomb                                0.000 sec (  1%)
+ - coulomb                                0.000 sec (  2%)
  - exchange                               0.000 sec (  1%)
- - hamiltonian                            0.000 sec ( 14%)
- - acp                                    0.000 sec (  4%)
+ - hamiltonian                            0.000 sec ( 15%)
+ - acp                                    0.000 sec (  5%)
  - post processing                        0.000 sec (  1%)
- - scc                                    0.000 sec ( 34%)
+ - scc                                    0.000 sec ( 32%)
  - coulomb gradient                       0.000 sec (  2%)
  - dispersion gradient                    0.000 sec (  0%)
  - exchange gradient                      0.000 sec (  1%)
  - repulsion gradient                     0.000 sec (  0%)
  - acp gradient                           0.000 sec ( 15%)
  - hamiltonian gradient                   0.000 sec ( 14%)
- - gradient                               0.001 sec ( 35%)
+ - gradient                               0.000 sec ( 35%)
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                     SUMMARY                     ::
@@ -337,19 +337,19 @@ c2v symmetry found (for desy threshold:  0.10E+00) used in thermo
 ########################################################################
 
 ------------------------------------------------------------------------
- * finished run on 2026/11/17 at 19:50:36.463     
+ * finished run on 2026/11/18 at 01:20:33.301     
 ------------------------------------------------------------------------
  total:
- * wall-time:     0 d,  0 h,  0 min,  0.022 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.021 sec
- * ratio c/w:     0.934 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.017 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.017 sec
+ * ratio c/w:     0.965 speedup
  SCF:
- * wall-time:     0 d,  0 h,  0 min,  0.002 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
- * ratio c/w:     0.999 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.001 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.001 sec
+ * ratio c/w:     1.000 speedup
  analytical hessian:
- * wall-time:     0 d,  0 h,  0 min,  0.016 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.016 sec
- * ratio c/w:     0.997 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.013 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.013 sec
+ * ratio c/w:     0.996 speedup
 
 normal termination of xtb

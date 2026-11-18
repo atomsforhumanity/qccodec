@@ -95,7 +95,7 @@
    C. Plett, P. Pracht, F. Pultar, J. Seibert, P. Shushkov, S. Spicher,
    M. Stahn, M. Steiner, T. Strunk, J. Stückrath, T. Rose, and J. Unsleber
    
- * started run on 2026/11/17 at 19:50:36.204     
+ * started run on 2026/11/18 at 01:20:33.252     
    ID    Z sym.   atoms
     1    8 O      1
     2    1 H      2, 3
@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gfn 2 --input xcontrol
+          program call               : xtb structure.xyz --hess --grad --chrg 0 --uhf 0 --gfn 2 --input xcontrol
           coordinate file            : structure.xyz
           omp threads                :                     1
 
@@ -184,14 +184,14 @@
                   HL-Gap            0.5210905 Eh           14.1796 eV
              Fermi-level           -0.1865710 Eh           -5.0769 eV
 
- SCC (total)                   0 d,  0 h,  0 min,  0.003 sec
- SCC setup                      ...        0 min,  0.000 sec (  2.405%)
- Dispersion                     ...        0 min,  0.000 sec (  0.829%)
- classical contributions        ...        0 min,  0.000 sec (  0.312%)
- integral evaluation            ...        0 min,  0.000 sec (  2.380%)
- iterations                     ...        0 min,  0.003 sec ( 89.297%)
- molecular gradient             ...        0 min,  0.000 sec (  3.620%)
- printout                       ...        0 min,  0.000 sec (  0.927%)
+ SCC (total)                   0 d,  0 h,  0 min,  0.002 sec
+ SCC setup                      ...        0 min,  0.000 sec (  3.310%)
+ Dispersion                     ...        0 min,  0.000 sec (  1.037%)
+ classical contributions        ...        0 min,  0.000 sec (  0.401%)
+ integral evaluation            ...        0 min,  0.000 sec (  3.110%)
+ iterations                     ...        0 min,  0.002 sec ( 85.923%)
+ molecular gradient             ...        0 min,  0.000 sec (  4.747%)
+ printout                       ...        0 min,  0.000 sec (  1.178%)
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                     SUMMARY                     ::
@@ -360,19 +360,19 @@ c2v symmetry found (for desy threshold:  0.10E+00) used in thermo
 ########################################################################
 
 ------------------------------------------------------------------------
- * finished run on 2026/11/17 at 19:50:36.214     
+ * finished run on 2026/11/18 at 01:20:33.261     
 ------------------------------------------------------------------------
  total:
- * wall-time:     0 d,  0 h,  0 min,  0.011 sec
+ * wall-time:     0 d,  0 h,  0 min,  0.009 sec
  *  cpu-time:     0 d,  0 h,  0 min,  0.009 sec
- * ratio c/w:     0.823 speedup
+ * ratio c/w:     0.935 speedup
  SCF:
- * wall-time:     0 d,  0 h,  0 min,  0.003 sec
+ * wall-time:     0 d,  0 h,  0 min,  0.002 sec
  *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
- * ratio c/w:     0.693 speedup
+ * ratio c/w:     0.775 speedup
  analytical hessian:
  * wall-time:     0 d,  0 h,  0 min,  0.002 sec
  *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
- * ratio c/w:     0.980 speedup
+ * ratio c/w:     0.978 speedup
 
 normal termination of xtb
