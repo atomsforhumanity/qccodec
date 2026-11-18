@@ -59,9 +59,9 @@ meeting ``fmax`` fails, with its trajectory attached: kind ``convergence``, code
 
 Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
 the step's program runs wherever the runner places it. Called directly, the program
-hands itself to ``qccompute.compute``. The optimization plans the threads and GPUs its
-subprogram asks for (its ``threads`` keyword, else its program's plan, whatever program
-it is), so lists of optimizations share the machine correctly.
+hands itself to ``qccompute.compute``. Its subprogram runs on the optimization's thread
+count (unless the subprogram sets ``threads``), and the optimization plans the GPUs its
+subprogram's plan asks for; its own Python holds its thread pools at one thread.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ from ..exceptions import CalculationError, EncoderError
 from ..native import ComputeChild, NativeOutput, PythonInput, PythonOutput
 from ..program import CodecProgram
 from ._common import align_path, reject_unknown
-from .geometric import _attach_hessians, _child_resources
+from .geometric import _attach_hessians, _child_gpus
 
 
 class SellaOutcome(TypedDict):
@@ -201,7 +201,7 @@ def encode(inp: ProgramInput) -> PythonInput:
     )
     run_keywords = IRC_RUN_KEYWORDS if irc else RUN_KEYWORDS
     run_kwargs = {k: keywords.pop(k) for k in run_keywords & set(keywords)}
-    threads, gpus = _child_resources(gradient_spec, inp)
+    gpus = _child_gpus(gradient_spec, inp)
     return PythonInput(
         function=invoke_sella,
         kwargs={
@@ -219,7 +219,6 @@ def encode(inp: ProgramInput) -> PythonInput:
         },
         files=dict(inp.files),
         child_callback="compute_child",
-        threads=threads,
         gpus=gpus,
     )
 
@@ -506,7 +505,6 @@ program = CodecProgram(
     codec,
     in_process=False,
     library="sella",
-    threads=None,
     keywords=lambda calctype: (
         IRC_SETTINGS if calctype == CalcType.irc else SELLA_SETTINGS
     ),

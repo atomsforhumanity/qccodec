@@ -26,9 +26,9 @@ Inputs map to Psi4 as follows:
     off. By default Psi4 detects whatever symmetry the input frame already has.
 
 - ``cmdline_args`` are appended to the ``psi4`` command, e.g. ``["-n", "4"]`` for
-  four threads or ``["--memory", "8GB"]``. Without ``-n``, Psi4 plans all the threads
-  the runner has and runs with what it is granted (``-n <grant>``); called directly,
-  with Psi4's default of one.
+  four threads or ``["--memory", "8GB"]``. Without ``-n`` (or ``threads``), Psi4 runs
+  on the calculation's thread count (``-n <count>``); called directly, with Psi4's
+  default of one.
 
 Psi4's options are too many to list in the codec, but Psi4 checks every one itself:
 the driver sets them one at a time before calculating and reports each one Psi4 does
@@ -641,4 +641,4 @@ codec.cap_threads = cap_threads
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'psi4').
 #: Psi4 scales with threads: without ``-n`` it plans all the runner has and runs with
 #: the grant.
-program = CodecProgram(codec, threads=None)
+program = CodecProgram(codec)

@@ -44,18 +44,20 @@ qccodec runs a program by name from `PATH`, always by its absolute path (recorde
 
 ## Threads
 
-`keywords={"threads": n}` asks for `n` CPU threads, for every program; the codec
-writes it in the program's own spelling (ORCA's `pal`, Psi4's `-n`, xtb's `parallel`,
-CREST's `threads`) or sets `OMP_NUM_THREADS`. Giving both `threads` and the program's
-own setting is an error. Without a request, a program plans what suits it, and the
-runner grants at most that:
+`keywords={"threads": n}` sets a calculation's thread count, for every program; the
+codec writes it in the program's own spelling (ORCA's `pal`, Psi4's `-n`, xtb's
+`parallel`, CREST's `threads`) or sets `OMP_NUM_THREADS`. Giving both `threads` and the
+program's own setting is an error. Without it, a calculation runs on its caller's whole
+count ([qccompute's Threads page](https://qccompute.docs.afh.org/next/threads/)), and a
+program uses all of it unless it caps itself:
 
-| program | plans without a request |
+| program | without `threads` |
 |---|---|
-| Psi4, CREST | all the threads the runner has |
-| geomeTRIC, Sella | what their gradient subprogram plans |
-| ORCA | one (parallel ORCA needs OpenMPI's `mpirun`, so `pal` is asked for, never assumed) |
-| xtb, tblite, DFTB+, TeraChem (its work is on its GPUs), the machine-learned potentials | one |
+| Psi4, CREST, tblite, DFTB+, the machine-learned potentials on the CPU | the calculation's count |
+| geomeTRIC, Sella | their own Python on one thread; their gradient subprogram gets the count |
+| xtb | one: it nests OpenMP threads and slows down badly with more |
+| ORCA | one: parallel ORCA needs OpenMPI's `mpirun`, so `pal` is asked for, never assumed |
+| TeraChem, a machine-learned potential on a GPU | one (a calculation given GPUs gets one thread) |
 
 ## Versions and numerics identities
 
@@ -156,8 +158,9 @@ same Python, so install the library next to qccompute instead of putting anythin
   `"cuda"`, the calculation asks the runner for one GPU and runs on the one it is
   granted, or on the CPU when the runner has none to give; `resolved.settings` records
   the device it ran on. An explicit index (`"cuda:1"`) asks the runner for none.
-- **One thread unless asked.** Each plans one CPU thread; `{"threads": n}` asks for
-  more, which the worker's numerical libraries get.
+- **Threads.** On a GPU a calculation gets one CPU thread unless it asks; on the CPU,
+  its whole count. The worker's numerical libraries (PyTorch's threads among them) get
+  it for each call.
 - **Keywords are checked.** Each codec accepts a short list of settings and rejects
   anything else, so a misspelled option fails instead of being ignored.
 - **Charge and spin** reach models that understand them (AIMNet2-NSE, FAIR-Chem's

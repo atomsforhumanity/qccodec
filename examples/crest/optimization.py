@@ -33,7 +33,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="gfn2"),  # or "gfn1", "gfnff"
     keywords={
-        "threads": 1,  # default: all the threads the runner grants
+        "threads": 1,  # default: the calculation's thread count
         "calculation": {
             # ANCopt settings:
             "optlev": "tight",  # convergence level

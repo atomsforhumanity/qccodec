@@ -9,9 +9,9 @@ Each codec is also a program that [qccompute](https://qccompute.docs.afh.org/nex
 qccodec registers it under qccompute's `qccompute.programs` entry points, and its
 adapter (`qccodec.CodecProgram`) encodes the input, runs the program in a scratch
 directory with its output captured and a deadline, and decodes the result. qccompute
-finds it by name, packs lists into the machine, and stores results. A thread request
-larger than the runner's grant (ORCA `pal`, Psi4 `-n`) is lowered to the grant, with a
-`resource_capped` warning. An ML potential granted no GPU runs on the CPU; it warns
+finds it by name, runs it on its thread count, and stores results. A thread request
+larger than the calculation's count (ORCA `pal`, Psi4 `-n`) is lowered to the count,
+with a `resource_capped` warning. An ML potential granted no GPU runs on the CPU; it warns
 `backend_fallback` only when it was granted one and still ran on the CPU. A calculation
 with nothing to converge (ML potentials, GFN-FF and non-SCC DFTB single points) meets an
 accuracy target (the shared keyword `accuracy`) as it is and records it as met, with no

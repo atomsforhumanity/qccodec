@@ -229,8 +229,7 @@ def test_a_libraries_exception_is_classified_by_the_codec(tmp_path: Path) -> Non
 
 
 def test_plans_declare_the_requested_resources() -> None:
-    assert program.plan(inp(threads=3))["resources"] == {"threads": 3, "gpus": 1}
-    assert program.plan(inp())["resources"]["threads"] == 1  # packs as one thread
+    assert program.plan(inp(threads=3))["resources"] == {"gpus": 1}  # no threads
     caps = program.capabilities()
     assert caps == {
         "calctypes": ["energy"],
@@ -656,15 +655,15 @@ def test_a_batch_output_reports_its_own_inputs_threads() -> None:
     finally:
         unregister_program("gpulib")
     assert [o.execution.extras["batch_size"] for o in outs] == [3, 3, 3]
-    assert [o.execution.threads for o in outs] == [1, 1, 1]  # not the batch's 3
+    assert [o.execution.threads for o in outs] == [2, 2, 2]  # not the batch's 6
 
 
 def test_inputs_of_a_batch_run_alone_get_their_own_threads(tmp_path: Path) -> None:
-    """The runner sizes a batch's grant as the sum of its inputs' threads."""
+    """Alone, an input gets its threads keyword, else its share of the batch's."""
     outs: Any = program.compute_batch(
         [inp(), inp(threads=2), inp(threads=8)], ctx(tmp_path, threads=4)
     )
-    assert [o.execution.threads for o in outs] == [1, 2, 4]  # planned; capped
+    assert [o.execution.threads for o in outs] == [1, 2, 4]  # 4 // 3; asked; capped
     assert "threads 1 " in str(outs[0].logs)
     assert [w.code for w in outs[2].warnings] == ["resource_capped"]
 

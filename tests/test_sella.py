@@ -314,16 +314,15 @@ def test_calculator_checks_its_spec_and_structure() -> None:
         atoms.get_potential_energy()
 
 
-def test_declares_the_resources_of_its_gradient_child() -> None:
-    """Lists of Sella runs share the machine by what the child declares."""
+def test_declares_the_gpus_of_its_gradient_child() -> None:
+    """Sella needs its child's GPUs; its threads are its count, which its child gets."""
     child = ProgramSpec(
-        program="orca",
+        program="terachem",
         calctype=CalcType.gradient,
         model=Model(method="hf", basis="sto-3g"),
-        keywords={"pal": 4},
     )
     native = get_codec("sella").encode(_input(subprograms=[child]))
-    assert native.threads == 4
+    assert native.threads is None and native.gpus == 1
 
 
 def _irc(**keywords: Any) -> ProgramInput:

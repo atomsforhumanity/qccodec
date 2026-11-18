@@ -11,10 +11,10 @@ Inputs map to ORCA as follows:
   ``! tightscf``; ``False`` or ``None`` leaves it out. Any other non-dictionary value
   is an error, so nothing is dropped silently.
 - ``{"maxcore": 2000}`` and ``{"pal": 4}`` become ``%maxcore`` and ``%pal nprocs``.
-  ORCA runs serially unless ``pal`` is given, and plans one thread: its parallel
-  runs need OpenMPI's ``mpirun`` (without it they fail, kind ``environment``), so
-  they are asked for, never assumed. A runner that grants fewer threads than ``pal``
-  lowers it, with a ``resource_capped`` warning.
+  ORCA runs serially unless ``pal`` (or ``threads``) is given, whatever the
+  calculation's thread count: its parallel runs need OpenMPI's ``mpirun`` (without
+  it they fail, kind ``environment``), so they are asked for, never assumed. A count
+  smaller than ``pal`` lowers it, with a ``resource_capped`` warning.
 - A keyword whose value is a dictionary becomes an input block:
   ``{"scf": {"maxiter": 200}}`` writes ``%scf maxiter 200 end``. Keys are kept as
   written; ORCA ignores case.
@@ -702,4 +702,5 @@ def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
 codec.cap_threads = cap_threads
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'orca').
-program = CodecProgram(codec)
+#: Serial unless asked: parallel ORCA needs OpenMPI's mpirun, which may be absent.
+program = CodecProgram(codec, threads=1)

@@ -11,18 +11,19 @@ included.
 
 What qccompute grants a calculation (its `RunContext`) reaches the program like this:
 
-- ``threads``: the plan asks for the input's request, its ``threads`` keyword (the
-  name every program shares) or the program's own setting (ORCA ``pal``, Psi4 ``-n``,
-  xtb ``parallel``; giving both is an error, code ``no_effect``), else the adapter's
-  default: 1, or None (all the runner has) for a program that scales with threads
-  (Psi4, CREST, and geomeTRIC or Sella whose subprogram does). The runner grants at
-  most that. A program with its own thread setting runs with the grant written into
-  it (the codec's ``cap_threads``), the others with it in ``OMP_NUM_THREADS`` and the
-  other numerical libraries' variables; a request larger than the grant is lowered
-  with a ``resource_capped`` warning. A Python library in a worker process gets each
-  call's threads afresh, since one worker serves calls with different grants:
-  PyTorch's threads and the BLAS and OpenMP runtimes it has loaded are set for every
-  call (``threadpoolctl``).
+- ``threads``: the calculation's thread count. A program runs with the input's request,
+  its ``threads`` keyword (the name every program shares) or the program's own setting
+  (ORCA ``pal``, Psi4 ``-n``, xtb ``parallel``; giving both is an error, code
+  ``no_effect``), at most the count; a request larger than the count is lowered with a
+  ``resource_capped`` warning. Without a request it runs with the count, unless the
+  adapter caps it where more threads only make the program slower (xtb, which nests
+  OpenMP threads, runs on one). A program with its own thread setting runs with its
+  threads written into it (the codec's ``cap_threads``), the others with them in
+  ``OMP_NUM_THREADS`` and the other numerical libraries' variables. A Python library in
+  a worker process gets each call's threads afresh, since one worker serves calls with
+  different counts: PyTorch's threads and the BLAS and OpenMP runtimes it has loaded
+  are set for every call (``threadpoolctl``); one that runs subprograms (Sella) holds
+  its own at one thread, its count being its children's. Plans state no threads.
 - ``gpus``: a program run as a subprocess (TeraChem) sees the granted GPUs in
   ``CUDA_VISIBLE_DEVICES``. A Python library (the ML potentials) is handed the first
   granted GPU as this process's CUDA device, ``cuda:N`` from ``ctx.device_ordinals()``,
@@ -135,7 +136,8 @@ _SCHEMA_NOTE = (
 _THREADS_SCHEMA: dict[str, Any] = {
     "type": "integer",
     "minimum": 1,
-    "description": "CPU threads the calculation may use; the runner's grant caps it.",
+    "description": "The calculation's thread count, at most its caller's (without it: "
+    "the caller's whole count).",
     "x-tier": "common",
     "x-concern": "resource",
 }
@@ -183,9 +185,10 @@ class CodecProgram:
         library: For a codec that calls a Python library: its distribution name,
             whose version is the program's numerics identity, with its model's
             weights where ``weights`` names them.
-        threads: The threads the program plans when its input requests none: 1, or
-            None for all the runner grants, for a program that scales with threads.
-            The codec writes the grant into the input with ``cap_threads``.
+        threads: The most threads the program runs with when its input asks for none:
+            a cap where more threads make the program slower; None: the
+            calculation's whole count. The codec writes the threads into the input
+            with ``cap_threads``.
         image: The container image the executable runs, when it is a launcher
             (a Docker wrapper): its digest identifies the program's numerics instead
             of the launcher's. ``QCCODEC_<NAME>_IMAGE`` sets it without code.
@@ -208,7 +211,7 @@ class CodecProgram:
         environment: Mapping[str, str] | None = None,
         command: str | None = None,
         library: str | None = None,
-        threads: int | None = 1,
+        threads: int | None = None,
         image: str | None = None,
         weights: Callable[[Any], Path | None] | None = None,
         keywords: Collection[str] | Callable[[CalcType], Collection[str]] | None = None,
@@ -422,11 +425,7 @@ class CodecProgram:
         return {} if target is None else {"accuracy": accuracy_record(target)}
 
     def plan(self, inp: ProgramInput | FileInput) -> dict[str, Any]:
-        """Encode the input without running it: its settings and resources.
-
-        The threads are the input's request (its ``threads`` keyword, or the
-        program's own setting such as ORCA's ``pal``), else the adapter's
-        ``threads`` (None: all the runner has).
+        """Encode the input without running it: its settings and the GPUs it needs.
 
         Raises:
             ProgramError: The codec refuses the input (kind ``input``, with a code
@@ -437,10 +436,7 @@ class CodecProgram:
         keywords = dict(inp.keywords) if isinstance(inp, ProgramInput) else {}
         return {
             "resolved": {"settings": keywords},
-            "resources": {
-                "threads": asked or native.threads or self.threads,
-                "gpus": native.gpus,
-            },
+            "resources": {"gpus": native.gpus},
         }
 
     def compute(
@@ -469,20 +465,20 @@ class CodecProgram:
         native, asked = self._encode_requested(inp)
         warnings: list[ProgramWarning] = []
         requested = asked or native.threads
-        grant = ctx.threads if ctx is not None else None
+        count = ctx.threads if ctx is not None else None
         use = asked  # called directly: the threads asked for, if any
-        if grant:
-            if requested and requested > grant:
-                use = grant  # a program uses the smaller of its request and its grant
+        if count:
+            if requested and requested > count:
+                use = count  # a program uses the smaller of its request and its count
                 warnings.append(
                     ProgramWarning(
                         code="resource_capped",
                         message=f"{self.name} asked for {requested} threads and was "
-                        f"granted {grant}; it ran with {grant}.",
+                        f"given {count}; it ran with {count}.",
                     )
                 )
-            elif not requested and self.threads is None:
-                use = grant  # a program that scales with threads uses all it got
+            elif not requested:  # the count, at most the program's own cap
+                use = count if self.threads is None else min(count, self.threads)
         if use is not None and use != native.threads:
             native = self._with_threads(inp, native, use)
         if ctx is None:
@@ -501,10 +497,10 @@ class CodecProgram:
         Inputs the codec batches together (same batch key) go in batches of at most
         ``codec.max_batch``; a batch that fails runs its inputs one at a time, so each
         failure is reported with its own input. Failures, refused inputs included, are
-        failed outputs in place. A batch runs with the whole grant, which the runner
-        sized as the sum of its inputs' threads; an input run on its own gets its own
-        planned threads (`_own_share`). A batch's outputs leave ``execution.threads``
-        to the runner, which gives each its own input's part of the grant, so that
+        failed outputs in place. A batch runs with the list's threads, which the runner
+        sized as the sum of its inputs'; an input run on its own gets its share of them
+        (`_own_share`). A batch's outputs leave ``execution.threads``
+        to the runner, which gives each its own input's part of the threads, so that
         ``wall_time * threads`` (the whole batch's wall time) adds up to the batch's
         cost.
         """
@@ -534,25 +530,23 @@ class CodecProgram:
                         outputs[i] = out
         for i in sorted(alone):
             try:
-                outputs[i] = self.compute(inputs[i], self._own_share(inputs[i], ctx))
+                outputs[i] = self.compute(
+                    inputs[i], self._own_share(inputs[i], ctx, len(inputs))
+                )
             except ProgramError as e:
                 outputs[i] = e.output or ProgramOutput.failure(inputs[i], e.error)
         return [o for o in outputs if o is not None]
 
-    def _own_share(self, inp: ProgramInput, ctx: Any) -> Any:
-        """The batch's grant with one input's own threads, for running it alone.
+    def _own_share(self, inp: ProgramInput, ctx: Any, n: int) -> Any:
+        """The batch's context for one of its ``n`` inputs, run alone.
 
-        Its threads are its request (``threads``, or the program's own setting),
-        else what the program plans, at most the batch's grant; a plan of None takes
-        the whole grant, as the runner does for one input.
+        An input with a ``threads`` keyword gets it (at most the batch's threads, as
+        `compute` caps it); any other its share of the batch's threads, ``threads //
+        n``, at least 1, as the runner sized it.
         """
-        if ctx is None or not ctx.threads:
+        if ctx is None or not ctx.threads or "threads" in inp.keywords:
             return ctx
-        try:
-            planned = self.plan(inp)["resources"]["threads"]
-        except ProgramError:
-            return ctx  # computing it reports the refusal
-        threads = ctx.threads if planned is None else max(1, min(planned, ctx.threads))
+        threads = max(1, ctx.threads // n)
         return ctx if threads == ctx.threads else _Share(ctx, threads)
 
     # ------------------------------------------------------------------ running
@@ -934,15 +928,15 @@ class CodecProgram:
 
 
 class _Share:
-    """A runner's grant with fewer threads; everything else is the grant's own."""
+    """A runner's context with fewer threads; everything else is the context's own."""
 
     def __init__(self, ctx: Any, threads: int) -> None:
-        """Keep the grant and the threads."""
+        """Keep the context and the threads."""
         self._ctx = ctx
         self.threads = threads
 
     def __getattr__(self, name: str) -> Any:
-        """Read every other field (scratch, timeout, gpus, compute) from the grant."""
+        """Read every other field (scratch, timeout, gpus, compute) from the context."""
         return getattr(self._ctx, name)
 
 

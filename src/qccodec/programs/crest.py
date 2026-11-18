@@ -12,10 +12,10 @@ Inputs map to CREST 3's TOML input as follows:
 - ``runtype`` defaults from the calculation type (``singlepoint``, ``numhess``,
   ``optimize``, ``imtd-gc``); a given ``runtype`` must match it, e.g. ``nci`` or
   ``entropy`` for conformer searches.
-- ``threads``: without it, CREST plans all the threads the runner has and runs with
-  what it is granted (the runner reads ``threads`` as the request, as for every
-  program); called directly, with CREST's own default. CREST itself always runs with
-  ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
+- ``threads``: without it, CREST runs on the calculation's thread count (the shared
+  ``threads`` keyword sets it, as for every program); called directly, with CREST's
+  own default. CREST itself always runs with ``OMP_NUM_THREADS=1`` and parallelizes
+  over its own threads.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
 and normal modes), ``optimization``, and ``conformer_search``. CREST writes the normal
@@ -446,5 +446,5 @@ def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
 codec.cap_threads = cap_threads
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'crest').
-#: CREST scales with threads: without ``threads`` it plans all the runner has.
-program = CodecProgram(codec, threads=None)
+#: CREST runs on the calculation's thread count unless its input sets ``threads``.
+program = CodecProgram(codec)

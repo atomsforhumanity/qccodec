@@ -8,18 +8,19 @@ Psi4, CREST, DFTB+, TeraChem, ...):
 - Pass ``compute`` a list of inputs to get a list of outputs in the same order. Each
   calculation runs in its own process and directory, so several run at once in
   threads; no ``if __name__ == "__main__":`` guard is needed.
-- A list is packed into the runner's threads: all the cores this process may use for
-  ``qccompute.compute``, or ``qccompute.Runner(threads=...)``. Each calculation counts
-  the threads it asks for: here xtb's ``parallel`` (``-P``), for ORCA ``pal``, for
-  Psi4 ``-n``, for CREST ``threads``; one when it asks for none. With 16 cores and
-  ``parallel`` 2, eight xtb calculations run at once. GPU programs (TeraChem) get
-  their own GPUs through ``CUDA_VISIBLE_DEVICES``.
+- A list shares the runner's threads (all the cores this process may use for
+  ``qccompute.compute``, or ``qccompute.Runner(threads=...)``): each calculation gets
+  its ``threads`` keyword, else its part of them, and never more run at once. With 16
+  cores and ``threads`` 2, eight xtb calculations run at once (xtb itself runs on one
+  thread unless asked). GPU programs (TeraChem) get their own GPUs through
+  ``CUDA_VISIBLE_DEVICES``.
 - The inputs may mix programs, methods, and calculation types.
 - Every calculation runs first. Then, if any failed, ``qcdata.ProgramErrors`` (an
   ``ExceptionGroup``) is raised: each error is a ``qcdata.ProgramError`` whose
   ``output`` is the failed output, and ``.results`` holds every output in input
   order. With ``raise_exc=False`` the outputs are returned as they are; check
-  ``output.success``. ``runner.as_completed(inputs)`` yields them as they finish.
+  ``output.success``. For outputs as they finish, ``runner.submit`` each input (with
+  ``threads``) and use ``concurrent.futures.as_completed``.
 """
 
 import math
@@ -49,7 +50,7 @@ inputs = [
         calctype=CalcType.gradient,
         structure=water(r),
         model=Model(method="gfn2"),
-        keywords={"parallel": 2},  # threads for each xtb, packed into the runner's
+        keywords={"threads": 2},  # each xtb's threads, out of the runner's
     )
     for r in distances
 ]

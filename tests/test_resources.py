@@ -59,24 +59,20 @@ def test_declared_resources(
 
 
 @pytest.mark.parametrize(
-    ("program", "method", "basis", "kwargs", "threads"),
+    ("program", "method", "basis", "kwargs", "gpus"),
     [
-        ("xtb", "gfn2", None, {}, 1),
-        ("xtb", "gfn2", None, {"keywords": {"parallel": 4}}, 4),
-        ("orca", "hf", "sto-3g", {}, 1),  # parallel ORCA needs MPI: asked for only
-        ("orca", "hf", "sto-3g", {"keywords": {"pal": 8}}, 8),
-        ("psi4", "hf", "sto-3g", {}, None),  # scales: all the runner has
-        ("psi4", "hf", "sto-3g", {"cmdline_args": ["-n", "6"]}, 6),
-        ("crest", "gfn2", None, {}, None),
-        ("crest", "gfn2", None, {"keywords": {"threads": 2}}, 2),
-        ("terachem", "hf", "sto-3g", {}, 1),  # its work is on its GPUs
-        ("tblite", "gfn2", None, {}, 1),
+        ("xtb", "gfn2", None, {"keywords": {"parallel": 4}}, 0),
+        ("orca", "hf", "sto-3g", {}, 0),
+        ("psi4", "hf", "sto-3g", {"cmdline_args": ["-n", "6"]}, 0),
+        ("crest", "gfn2", None, {}, 0),
+        ("terachem", "hf", "sto-3g", {}, 1),
+        ("tblite", "gfn2", None, {}, 0),
     ],
 )
-def test_plans_state_their_threads(
-    program: str, method: str, basis: str | None, kwargs: dict, threads: int | None
+def test_plans_state_gpus_and_no_threads(
+    program: str, method: str, basis: str | None, kwargs: dict, gpus: int
 ) -> None:
-    """A plan asks for the input's request, else 1, else all (programs that scale)."""
+    """Programs don't suggest thread counts: a plan states only the GPUs it needs."""
     from qccompute.program import find_program, plan_of
 
     inp = ProgramInput(
@@ -88,11 +84,62 @@ def test_plans_state_their_threads(
     )
     found = find_program(program)
     assert found is not None
-    assert plan_of(found, inp).resources.threads == threads
+    assert found.plan(inp)["resources"] == {"gpus": gpus}  # type: ignore[index]
+    assert plan_of(found, inp).resources.gpus == gpus
 
 
-def test_the_grant_reaches_a_program_that_scales(tmp_path: Path) -> None:
-    """Without a request, Psi4 runs with what it was granted: -n <grant>."""
+@pytest.mark.parametrize(
+    ("program", "method", "basis", "flag"),
+    [
+        ("orca", "hf", "sto-3g", None),  # serial unless asked: it needs MPI
+        ("psi4", "hf", "sto-3g", ("-n", "6")),
+        ("crest", "gfn2", None, "threads = 6"),
+        ("tblite", "gfn2", None, None),
+        ("xtb", "gfn2", None, ("--parallel", "1")),  # its own cap: nested OpenMP
+    ],
+)
+def test_programs_run_on_the_calculations_count(
+    tmp_path: Path, program: str, method: str, basis: str | None, flag: object
+) -> None:
+    """Without a request a program gets the count (6 here), at most its own cap."""
+    from types import SimpleNamespace
+
+    from qccompute.program import find_program
+
+    inp = ProgramInput(
+        program=program,
+        calctype=CalcType.gradient,
+        structure=WATER,
+        model=Model(method=method, basis=basis),
+    )
+    adapter = find_program(program)
+    assert adapter is not None
+    seen: list[Any] = []
+
+    class Stop(Exception):
+        pass
+
+    def run(inp, native, ctx, directory, start, warnings):  # type: ignore[no-untyped-def]
+        seen.append(native)
+        raise Stop
+
+    count = SimpleNamespace(threads=6, gpus=(), timeout=None, scratch=tmp_path)
+    adapter._run = run  # type: ignore[attr-defined]
+    try:
+        with pytest.raises(Stop):
+            adapter.compute(inp, count)  # type: ignore[arg-type]
+    finally:
+        del adapter._run  # type: ignore[attr-defined]
+    native = seen[0]
+    assert native.threads == (1 if program in ("xtb", "orca") else 6)
+    if isinstance(flag, tuple):
+        assert native.command[-2:] == flag
+    elif isinstance(flag, str):
+        assert any(flag in str(text) for text in native.files.values())
+
+
+def test_the_count_reaches_a_program_that_scales(tmp_path: Path) -> None:
+    """Without a request, Psi4 runs with the calculation's count: -n <count>."""
     from types import SimpleNamespace
 
     from qccodec.programs.psi4 import program
@@ -149,8 +196,9 @@ def test_ml_codecs_declare_a_gpu_unless_on_cpu(
     assert isinstance(native, PythonInput) and native.gpus == gpus
 
 
-def test_geometric_declares_the_resources_of_its_child() -> None:
-    """An optimization occupies what its gradient child declares."""
+def test_geometric_declares_the_gpus_of_its_child() -> None:
+    """An optimization needs the GPUs its gradient child's plan asks for; its threads
+    are its count, which its child gets."""
     from qcdata import ProgramSpec
 
     def optimization(child: ProgramSpec) -> PythonInput:
@@ -180,13 +228,11 @@ def test_geometric_declares_the_resources_of_its_child() -> None:
         calctype=CalcType.gradient,
         model=Model(method="hf", basis="sto-3g"),
     )
-    asked = psi4.model_copy(update={"keywords": {"threads": 3}})
     unknown = ProgramSpec(program="no-such-program", calctype=CalcType.gradient)
-    assert (optimization(orca).threads, optimization(orca).gpus) == (4, 0)
-    assert (optimization(terachem).threads, optimization(terachem).gpus) == (1, 1)
-    assert optimization(psi4).threads is None  # Psi4 asks for all the runner has
-    assert optimization(asked).threads == 3  # the subprogram's threads keyword
-    assert (optimization(unknown).threads, optimization(unknown).gpus) == (1, 0)
+    assert (optimization(orca).threads, optimization(orca).gpus) == (None, 0)
+    assert (optimization(terachem).threads, optimization(terachem).gpus) == (None, 1)
+    assert optimization(psi4).gpus == 0
+    assert (optimization(unknown).threads, optimization(unknown).gpus) == (None, 0)
 
 
 @pytest.mark.parametrize(
@@ -246,7 +292,6 @@ def test_the_shared_threads_keyword_becomes_the_programs_setting(
     )
     adapter = find_program(program)
     assert adapter is not None
-    assert plan_of(adapter, inp).resources.threads == 5
     seen: list[tuple[Any, list[Any]]] = []
 
     class Stop(Exception):

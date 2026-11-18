@@ -42,9 +42,9 @@ Atom indices in ``constraints`` are 0-based, as in geomeTRIC's Python interface.
 
 Each step is a calculation of the subprogram through the runner (``ctx.compute``), so
 the step's program runs wherever the runner places it. Called directly, the program
-hands itself to ``qccompute.compute``. The optimization plans the threads and GPUs its
-subprogram asks for (its ``threads`` keyword, else its program's plan, whatever program
-it is), so lists of optimizations share the machine correctly.
+hands itself to ``qccompute.compute``. Its subprogram runs on the optimization's thread
+count (unless the subprogram sets ``threads``), and the optimization plans the GPUs its
+subprogram's plan asks for; its own Python holds its thread pools at one thread.
 
 geomeTRIC runs in the caller's process: it writes its files in the calculation
 directory, its log (the ``geometric.nifty`` logger) goes to the output's ``logs``
@@ -207,7 +207,7 @@ def encode(inp: ProgramInput) -> PythonInput:
             "Constraint scans are not supported by this geomeTRIC integration.",
             kind="unsupported",
         )
-    threads, gpus = _child_resources(gradient_spec, inp)
+    gpus = _child_gpus(gradient_spec, inp)
     filename = "initial_geometry.xyz"
     if filename in inp.files:
         raise EncoderError(f"Supplied files conflict with generated input {filename}.")
@@ -228,19 +228,16 @@ def encode(inp: ProgramInput) -> PythonInput:
         directory_keyword="directory",
         # geomeTRIC logs everything through this one logger.
         loggers=("geometric.nifty",),
-        # Each step runs the child, so the optimization occupies what it declares.
-        threads=threads,
-        gpus=gpus,
+        gpus=gpus,  # each step runs the child: the optimization needs its GPUs
     )
 
 
-def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int | None, int]:
-    """Return the threads and GPUs the gradient subprogram asks for.
+def _child_gpus(spec: ProgramSpec, inp: ProgramInput) -> int:
+    """Return the GPUs the gradient subprogram's plan asks for.
 
-    The subprogram's ``threads`` keyword, else its program's plan (None: all the
-    runner has), whatever program it is (a codec, a program of its own package, a
-    ``FunctionProgram``); one thread and no GPU when it cannot be planned, which
-    computing it then reports.
+    Whatever program it is (a codec, a program of its own package, a
+    ``FunctionProgram``); none when it cannot be planned, which computing it then
+    reports.
     """
     from qccompute.program import find_program, plan_of
 
@@ -248,14 +245,10 @@ def _child_resources(spec: ProgramSpec, inp: ProgramInput) -> tuple[int | None, 
         child = ProgramInput.from_spec(spec, inp.structure, structures=inp.structures)
         program = find_program(child.program)
         if program is None:
-            return 1, 0
-        resources = plan_of(program, child).resources
+            return 0
+        return plan_of(program, child).resources.gpus
     except Exception:  # noqa: BLE001 - computing the child reports any problem
-        return 1, 0
-    threads = child.keywords.get("threads")
-    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
-        threads = resources.threads
-    return threads, resources.gpus
+        return 0
 
 
 def make_engine(
@@ -544,12 +537,11 @@ codec = Codec(
 )
 
 #: The program qccompute runs (the ``qccompute.programs`` entry point 'geometric').
-#: It runs in the caller's process, so its subprograms are found there too, and plans
-#: the threads its subprogram does (None when that one asks for all).
+#: It runs in the caller's process, so its subprograms are found there too; they get
+#: its thread count.
 program = CodecProgram(
     codec,
     library="geometric",
-    threads=None,
     keywords=lambda calctype: (
         SETTINGS if calctype == CalcType.irc else SETTINGS - {"irc_direction"}
     ),
