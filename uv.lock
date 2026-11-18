@@ -2610,7 +2610,7 @@ wheels = [
 
 [[package]]
 name = "qccodec"
-version = "0.22.0a7"
+version = "0.22.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
@@ -2659,7 +2659,7 @@ integration = [
 requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
-    { name = "qccompute", specifier = ">=0.23.0a6" },
+    { name = "qccompute", specifier = ">=0.23.0rc1" },
     { name = "qcdata", specifier = ">=0.24.0a8" },
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
@@ -2692,15 +2692,15 @@ integration = [{ name = "tblite", marker = "python_full_version < '3.15'", speci
 
 [[package]]
 name = "qccompute"
-version = "0.23.0a6"
+version = "0.23.0rc1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "qcdata" },
     { name = "threadpoolctl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/f5/daa9b689675794f55e523d1fed992ed5e71bebc0355e517a76432b43a728/qccompute-0.23.0a6.tar.gz", hash = "sha256:4b26ba67eec63a1bda154678e66869efb87ded1a9f2e793096340953bf59548d", size = 665773, upload-time = "2026-11-17T20:43:58.994Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/d9/ab57c17c683ba3ca996831d8d598ca0928183d3f8db7d2985d7ef6289a5a/qccompute-0.23.0rc1.tar.gz", hash = "sha256:faca94133d9f846461ba81f62854754dc4a6d892f57f5e3b4aed839af00f262a", size = 675337, upload-time = "2026-11-18T01:37:11.501Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/7e/ba0d2cad57b0d24fd723de93e2b50124df30df4d1cdfef2660f6a996930e/qccompute-0.23.0a6-py3-none-any.whl", hash = "sha256:5ccc753aa97724f91376861bf2912d477d12445b3d4cf4fec1ccd15b21a318f7", size = 90033, upload-time = "2026-11-17T20:43:57.461Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/b5/71bebea13aa995c0d77e3aaf728f8cff6f9bc97e7802a3dc700f9ed44ce9/qccompute-0.23.0rc1-py3-none-any.whl", hash = "sha256:08f3916e2df4538c544a8f0c0717adfd4afcdd49b5108e6fc80d3ef8ad46d0d5", size = 93382, upload-time = "2026-11-18T01:37:10.102Z" },
 ]
 
 [[package]]

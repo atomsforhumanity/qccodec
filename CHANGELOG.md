@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0rc1] - 2026-11-18
+
+The release candidate: these are the final interfaces; only bug fixes follow before 0.22.0.
+
+### Changed
+
+- **Breaking:** a program runs on the calculation's thread count unless its input asks for fewer (qccompute's [Threads](https://qccompute.docs.afh.org/next/threads/) page). `CodecProgram(threads=)` is now the program's own cap (default none): xtb caps at 1 (it nests OpenMP), ORCA at 1 unless `pal` is set (parallel ORCA needs MPI).
+- **Breaking:** `CodecProgram.plan` states GPUs only; geomeTRIC and Sella plan their child's GPUs only.
+- A batch input rerun alone gets its `threads` keyword, else its share of the batch's threads.
+- Requires qccompute 0.23.0rc1.
+
+### Added
+
+- xtb Hessians carry the energy and gradient from the same run (`--hess --grad`); the Hessian is unchanged.
+- ORCA Hessians carry the gradient when asked (`keywords={"engrad": True}`). It is not the default because it tightens ORCA's SCF and moves the Hessian slightly.
+
 ## [0.22.0a7] - 2026-11-18
 
 ### Fixed
