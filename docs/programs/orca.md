@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/orca/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/orca/single_point.py)
+[`examples/orca/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/single_point.py)
 
 ```python
 {!examples/orca/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Optimization
 
-[`examples/orca/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/orca/optimization.py)
+[`examples/orca/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/optimization.py)
 
 ```python
 {!examples/orca/optimization.py!}
@@ -31,7 +31,7 @@ with `python script.py`. They live in the repository's
 
 ### Transition state
 
-[`examples/orca/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/orca/transition_state.py)
+[`examples/orca/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/transition_state.py)
 
 ```python
 {!examples/orca/transition_state.py!}

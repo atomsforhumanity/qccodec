@@ -1,11 +1,11 @@
 # qccodec
 
 qccodec knows how to talk to quantum chemistry programs. For each program it has one
-**codec** that turns a [qcdata](https://qcdata.docs.afh.org/next/)
+**codec** that turns a [qcdata](https://qcdata.docs.afh.org/)
 `ProgramInput` into the program's native input files and command, and turns the
 program's output back into structured qcdata results.
 
-Each codec is also a program that [qccompute](https://qccompute.docs.afh.org/next/) runs:
+Each codec is also a program that [qccompute](https://qccompute.docs.afh.org/) runs:
 qccodec registers it under qccompute's `qccompute.programs` entry points, and its
 adapter (`qccodec.CodecProgram`) encodes the input, runs the program in a scratch
 directory with its output captured and a deadline, and decodes the result. qccompute
@@ -20,13 +20,8 @@ target into its program's thresholds yet.
 
 ## Install
 
-These pages document the alpha, at
-[qccodec.docs.afh.org/next](https://qccodec.docs.afh.org/next/); the site root documents
-the stable release. Install the alpha with minimum versions of its matching packages
-(`--prerelease=allow` lets the resolver take pre-releases):
-
 ```sh
-uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0rc1" "qccodec>=0.22.0rc1"
+python -m pip install "qccompute[qccodec]"
 ```
 
 You also need the program itself; each [program page](programs/index.md) says how to
@@ -86,12 +81,12 @@ that isn't supported yet.
 
 - [qcref](https://github.com/atomsforhumanity/qcref): physical constants, conversion
   factors, the periodic table, and solvent properties, each with its source.
-- [qcdata](https://qcdata.docs.afh.org/next/): data structures for quantum
+- [qcdata](https://qcdata.docs.afh.org/): data structures for quantum
   chemistry inputs and results.
 - [qcinf](https://github.com/atomsforhumanity/qcinf): cheminformatics algorithms for
   qcdata structures.
 - **qccodec**: program-specific encoders and parsers (this site).
-- [qccompute](https://qccompute.docs.afh.org/next/): runs programs and
+- [qccompute](https://qccompute.docs.afh.org/): runs programs and
   returns structured results.
 - [qcstore](https://github.com/atomsforhumanity/qcstore): keeps results under their
   calculation key: immutable runs, tags, and an optional index.

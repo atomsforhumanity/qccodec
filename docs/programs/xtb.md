@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/xtb/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/xtb/single_point.py)
+[`examples/xtb/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/single_point.py)
 
 ```python
 {!examples/xtb/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Optimization
 
-[`examples/xtb/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/xtb/optimization.py)
+[`examples/xtb/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/optimization.py)
 
 ```python
 {!examples/xtb/optimization.py!}
@@ -31,7 +31,7 @@ with `python script.py`. They live in the repository's
 
 ### Many calculations at once
 
-[`examples/xtb/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/xtb/many_calculations.py)
+[`examples/xtb/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/many_calculations.py)
 
 ```python
 {!examples/xtb/many_calculations.py!}

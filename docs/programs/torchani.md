@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/torchani/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/torchani/single_point.py)
+[`examples/torchani/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/torchani/single_point.py)
 
 ```python
 {!examples/torchani/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Many structures at once: batches
 
-[`examples/torchani/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/torchani/many_calculations.py)
+[`examples/torchani/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/torchani/many_calculations.py)
 
 ```python
 {!examples/torchani/many_calculations.py!}

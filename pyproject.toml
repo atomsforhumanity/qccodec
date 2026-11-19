@@ -1,6 +1,6 @@
 [project]
 name = "qccodec"
-version = "0.22.0rc1"
+version = "0.22.0"
 description = "External quantum chemistry programs as qccompute programs: encode qcdata inputs into native input files, run the programs, and decode their outputs into qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
@@ -9,8 +9,8 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.24.0a8",
-    "qccompute>=0.23.0rc1",
+    "qcdata>=0.24.0",
+    "qccompute>=0.23.0",
     "qcref>=0.4.0",
     "threadpoolctl>=3.1",
 ]
@@ -42,7 +42,7 @@ keywords = [
 Homepage = 'https://github.com/atomsforhumanity/qccodec'
 Documentation = 'https://qccodec.docs.afh.org'
 Source = 'https://github.com/atomsforhumanity/qccodec'
-Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md'
+Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md'
 "Bug Tracker" = 'https://github.com/atomsforhumanity/qccodec/issues'
 
 [project.optional-dependencies]

@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Single point: energy, gradient
 
-[`examples/tblite/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/tblite/single_point.py)
+[`examples/tblite/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/tblite/single_point.py)
 
 ```python
 {!examples/tblite/single_point.py!}

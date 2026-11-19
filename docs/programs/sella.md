@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Optimization
 
-[`examples/sella/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/sella/optimization.py)
+[`examples/sella/optimization.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/optimization.py)
 
 ```python
 {!examples/sella/optimization.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Transition state
 
-[`examples/sella/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/sella/transition_state.py)
+[`examples/sella/transition_state.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/transition_state.py)
 
 ```python
 {!examples/sella/transition_state.py!}
@@ -31,7 +31,7 @@ with `python script.py`. They live in the repository's
 
 ### IRC
 
-[`examples/sella/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/sella/irc.py)
+[`examples/sella/irc.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/irc.py)
 
 ```python
 {!examples/sella/irc.py!}

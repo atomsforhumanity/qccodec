@@ -48,7 +48,7 @@ qccodec runs a program by name from `PATH`, always by its absolute path (recorde
 codec writes it in the program's own spelling (ORCA's `pal`, Psi4's `-n`, xtb's
 `parallel`, CREST's `threads`) or sets `OMP_NUM_THREADS`. Giving both `threads` and the
 program's own setting is an error. Without it, a calculation runs on its caller's whole
-count ([qccompute's Threads page](https://qccompute.docs.afh.org/next/threads/)), and a
+count ([qccompute's Threads page](https://qccompute.docs.afh.org/threads/)), and a
 program uses all of it unless it caps itself:
 
 | program | without `threads` |

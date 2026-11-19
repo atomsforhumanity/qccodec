@@ -7,17 +7,17 @@
 
 Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program.
 
-**Documentation of the alpha, including a copy-and-paste example script for every program and calculation type: [qccodec.docs.afh.org/next](https://qccodec.docs.afh.org/next/)** (the site root documents the stable release)
+**Documentation, including a copy-and-paste example script for every program and calculation type: [qccodec.docs.afh.org](https://qccodec.docs.afh.org/)**
 
 ## The QC Suite
 
 These packages work together to make quantum chemistry fast, structured, and interoperable.
 
 - [qcref](https://github.com/atomsforhumanity/qcref) - Reference data for computational chemistry: CODATA physical constants, conversion factors, a periodic table, and solvent properties, each value with its source.
-- [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.afh.org/next/)
+- [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.afh.org/)
 - [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities for [qcdata](https://github.com/atomsforhumanity/qcdata) structures.
-- [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program. [Documentation](https://qccodec.docs.afh.org/next/)
-- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs: one input or many, in process or in workers, with a calculation store; external programs come with `qccompute[qccodec]`. [Documentation](https://qccompute.docs.afh.org/next/)
+- [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program. [Documentation](https://qccodec.docs.afh.org/)
+- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs: one input or many, in process or in workers, with a calculation store; external programs come with `qccompute[qccodec]`. [Documentation](https://qccompute.docs.afh.org/)
 - [qcstore](https://github.com/atomsforhumanity/qcstore) - Keeps results under their calculation key: immutable runs, tags, and an optional index.
 - [BigChem](https://github.com/mtzgroup/bigchem) - Distributed execution of qccompute calculations across clusters of computers or the cloud.
 - [ChemCloud](https://github.com/mtzgroup/chemcloud-client) - A [web application](https://github.com/mtzgroup/chemcloud-server) and [Python client](https://github.com/mtzgroup/chemcloud-client) that expose a BigChem cluster securely over the internet.
@@ -26,12 +26,10 @@ These packages work together to make quantum chemistry fast, structured, and int
 
 Every codec is also a program [qccompute](https://github.com/atomsforhumanity/qccompute) runs by name: qccodec registers it under the `qccompute.programs` entry points, and runs the program in a scratch directory with its output captured, a deadline, and its threads and GPUs from the runner.
 
-This README describes the alpha, installed with minimum versions of its matching packages
-(`--prerelease=allow` lets the resolver take pre-releases; a plain `pip install qccodec`
-resolves the previous stable release):
+Install it with the runner:
 
 ```sh
-uv pip install --prerelease=allow "qcdata>=0.24.0a8" "qccompute[qccodec]>=0.23.0rc1" "qccodec>=0.22.0rc1"
+python -m pip install "qccompute[qccodec]"
 ```
 
 ```python
@@ -66,40 +64,40 @@ data.energy, data.hessian, data.vibrational_analysis
 qccodec terachem hessian tc.out > data.json
 ```
 
-See [Decoding program output](https://qccodec.docs.afh.org/next/guides/decoding/) for directories, failed calculations, and encoding without running.
+See [Decoding program output](https://qccodec.docs.afh.org/guides/decoding/) for directories, failed calculations, and encoding without running.
 
 ## Supported programs
 
-Each program has a documentation page and a runnable example script for every calculation type in [`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples).
+Each program has a documentation page and a runnable example script for every calculation type in [`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples).
 
 | `program` | Calculation types | Notes |
 | --- | --- | --- |
-| [`crest`](https://qccodec.docs.afh.org/next/programs/crest/) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
-| [`dftbplus`](https://qccodec.docs.afh.org/next/programs/dftbplus/) | energy, gradient, hessian, optimization | DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref |
-| [`geometric`](https://qccodec.docs.afh.org/next/programs/geometric/) | optimization, transition_state, irc | Drives any gradient program (`qccodec[geometric]`) |
-| [`sella`](https://qccodec.docs.afh.org/next/programs/sella/) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
-| [`orca`](https://qccodec.docs.afh.org/next/programs/orca/) | energy, gradient, hessian, optimization, transition_state | |
-| [`psi4`](https://qccodec.docs.afh.org/next/programs/psi4/) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
-| [`terachem`](https://qccodec.docs.afh.org/next/programs/terachem/) | energy, gradient, hessian, optimization | GPU quantum chemistry |
-| [`terachem-fe`, `terachem-pbs`](https://qccodec.docs.afh.org/next/programs/terachem-servers/) | energy, gradient | TeraChem servers through tcpb (`qccodec[tcpb]`) |
-| [`xtb`](https://qccodec.docs.afh.org/next/programs/xtb/) | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB; point charges for QM/MM |
-| [`tblite`](https://qccodec.docs.afh.org/next/programs/tblite/) | energy, gradient | GFN1/GFN2/IPEA1-xTB as a Python library |
-| [`aimnet2`](https://qccodec.docs.afh.org/next/programs/aimnet2/) | energy, gradient, hessian | AIMNet2 machine-learned potentials |
-| [`fairchem`](https://qccodec.docs.afh.org/next/programs/fairchem/) | energy, gradient, hessian | UMA and eSEN (gated weights) |
-| [`mace`](https://qccodec.docs.afh.org/next/programs/mace/) | energy, gradient, hessian | MACE-OFF, MACE-MP, MACE-OMOL, custom models |
-| [`orb`](https://qccodec.docs.afh.org/next/programs/orb/) | energy, gradient | Orb v3 and OrbMol |
-| [`torchani`](https://qccodec.docs.afh.org/next/programs/torchani/) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
+| [`crest`](https://qccodec.docs.afh.org/programs/crest/) | energy, gradient, hessian, optimization, conformer_search | GFN-xTB and GFN-FF built in |
+| [`dftbplus`](https://qccodec.docs.afh.org/programs/dftbplus/) | energy, gradient, hessian, optimization | DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref |
+| [`geometric`](https://qccodec.docs.afh.org/programs/geometric/) | optimization, transition_state, irc | Drives any gradient program (`qccodec[geometric]`) |
+| [`sella`](https://qccodec.docs.afh.org/programs/sella/) | optimization, transition_state, irc | Drives any gradient program; optional Hessian program (`qccodec[sella]`) |
+| [`orca`](https://qccodec.docs.afh.org/programs/orca/) | energy, gradient, hessian, optimization, transition_state | |
+| [`psi4`](https://qccodec.docs.afh.org/programs/psi4/) | energy, gradient, hessian, optimization, transition_state | Any Psi4 method; point charges for QM/MM |
+| [`terachem`](https://qccodec.docs.afh.org/programs/terachem/) | energy, gradient, hessian, optimization | GPU quantum chemistry |
+| [`terachem-fe`, `terachem-pbs`](https://qccodec.docs.afh.org/programs/terachem-servers/) | energy, gradient | TeraChem servers through tcpb (`qccodec[tcpb]`) |
+| [`xtb`](https://qccodec.docs.afh.org/programs/xtb/) | energy, gradient, hessian, optimization | GFN0/1/2-xTB, GFN-FF, g-xTB; point charges for QM/MM |
+| [`tblite`](https://qccodec.docs.afh.org/programs/tblite/) | energy, gradient | GFN1/GFN2/IPEA1-xTB as a Python library |
+| [`aimnet2`](https://qccodec.docs.afh.org/programs/aimnet2/) | energy, gradient, hessian | AIMNet2 machine-learned potentials |
+| [`fairchem`](https://qccodec.docs.afh.org/programs/fairchem/) | energy, gradient, hessian | UMA and eSEN (gated weights) |
+| [`mace`](https://qccodec.docs.afh.org/programs/mace/) | energy, gradient, hessian | MACE-OFF, MACE-MP, MACE-OMOL, custom models |
+| [`orb`](https://qccodec.docs.afh.org/programs/orb/) | energy, gradient | Orb v3 and OrbMol |
+| [`torchani`](https://qccodec.docs.afh.org/programs/torchani/) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
 
 The last six are Python libraries, which qccompute runs in a worker process of the same Python environment: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
 
-To support a new program, see [Writing a codec](https://qccodec.docs.afh.org/next/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md).
+To support a new program, see [Writing a codec](https://qccodec.docs.afh.org/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process.
+See [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process.
 
 If there's data you'd like parsed from output files or a program you'd like supported, open an issue describing the data and include an example output file, like [this](https://github.com/atomsforhumanity/qccodec/issues/2).
 
 ## Optional dependencies
 
-Optional integrations install with `qccodec[geometric]`, `qccodec[sella]`, or `qccodec[tcpb]`. To run any program from ASE-based tools, see [ASE workflows](https://qccodec.docs.afh.org/next/guides/ase/). The tblite and machine-learned-potential codecs need their own libraries, installed separately (several of them, such as `mace-torch` and `fairchem-core`, cannot share an environment). Every library is imported only when a calculation is invoked.
+Optional integrations install with `qccodec[geometric]`, `qccodec[sella]`, or `qccodec[tcpb]`. To run any program from ASE-based tools, see [ASE workflows](https://qccodec.docs.afh.org/guides/ase/). The tblite and machine-learned-potential codecs need their own libraries, installed separately (several of them, such as `mace-torch` and `fairchem-core`, cannot share an environment). Every library is imported only when a calculation is invoked.

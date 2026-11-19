@@ -6,13 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0] - 2026-11-19
+
+The final release of the 0.22.0 alphas and release candidate: their entries below make up its changes since 0.21. Since 0.22.0rc1:
+
+### Changed
+
+- Requires qcdata 0.24.0 and qccompute 0.23.0 or later; the README and docs install the final releases and link to the stable docs.
+
 ## [0.22.0rc1] - 2026-11-18
 
 The release candidate: these are the final interfaces; only bug fixes follow before 0.22.0.
 
 ### Changed
 
-- **Breaking:** a program runs on the calculation's thread count unless its input asks for fewer (qccompute's [Threads](https://qccompute.docs.afh.org/next/threads/) page). `CodecProgram(threads=)` is now the program's own cap (default none): xtb caps at 1 (it nests OpenMP), ORCA at 1 unless `pal` is set (parallel ORCA needs MPI).
+- **Breaking:** a program runs on the calculation's thread count unless its input asks for fewer (qccompute's [Threads](https://qccompute.docs.afh.org/threads/) page). `CodecProgram(threads=)` is now the program's own cap (default none): xtb caps at 1 (it nests OpenMP), ORCA at 1 unless `pal` is set (parallel ORCA needs MPI).
 - **Breaking:** `CodecProgram.plan` states GPUs only; geomeTRIC and Sella plan their child's GPUs only.
 - A batch input rerun alone gets its `threads` keyword, else its share of the batch's threads.
 - Requires qccompute 0.23.0rc1.
@@ -635,7 +643,8 @@ that qccompute runs like any other. Breaking changes come without compatibility 
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.21.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.22.0
 [0.21.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.21.0
 [0.20.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.1
 [0.20.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.0

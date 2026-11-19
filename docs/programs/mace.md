@@ -11,11 +11,11 @@
 
 Each script runs as written. Copy it, delete the options you don't need, and run it
 with `python script.py`. They live in the repository's
-[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/next/examples) folder.
+[`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples) folder.
 
 ### Single point: energy, gradient, Hessian
 
-[`examples/mace/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/mace/single_point.py)
+[`examples/mace/single_point.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/mace/single_point.py)
 
 ```python
 {!examples/mace/single_point.py!}
@@ -23,7 +23,7 @@ with `python script.py`. They live in the repository's
 
 ### Many structures at once: batches
 
-[`examples/mace/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/next/examples/mace/many_calculations.py)
+[`examples/mace/many_calculations.py`](https://github.com/atomsforhumanity/qccodec/blob/master/examples/mace/many_calculations.py)
 
 ```python
 {!examples/mace/many_calculations.py!}
