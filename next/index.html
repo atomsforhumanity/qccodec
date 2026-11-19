@@ -323,7 +323,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md" class="md-tabs__link">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md" class="md-tabs__link">
         
   
   
@@ -342,7 +342,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md" class="md-tabs__link">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md" class="md-tabs__link">
         
   
   
@@ -1275,7 +1275,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/atomsforhumanity/qccodec/blob/next/CONTRIBUTING.md" class="md-nav__link">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md" class="md-nav__link">
         
   
   
@@ -1302,7 +1302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/atomsforhumanity/qccodec/blob/next/CHANGELOG.md" class="md-nav__link">
+      <a href="https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md" class="md-nav__link">
         
   
   
@@ -1435,10 +1435,10 @@
 
 <h1 id="qccodec">qccodec<a class="headerlink" href="#qccodec" title="Permanent link">&para;</a></h1>
 <p>qccodec knows how to talk to quantum chemistry programs. For each program it has one
-<strong>codec</strong> that turns a <a href="https://qcdata.docs.afh.org/next/">qcdata</a>
+<strong>codec</strong> that turns a <a href="https://qcdata.docs.afh.org/">qcdata</a>
 <code>ProgramInput</code> into the program's native input files and command, and turns the
 program's output back into structured qcdata results.</p>
-<p>Each codec is also a program that <a href="https://qccompute.docs.afh.org/next/">qccompute</a> runs:
+<p>Each codec is also a program that <a href="https://qccompute.docs.afh.org/">qccompute</a> runs:
 qccodec registers it under qccompute's <code>qccompute.programs</code> entry points, and its
 adapter (<code>qccodec.CodecProgram</code>) encodes the input, runs the program in a scratch
 directory with its output captured and a deadline, and decodes the result. qccompute
@@ -1451,11 +1451,7 @@ accuracy target (the shared keyword <code>accuracy</code>) as it is and records 
 thresholds; every other codec refuses one with kind <code>unsupported</code>, since none turns a
 target into its program's thresholds yet.</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<p>These pages document the alpha, at
-<a href="https://qccodec.docs.afh.org/next/">qccodec.docs.afh.org/next</a>; the site root documents
-the stable release. Install the alpha with minimum versions of its matching packages
-(<code>--prerelease=allow</code> lets the resolver take pre-releases):</p>
-<div class="language-sh highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--prerelease<span class="o">=</span>allow<span class="w"> </span><span class="s2">&quot;qcdata&gt;=0.24.0a8&quot;</span><span class="w"> </span><span class="s2">&quot;qccompute[qccodec]&gt;=0.23.0rc1&quot;</span><span class="w"> </span><span class="s2">&quot;qccodec&gt;=0.22.0rc1&quot;</span>
+<div class="language-sh highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;qccompute[qccodec]&quot;</span>
 </code></pre></div>
 <p>You also need the program itself; each <a href="programs/">program page</a> says how to
 install it and get it found.</p>
@@ -1574,12 +1570,12 @@ that isn't supported yet.</p>
 <ul>
 <li><a href="https://github.com/atomsforhumanity/qcref">qcref</a>: physical constants, conversion
   factors, the periodic table, and solvent properties, each with its source.</li>
-<li><a href="https://qcdata.docs.afh.org/next/">qcdata</a>: data structures for quantum
+<li><a href="https://qcdata.docs.afh.org/">qcdata</a>: data structures for quantum
   chemistry inputs and results.</li>
 <li><a href="https://github.com/atomsforhumanity/qcinf">qcinf</a>: cheminformatics algorithms for
   qcdata structures.</li>
 <li><strong>qccodec</strong>: program-specific encoders and parsers (this site).</li>
-<li><a href="https://qccompute.docs.afh.org/next/">qccompute</a>: runs programs and
+<li><a href="https://qccompute.docs.afh.org/">qccompute</a>: runs programs and
   returns structured results.</li>
 <li><a href="https://github.com/atomsforhumanity/qcstore">qcstore</a>: keeps results under their
   calculation key: immutable runs, tags, and an optional index.</li>
