@@ -1478,7 +1478,11 @@
 <li>A keyword set to <code>True</code> adds a simple-input word, so <code>{"tightscf": True}</code> writes
   <code>! tightscf</code>; <code>False</code> or <code>None</code> leaves it out. Any other non-dictionary value
   is an error, so nothing is dropped silently.</li>
-<li><code>{"maxcore": 2000}</code> and <code>{"pal": 4}</code> become <code>%maxcore</code> and <code>%pal nprocs</code>.</li>
+<li><code>{"maxcore": 2000}</code> and <code>{"pal": 4}</code> become <code>%maxcore</code> and <code>%pal nprocs</code>.
+  ORCA runs serially unless <code>pal</code> (or <code>threads</code>) is given, whatever the
+  calculation's thread count: its parallel runs need OpenMPI's <code>mpirun</code> (without
+  it they fail, kind <code>environment</code>), so they are asked for, never assumed. A count
+  smaller than <code>pal</code> lowers it, with a <code>resource_capped</code> warning.</li>
 <li>A keyword whose value is a dictionary becomes an input block:
   <code>{"scf": {"maxiter": 200}}</code> writes <code>%scf maxiter 200 end</code>. Keys are kept as
   written; ORCA ignores case.</li>
@@ -1486,15 +1490,38 @@
   Setting <code>coords</code>, or <code>method</code>/<code>basis</code> inside a block, is an error.</li>
 <li><code>cmdline_args</code> are appended to the <code>orca</code> command.</li>
 </ul>
-<p>Calculation types: <code>energy</code>, <code>gradient</code>, <code>hessian</code> (also the gradient when ORCA
-writes it, and the harmonic frequencies and normal modes from <code>&lt;basename&gt;.hess</code>:
+<p>Calculation types: <code>energy</code>, <code>gradient</code>, <code>hessian</code> (also the gradient where ORCA
+gives it: <code>keywords={"engrad": True}</code> asks for it beside <code>! freq</code>, which also
+tightens ORCA's SCF convergence; and the harmonic frequencies and normal modes from
+<code>&lt;basename&gt;.hess</code>:
 unit-length Cartesian displacements without translations and rotations, imaginary
 frequencies negative), <code>optimization</code>, and <code>transition_state</code> (<code>OptTS</code>; give ORCA a
 starting Hessian, e.g. <code>{"geom": {"calc_hess": True}}</code>). ORCA keeps the input's
 coordinates and atom order. No input field carries atom indices.</p>
+<p>Keywords are checked as far as the codec can: values must be <code>True</code>, a dictionary,
+<code>False</code>/<code>None</code>, or <code>maxcore</code>/<code>pal</code> numbers. ORCA's simple-input words, blocks
+and block settings are too many to list, but ORCA refuses an unknown one itself before
+calculating anything, and the codec reports that as kind <code>input</code>, code
+<code>unknown_key</code> (a misspelled method or basis set is <code>input</code> without a code).</p>
+<p>Failures and their kinds: an SCF that does not converge is <code>convergence</code> (code
+<code>scf_not_converged</code>), with the energy of its last iteration; coupled-perturbed SCF
+equations (for analytic Hessians) that end with perturbations above their tolerance
+are <code>convergence</code> (<code>response_not_converged</code>), with the results ORCA wrote, since
+ORCA itself carries on with them; an optimization that runs out of cycles is
+<code>convergence</code> (<code>max_iter</code>), with its trajectory attached (ORCA itself reports it as
+a normal termination); a multiplicity the number of electrons cannot have is
+<code>input</code>; a module out of memory is <code>resource</code> (<code>host_memory</code>), with
+<code>required_gib</code> and <code>available_gib</code> in the error's <code>details</code> where ORCA prints
+what a step needed against <code>%maxcore</code> (the SCF's estimate, DLPNO's minimum), in
+the terms of ORCA's memory keyword: the <code>%maxcore</code> with which the step fits and the
+one it ran with, each times the processes (ORCA's per-process MB of 2^20 bytes), in
+GiB. Any other error termination is <code>internal</code>, with ORCA's error line.</p>
+<p>ORCA stops when the SCF does not converge unless <code>%scf ConvIgnored true</code> lets it
+carry on with the unconverged SCF; its results then come with the warning
+<code>loosely_converged</code>, whose message gives the last iteration's residuals.</p>
 <p>Run ORCA by its full path: its parallel runs need it, and on many Linux desktops
 <code>/usr/bin/orca</code> is the GNOME screen reader. qccompute always runs the absolute path;
-put ORCA first on <code>PATH</code> or set <code>QCCOMPUTE_ORCA_EXECUTABLE</code>.</p>
+put ORCA first on <code>PATH</code> or set <code>QCCODEC_ORCA_EXECUTABLE</code>.</p>
 
 
 
@@ -1522,13 +1549,12 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/single_point.py"><code>examples/orca/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;ORCA single point: energy, gradient, or Hessian.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and ORCA, free for academic</span>
-<span class="sd">use from https://orcaforum.kofo.mpg.de. Put the ORCA directory first on PATH, or point</span>
-<span class="sd">qccompute at it with QCCOMPUTE_ORCA_EXECUTABLE or ``executables={&quot;orca&quot;: ...}``: on</span>
-<span class="sd">many Linux desktops ``/usr/bin/orca`` is the GNOME screen reader, not ORCA. Parallel</span>
-<span class="sd">runs (``pal``) also need the OpenMPI version ORCA was built with, and ORCA stops with</span>
-<span class="sd">&quot;ORCA has to be called with full pathname&quot; unless it runs by its absolute path, which</span>
-<span class="sd">qccompute does from the release after 0.15.0 (the one with ``executables=``).</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and ORCA, free for academic use from</span>
+<span class="sd">https://orcaforum.kofo.mpg.de. Put the ORCA directory first on PATH, or point qccodec</span>
+<span class="sd">at it with QCCODEC_ORCA_EXECUTABLE: on many Linux desktops ``/usr/bin/orca`` is the</span>
+<span class="sd">GNOME screen reader, not ORCA. Parallel runs (``pal``) also need the OpenMPI version</span>
+<span class="sd">ORCA was built with, and ORCA stops with &quot;ORCA has to be called with full pathname&quot;</span>
+<span class="sd">unless it runs by its absolute path, which qccodec always does.</span>
 
 <span class="sd">How the codec talks to ORCA (manual: https://www.faccts.de/docs/orca/6.0/manual/):</span>
 
@@ -1586,8 +1612,6 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=3600,  # seconds before ORCA is killed</span>
-    <span class="c1"># collect_files=True,  # keep every output file (orca.gbw, orca.hess, ...)</span>
-    <span class="c1"># executables={&quot;orca&quot;: &quot;/opt/orca/orca&quot;},  # or set QCCOMPUTE_ORCA_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
@@ -1596,17 +1620,22 @@ with <code>python script.py</code>. They live in the repository's
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hessian (Hartree/bohr^2), shape:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">freqs_wavenumber</span><span class="p">)</span>  <span class="c1"># imaginary are negative</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Normal modes (modes, atoms, xyz):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">normal_modes_cartesian</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">frequencies</span>
+    <span class="p">)</span>  <span class="c1"># imaginary are negative</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Normal modes (modes, atoms, xyz):&quot;</span><span class="p">,</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">normal_modes_cartesian</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ORCA version:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">program_version</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="optimization">Optimization<a class="headerlink" href="#optimization" title="Permanent link">&para;</a></h3>
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/optimization.py"><code>examples/orca/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;ORCA geometry optimization with its built-in optimizer.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and ORCA on PATH, ahead of</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and ORCA on PATH, ahead of</span>
 <span class="sd">``/usr/bin/orca`` (the GNOME screen reader on many Linux desktops); or set</span>
-<span class="sd">QCCOMPUTE_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.</span>
+<span class="sd">QCCODEC_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.</span>
 
 <span class="sd">Notes for ORCA optimizations (manual: https://www.faccts.de/docs/orca/6.0/manual/,</span>
 <span class="sd">&quot;Geometry Optimization&quot;):</span>
@@ -1651,10 +1680,10 @@ with <code>python script.py</code>. They live in the repository's
     <span class="p">},</span>
 <span class="p">)</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=..., collect_files=..., executables=...</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=... (seconds)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 <span class="c1"># Save the trajectory, e.g. to view in a molecule viewer:</span>
@@ -1664,9 +1693,9 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/orca/transition_state.py"><code>examples/orca/transition_state.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;ORCA transition-state search (OptTS).</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and ORCA on PATH, ahead of</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and ORCA on PATH, ahead of</span>
 <span class="sd">``/usr/bin/orca`` (the GNOME screen reader on many Linux desktops); or set</span>
-<span class="sd">QCCOMPUTE_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.</span>
+<span class="sd">QCCODEC_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.</span>
 
 <span class="sd">Notes for ORCA transition-state searches (manual:</span>
 <span class="sd">https://www.faccts.de/docs/orca/6.0/manual/, &quot;Transition State Searches&quot;):</span>
@@ -1713,10 +1742,10 @@ with <code>python script.py</code>. They live in the repository's
     <span class="p">},</span>
 <span class="p">)</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=..., collect_files=..., executables=...</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=... (seconds)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state energy (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 </code></pre></div>

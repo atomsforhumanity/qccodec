@@ -1485,7 +1485,12 @@ process and reused.</p>
   and <code>precision</code> (<code>"float32-high"</code> by default, <code>"float32-highest"</code>, or
   <code>"float64"</code>). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
-  as <code>"cuda:1"</code> opts out of that.</li>
+  as <code>"cuda:1"</code> opts out of that.
+  Unset (or <code>"cuda"</code>), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  <code>backend_fallback</code> warning. <code>resolved.settings</code> names the device used.</li>
 <li><code>cmdline_args</code> and <code>files</code> are not accepted.</li>
 </ul>
 <p>Calculation types: <code>energy</code> and <code>gradient</code>. Orb provides no Hessian; use
@@ -1524,10 +1529,11 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/orb/single_point.py"><code>examples/orb/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Orb single point: energy or gradient from an Orb potential.</span>
 
-<span class="sd">Requires: ``pip install qccompute orb-models``, in an environment without</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] orb-models``, in an environment without</span>
 <span class="sd">``fairchem-core``. Orb is a Python library, so nothing has to be on PATH: the model</span>
-<span class="sd">runs inside this Python process, on the GPU when PyTorch sees one. Weights download on</span>
-<span class="sd">first use; later calculations in the same process reuse the loaded model.</span>
+<span class="sd">runs in a qccompute worker process of this Python environment, on the GPU the runner</span>
+<span class="sd">grants (the CPU when it grants none). Weights download on first use; the worker keeps</span>
+<span class="sd">the loaded model for later calculations.</span>
 
 <span class="sd">How the codec talks to Orb (https://github.com/orbital-materials/orb-models):</span>
 
@@ -1563,7 +1569,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;orb-v3-conservative-omol&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;orb-v3-direct-omol&quot;, ...</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out to use a GPU when present</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="c1"># &quot;precision&quot;: &quot;float64&quot;,  # or &quot;float32-highest&quot;</span>
     <span class="p">},</span>
 <span class="p">)</span>
@@ -1580,13 +1586,13 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/orb/many_calculations.py"><code>examples/orb/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Orb for many structures at once: a bond scan evaluated in batches.</span>
 
-<span class="sd">Requires: what examples/orb/single_point.py requires, and qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/orb/single_point.py requires.</span>
 
 <span class="sd">How batching works:</span>
 
 <span class="sd">- Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,</span>
 <span class="sd">  model, and keywords are evaluated in batches, one model call for up to</span>
-<span class="sd">  ``get_codec(&quot;orb&quot;).max_batch`` (32) structures, in this Python process. On a GPU</span>
+<span class="sd">  ``get_codec(&quot;orb&quot;).max_batch`` (32) structures, in one worker process. On a GPU</span>
 <span class="sd">  that is many times faster than one call per structure.</span>
 <span class="sd">- Each structure&#39;s results are what computing it alone gives, to the model&#39;s precision.</span>
 <span class="sd">  Structures in one batch may differ in size, composition, and charge.</span>
@@ -1636,7 +1642,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;orb-v3-conservative-omol&quot;</span><span class="p">),</span>
         <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
             <span class="c1"># &quot;precision&quot;: &quot;float64&quot;,  # GPU default float32-high differs in the last digits</span>
-            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out to use a GPU when present</span>
+            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="p">},</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>

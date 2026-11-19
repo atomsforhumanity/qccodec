@@ -1419,14 +1419,23 @@
 
 <h1 id="qccodec">qccodec<a class="headerlink" href="#qccodec" title="Permanent link">&para;</a></h1>
 <p>qccodec knows how to talk to quantum chemistry programs. For each program it has one
-<strong>codec</strong> that turns a <a href="https://qcdata.docs.afh.org">qcdata</a>
+<strong>codec</strong> that turns a <a href="https://qcdata.docs.afh.org/">qcdata</a>
 <code>ProgramInput</code> into the program's native input files and command, and turns the
 program's output back into structured qcdata results.</p>
-<p>qccodec never runs anything itself.
-<a href="https://qccompute.docs.afh.org">qccompute</a> runs the program and uses
-the codec on both ends, so most scientists use the two together.</p>
+<p>Each codec is also a program that <a href="https://qccompute.docs.afh.org/">qccompute</a> runs:
+qccodec registers it under qccompute's <code>qccompute.programs</code> entry points, and its
+adapter (<code>qccodec.CodecProgram</code>) encodes the input, runs the program in a scratch
+directory with its output captured and a deadline, and decodes the result. qccompute
+finds it by name, runs it on its thread count, and stores results. A thread request
+larger than the calculation's count (ORCA <code>pal</code>, Psi4 <code>-n</code>) is lowered to the count,
+with a <code>resource_capped</code> warning. An ML potential granted no GPU runs on the CPU; it warns
+<code>backend_fallback</code> only when it was granted one and still ran on the CPU. A calculation
+with nothing to converge (ML potentials, GFN-FF and non-SCC DFTB single points) meets an
+accuracy target (the shared keyword <code>accuracy</code>) as it is and records it as met, with no
+thresholds; every other codec refuses one with kind <code>unsupported</code>, since none turns a
+target into its program's thresholds yet.</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<div class="language-sh highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>qccompute<span class="w">   </span><span class="c1"># also installs qccodec</span>
+<div class="language-sh highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;qccompute[qccodec]&quot;</span>
 </code></pre></div>
 <p>You also need the program itself; each <a href="programs/">program page</a> says how to
 install it and get it found.</p>
@@ -1466,14 +1475,19 @@ Copy one, delete what you don't need, and run it.</p>
 <td>GFN-xTB and GFN-FF built in</td>
 </tr>
 <tr>
+<td><a href="programs/dftbplus/"><code>dftbplus</code></a></td>
+<td>energy, gradient, hessian, optimization</td>
+<td>DFTB3, SCC-DFTB, DFTB, and xTB; parameter-set settings from qcref</td>
+</tr>
+<tr>
 <td><a href="programs/geometric/"><code>geometric</code></a></td>
 <td>optimization, transition_state, irc</td>
-<td>Drives any gradient program</td>
+<td>Drives any gradient program (<code>qccodec[geometric]</code>)</td>
 </tr>
 <tr>
 <td><a href="programs/sella/"><code>sella</code></a></td>
 <td>optimization, transition_state, irc</td>
-<td>Drives any gradient program; optional Hessian program</td>
+<td>Drives any gradient program; optional Hessian program (<code>qccodec[sella]</code>)</td>
 </tr>
 <tr>
 <td><a href="programs/orca/"><code>orca</code></a></td>
@@ -1493,12 +1507,42 @@ Copy one, delete what you don't need, and run it.</p>
 <tr>
 <td><a href="programs/terachem-servers/"><code>terachem-fe</code>, <code>terachem-pbs</code></a></td>
 <td>energy, gradient</td>
-<td>TeraChem servers through tcpb</td>
+<td>TeraChem servers through tcpb (<code>qccodec[tcpb]</code>)</td>
 </tr>
 <tr>
 <td><a href="programs/xtb/"><code>xtb</code></a></td>
 <td>energy, gradient, hessian, optimization</td>
-<td>GFN0/1/2-xTB, GFN-FF, g-xTB</td>
+<td>GFN0/1/2-xTB, GFN-FF, g-xTB; point charges for QM/MM</td>
+</tr>
+<tr>
+<td><a href="programs/tblite/"><code>tblite</code></a></td>
+<td>energy, gradient</td>
+<td>GFN1/GFN2/IPEA1-xTB as a Python library</td>
+</tr>
+<tr>
+<td><a href="programs/aimnet2/"><code>aimnet2</code></a></td>
+<td>energy, gradient, hessian</td>
+<td>AIMNet2 machine-learned potentials</td>
+</tr>
+<tr>
+<td><a href="programs/fairchem/"><code>fairchem</code></a></td>
+<td>energy, gradient, hessian</td>
+<td>UMA and eSEN (gated weights)</td>
+</tr>
+<tr>
+<td><a href="programs/mace/"><code>mace</code></a></td>
+<td>energy, gradient, hessian</td>
+<td>MACE-OFF, MACE-MP, MACE-OMOL, custom models</td>
+</tr>
+<tr>
+<td><a href="programs/orb/"><code>orb</code></a></td>
+<td>energy, gradient</td>
+<td>Orb v3 and OrbMol</td>
+</tr>
+<tr>
+<td><a href="programs/torchani/"><code>torchani</code></a></td>
+<td>energy, gradient, hessian</td>
+<td>ANI-2x, ANI-1ccx, ...</td>
 </tr>
 </tbody>
 </table>
@@ -1510,13 +1554,15 @@ that isn't supported yet.</p>
 <ul>
 <li><a href="https://github.com/atomsforhumanity/qcref">qcref</a>: physical constants, conversion
   factors, the periodic table, and solvent properties, each with its source.</li>
-<li><a href="https://qcdata.docs.afh.org">qcdata</a>: data structures for quantum
+<li><a href="https://qcdata.docs.afh.org/">qcdata</a>: data structures for quantum
   chemistry inputs and results.</li>
 <li><a href="https://github.com/atomsforhumanity/qcinf">qcinf</a>: cheminformatics algorithms for
   qcdata structures.</li>
 <li><strong>qccodec</strong>: program-specific encoders and parsers (this site).</li>
-<li><a href="https://qccompute.docs.afh.org">qccompute</a>: runs programs and
+<li><a href="https://qccompute.docs.afh.org/">qccompute</a>: runs programs and
   returns structured results.</li>
+<li><a href="https://github.com/atomsforhumanity/qcstore">qcstore</a>: keeps results under their
+  calculation key: immutable runs, tags, and an optional index.</li>
 <li><a href="https://github.com/mtzgroup/bigchem">BigChem</a> and
   <a href="https://github.com/mtzgroup/chemcloud-client">ChemCloud</a>: distributed and cloud
   execution of qccompute calculations.</li>

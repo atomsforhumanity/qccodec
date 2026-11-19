@@ -1482,7 +1482,12 @@ first use, and each model is loaded once per process and reused.</p>
   <code>"float32"</code>, faster), and <code>model_index</code> (one member of the ensemble instead of
   its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
-  as <code>"cuda:1"</code> opts out of that.</li>
+  as <code>"cuda:1"</code> opts out of that.
+  Unset (or <code>"cuda"</code>), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  <code>backend_fallback</code> warning. <code>resolved.settings</code> names the device used.</li>
 <li><code>cmdline_args</code> and <code>files</code> are not accepted.</li>
 </ul>
 <p>Calculation types: <code>energy</code>, <code>gradient</code>, and <code>hessian</code> (by automatic
@@ -1522,10 +1527,10 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/torchani/single_point.py"><code>examples/torchani/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;TorchANI single point: energy, gradient, or Hessian from an ANI potential.</span>
 
-<span class="sd">Requires: ``pip install qccompute torchani``. TorchANI is a Python library, so nothing</span>
-<span class="sd">has to be on PATH: the model runs inside this Python process, on the GPU when PyTorch</span>
-<span class="sd">sees one. Parameters download on first use; later calculations in the same process</span>
-<span class="sd">reuse the loaded model.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] torchani``. TorchANI is a Python library, so nothing</span>
+<span class="sd">has to be on PATH: the model runs in a qccompute worker process of this Python</span>
+<span class="sd">environment, on the GPU the runner grants (the CPU when it grants none). Parameters</span>
+<span class="sd">download on first use; the worker keeps the loaded model for later calculations.</span>
 
 <span class="sd">How the codec talks to TorchANI (https://github.com/aiqm/torchani):</span>
 
@@ -1558,7 +1563,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;ANI2x&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;ANI1ccx&quot;, &quot;ANI1x&quot;, ...</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out to use a GPU when present</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="s2">&quot;float64&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;float32&quot;</span>
         <span class="c1"># &quot;model_index&quot;: 0,  # one member of the ensemble instead of its average</span>
     <span class="p">},</span>
@@ -1578,13 +1583,13 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/torchani/many_calculations.py"><code>examples/torchani/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;TorchANI for many structures at once: a bond scan evaluated in batches.</span>
 
-<span class="sd">Requires: what examples/torchani/single_point.py requires, and qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/torchani/single_point.py requires.</span>
 
 <span class="sd">How batching works:</span>
 
 <span class="sd">- Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,</span>
 <span class="sd">  model, and keywords are evaluated in batches, one model call for up to</span>
-<span class="sd">  ``get_codec(&quot;torchani&quot;).max_batch`` (32) structures, in this Python process. On a GPU</span>
+<span class="sd">  ``get_codec(&quot;torchani&quot;).max_batch`` (32) structures, in one worker process. On a GPU</span>
 <span class="sd">  that is many times faster than one call per structure.</span>
 <span class="sd">- Each structure&#39;s results are what computing it alone gives, to the model&#39;s precision.</span>
 <span class="sd">  Structures in one batch may differ in size, composition, and charge.</span>
@@ -1628,7 +1633,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;ANI2x&quot;</span><span class="p">),</span>
         <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="s2">&quot;float64&quot;</span><span class="p">,</span>
-            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out to use a GPU when present</span>
+            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="p">},</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>

@@ -1495,7 +1495,10 @@ calculator is involved.</p>
   Atom indices are 0-based and targets in angstrom and degrees, as in Sella.</li>
 <li>The codec sets <code>order</code> from the calculation type and keeps Sella's log on stdout;
   <code>order</code>, <code>logfile</code>, <code>trajectory</code>, <code>restart</code>, <code>append_trajectory</code>,
-  <code>hessian_function</code>, and <code>cmdline_args</code> are not accepted.</li>
+  <code>hessian_function</code>, and <code>cmdline_args</code> are not accepted. Any other keyword that
+  is not one of Sella 2.6's arguments for the calculation type is refused before Sella
+  runs (kind <code>input</code>, code <code>unknown_key</code> with the closest one named, or
+  <code>not_applicable</code> for an argument of the other kind of run).</li>
 </ul>
 <p>Calculation types: <code>optimization</code> (<code>order=0</code>), <code>transition_state</code>
 (<code>order=1</code>), and <code>irc</code> (Sella's <code>IRC</code> from the transition state in
@@ -1511,16 +1514,19 @@ branch ends when the curvature of the vibrations is positive, not of the full
 Hessian, whose near-zero rigid-motion eigenvalues noise can push negative (Sella
 would otherwise keep rotating the molecule until <code>steps</code> runs out). With
 constraints, Sella's own test applies.</p>
-<p>The trajectory holds one frame per optimizer step. Gradients Sella evaluates at
+<p>The trajectory holds one frame per structure the optimizer evaluated, the starting
+structure first, so n steps give n + 1 frames. Gradients Sella evaluates at
 displaced geometries to probe the curvature are not steps and are left out, unless one
 fails. Each Hessian from the Hessian program is attached to the frame at its geometry
 (<code>frame.results.hessian</code>). Sella removes overall translation and rotation from its
 steps, so every frame stays in the input's frame. A run that uses up <code>steps</code> without
-meeting <code>fmax</code> fails, with its trajectory attached.</p>
-<p>With qccompute, <code>propagate_wfn=True</code> starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.</p>
+meeting <code>fmax</code> fails, with its trajectory attached: kind <code>convergence</code>, code
+<code>max_iter</code>, as does an IRC branch that does not reach a minimum.</p>
+<p>Each step is a calculation of the subprogram through the runner (<code>ctx.compute</code>), so
+the step's program runs wherever the runner places it. Called directly, the program
+hands itself to <code>qccompute.compute</code>. Its subprogram runs on the optimization's thread
+count (unless the subprogram sets <code>threads</code>), and the optimization plans the GPUs its
+subprogram's plan asks for; its own Python holds its thread pools at one thread.</p>
 
 
 
@@ -1548,7 +1554,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/optimization.py"><code>examples/sella/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Sella geometry optimization driving another program&#39;s gradients.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the gradient</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the gradient</span>
 <span class="sd">program on PATH. This example uses xtb for fast GFN2-xTB gradients:</span>
 <span class="sd">``conda install -c conda-forge xtb``.</span>
 
@@ -1611,12 +1617,10 @@ with <code>python script.py</code>. They live in the repository's
 
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
-    <span class="c1"># propagate_wfn=True,  # TeraChem: start each step from the previous orbitals</span>
-    <span class="c1"># executables={&quot;xtb&quot;: &quot;/path/to/xtb&quot;},  # the child&#39;s executable</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
@@ -1626,7 +1630,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/transition_state.py"><code>examples/sella/transition_state.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Sella transition-state search driving another program&#39;s gradients and Hessians.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the child</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the child</span>
 <span class="sd">program on PATH. This example uses xtb (GFN2-xTB): ``conda install -c conda-forge xtb``.</span>
 
 <span class="sd">Notes for Sella transition-state searches (https://github.com/zadorlab/sella):</span>
@@ -1673,7 +1677,7 @@ with <code>python script.py</code>. They live in the repository's
 
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition state (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 
@@ -1686,13 +1690,13 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
     <span class="p">)</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Lowest frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">check</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">freqs_wavenumber</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Lowest frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">check</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">frequencies</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
 </code></pre></div>
 <h3 id="irc">IRC<a class="headerlink" href="#irc" title="Permanent link">&para;</a></h3>
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/sella/irc.py"><code>examples/sella/irc.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Sella intrinsic reaction coordinate (IRC) from a transition state.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the child</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the child</span>
 <span class="sd">program on PATH. This example uses xtb (GFN2-xTB): ``conda install -c conda-forge xtb``.</span>
 
 <span class="sd">Notes for Sella IRCs (https://github.com/zadorlab/sella):</span>

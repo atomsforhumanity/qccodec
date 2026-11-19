@@ -1399,15 +1399,15 @@ as anywhere else in qc*.</p>
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="o">.</span><span class="n">calc</span><span class="o">.</span><span class="n">outputs</span><span class="p">),</span> <span class="s2">&quot;calculations&quot;</span><span class="p">)</span>  <span class="c1"># every ProgramOutput, in order</span>
 </code></pre></div>
 <ul>
-<li>qccodec never runs programs, so you pass <code>compute</code>. Any function taking a
-  <code>ProgramInput</code> and returning a <code>ProgramOutput</code> works.</li>
+<li>You pass <code>compute</code>: <code>qccompute.compute</code>, or any function taking a <code>ProgramInput</code>
+  and returning a <code>ProgramOutput</code> (or raising <code>qcdata.ProgramError</code> with the failed
+  output).</li>
 <li>Units are converted at the boundary: positions in angstrom, energies in eV, forces
   in eV/angstrom, as ASE expects.</li>
 <li>Charge and multiplicity come from <code>charge</code> and <code>multiplicity</code>, or from a
   <code>structure=</code> whose charge, multiplicity, and identifiers every calculation keeps.</li>
-<li>A failed calculation raises ASE's <code>CalculationFailed</code>, with the <code>ProgramOutput</code> as
-  its <code>.output</code>. With <code>qccompute.compute</code>'s default <code>raise_exc=True</code>, qccompute's own
-  exception is raised first.</li>
+<li>A failed calculation raises ASE's <code>CalculationFailed</code>, with the failed
+  <code>ProgramOutput</code> as its <code>.output</code>, and joins <code>outputs</code>.</li>
 <li>Each request is one calculation, so ASE workflows do not get qccompute's batching
   or parallel lists. For optimizations and transition states, the
   <a href="../../programs/sella/">sella</a> and <a href="../../programs/geometric/">geomeTRIC</a> codecs run
@@ -1598,8 +1598,7 @@ calculation keeps; its elements must match the atoms'.</p>
 
                   <details class="quote">
                     <summary>Source code in <code>src/qccodec/ase.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 77</span>
-<span class="normal"> 78</span>
+                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 78</span>
 <span class="normal"> 79</span>
 <span class="normal"> 80</span>
 <span class="normal"> 81</span>
@@ -1638,7 +1637,8 @@ calculation keeps; its elements must match the atoms'.</p>
 <span class="normal">114</span>
 <span class="normal">115</span>
 <span class="normal">116</span>
-<span class="normal">117</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">117</span>
+<span class="normal">118</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">spec</span><span class="p">:</span> <span class="n">ProgramSpec</span><span class="p">,</span>
     <span class="n">compute</span><span class="p">:</span> <span class="n">Compute</span><span class="p">,</span>

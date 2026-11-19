@@ -1484,7 +1484,12 @@ and device.</p>
   by default) and <code>validate_species</code> (<code>True</code> by default: aimnet refuses elements
   or charges a model was not trained on). Nothing else is accepted. A model on a GPU
   declares one for qccompute, which gives each calculation of a list its own; an
-  explicit index such as <code>"cuda:1"</code> opts out of that.</li>
+  explicit index such as <code>"cuda:1"</code> opts out of that.
+  Unset (or <code>"cuda"</code>), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  <code>backend_fallback</code> warning. <code>resolved.settings</code> names the device used.</li>
 <li><code>cmdline_args</code> and <code>files</code> are not accepted.</li>
 </ul>
 <p>Calculation types: <code>energy</code>, <code>gradient</code>, and <code>hessian</code> (by automatic
@@ -1493,6 +1498,11 @@ differentiation). Every result records the model's partial charges in
 forces and Hessian, to Hartree and bohr.</p>
 <p>AIMNet2 does not move the molecule, so results are in the input's frame. No input
 field carries atom indices.</p>
+<p>The numerics identity of a calculation is aimnet's version and the sha256 of the
+model's weights file: the file given as <code>model.method</code>, or the one a registry name
+(aimnet 0.2's <code>model_registry.yaml</code>, aliases included) names in aimnet's cache
+(<code>AIMNET_CACHE_DIR</code>, else <code>~/.cache/aimnet</code>) once it is downloaded. Before the
+first download, and for Hugging Face repositories, aimnet's version stands alone.</p>
 <p>Energies and gradients of several structures can be computed as one batch:
 <code>qccompute.compute</code> does this for a list of inputs that share a model, keywords, and
 calculation type, evaluating them in one pass instead of one call each. Hessians are
@@ -1524,10 +1534,11 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/aimnet2/single_point.py"><code>examples/aimnet2/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;AIMNet2 single point: energy, gradient, or Hessian from a machine-learned potential.</span>
 
-<span class="sd">Requires: ``pip install qccompute aimnet``. AIMNet2 is a Python library, so nothing has</span>
-<span class="sd">to be on PATH: the model runs inside this Python process, on the GPU when PyTorch sees</span>
-<span class="sd">one. Weights download on first use; later calculations in the same process reuse the</span>
-<span class="sd">loaded model, so an optimization or path pays the loading cost once.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] aimnet``. AIMNet2 is a Python library, so nothing has</span>
+<span class="sd">to be on PATH: the model runs in a qccompute worker process of this Python environment,</span>
+<span class="sd">on the GPU the runner grants (the CPU when it grants none). Weights download on first</span>
+<span class="sd">use; the worker keeps the loaded model, so an optimization or path pays the loading</span>
+<span class="sd">cost once.</span>
 
 <span class="sd">How the codec talks to AIMNet2 (https://github.com/isayevlab/aimnetcentral):</span>
 
@@ -1563,7 +1574,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;aimnet2&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;aimnet2-rxn&quot;, &quot;aimnet2-nse&quot;, &quot;aimnet2-2025&quot;</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;, &quot;cuda:1&quot;; leave out to use a GPU when present</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;, &quot;cuda:1&quot;; leave out for the GPU the runner grants</span>
         <span class="c1"># &quot;validate_species&quot;: False,  # allow elements/charges outside the training set</span>
     <span class="p">},</span>
 <span class="p">)</span>
@@ -1583,13 +1594,13 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/aimnet2/many_calculations.py"><code>examples/aimnet2/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;AIMNet2 for many structures at once: a bond scan evaluated in batches.</span>
 
-<span class="sd">Requires: what examples/aimnet2/single_point.py requires, and qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/aimnet2/single_point.py requires.</span>
 
 <span class="sd">How batching works:</span>
 
 <span class="sd">- Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,</span>
 <span class="sd">  model, and keywords are evaluated in batches, one model call for up to</span>
-<span class="sd">  ``get_codec(&quot;aimnet2&quot;).max_batch`` (32) structures, in this Python process. On a GPU</span>
+<span class="sd">  ``get_codec(&quot;aimnet2&quot;).max_batch`` (32) structures, in one worker process. On a GPU</span>
 <span class="sd">  that is many times faster than one call per structure.</span>
 <span class="sd">- Each structure&#39;s results are what computing it alone gives, to the model&#39;s precision.</span>
 <span class="sd">  Structures in one batch may differ in size, composition, and charge.</span>
@@ -1632,7 +1643,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">structure</span><span class="o">=</span><span class="n">water</span><span class="p">(</span><span class="n">r</span><span class="p">),</span>
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;aimnet2&quot;</span><span class="p">),</span>
         <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
-            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out to use a GPU when present</span>
+            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="p">},</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>

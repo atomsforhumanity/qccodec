@@ -1473,9 +1473,26 @@ distances and degrees for angles. The codec writes them as TeraChem's
 <code>$constraint_freeze</code> and <code>$constraint_set</code> groups, converting the 0-based
 <code>indices</code> to TeraChem's 1-based atom numbers and distances to angstrom. Scans are not
 supported. <code>indices</code> is the only input field that carries atom indices.</p>
-<p>The orbital files <code>c0</code> (or <code>ca0</code>/<code>cb0</code>) can seed the next calculation: qccompute's
-<code>propagate_wfn=True</code> does this between geomeTRIC steps. A run is a failure unless
-stdout ends with <code>Job finished:</code>.</p>
+<p>The orbital files <code>c0</code> (or <code>ca0</code>/<code>cb0</code>) of an output can seed another input as
+its guess (<code>codec.propagate_wfn(output, input)</code>). A run is a failure unless
+stdout ends with <code>Job finished:</code>. A basis set TeraChem has no file for is kind
+<code>input</code>; an SCF that does not converge is <code>convergence</code> (<code>scf_not_converged</code>),
+with the energy of its last iteration, which TeraChem prints; coupled-perturbed
+equations that do not (TeraChem's <code>CPSCF</code>/<code>CPCIS failed to converge</code>) are
+<code>convergence</code> (<code>response_not_converged</code>); out of GPU memory is <code>resource</code>
+(<code>device_memory</code>), and out of its pinned host buffer <code>resource</code> (<code>host_memory</code>);
+no usable GPU is <code>backend</code>; any other unfinished job is <code>internal</code>. When an
+allocation overflows TeraChem's GPU buffer, the error's <code>details</code> are in the terms of
+TeraChem's memory keyword <code>gpumem</code> (the buffer, in megawords of 8 bytes) converted
+to GiB: <code>available_gib</code> the buffer it ran with, <code>required_gib</code> the buffer with
+which the allocation fits (what the buffer held plus the allocation that failed).
+TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
+work is on the GPUs it declares, so several can share a machine's GPUs.</p>
+<p>TeraChem often runs from a container image through a launcher script named
+<code>terachem</code>. Name the image with <code>QCCODEC_TERACHEM_IMAGE</code> (the image the launcher
+runs, such as <code>mtzgroup/terachem:1.9-2026.10-dev</code>): the numerics identity of every
+result is then TeraChem's version and the image's digest, not the launcher's, which
+stays the same while the image behind it changes.</p>
 
 
 
@@ -1503,7 +1520,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/terachem/single_point.py"><code>examples/terachem/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;TeraChem single point: energy, gradient, or Hessian.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and ``terachem`` on PATH.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and ``terachem`` on PATH.</span>
 <span class="sd">TeraChem runs only on NVIDIA CUDA GPUs and needs a license file (from PetaChem). A</span>
 <span class="sd">Docker launcher script that provides ``terachem`` without an install, with the license</span>
 <span class="sd">given by TERACHEM_LICENSE_PATH, comes with the images at</span>
@@ -1576,9 +1593,6 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=3600,  # seconds before TeraChem is killed</span>
-    <span class="c1"># collect_files=True,  # keep every output file in output.results.files</span>
-    <span class="c1"># collect_wfn=True,  # keep the orbitals (scr*/c0) for a later guess</span>
-    <span class="c1"># executables={&quot;terachem&quot;: &quot;/path/to/terachem&quot;},  # or QCCOMPUTE_TERACHEM_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
@@ -1587,7 +1601,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hessian (Hartree/bohr^2), shape:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">freqs_wavenumber</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">frequencies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of orbitals:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">calcinfo_nmo</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">extras</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;excited_states&quot;</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Excited states:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">extras</span><span class="p">[</span><span class="s2">&quot;excited_states&quot;</span><span class="p">])</span>
@@ -1597,7 +1611,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/terachem/optimization.py"><code>examples/terachem/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;TeraChem geometry optimization with its built-in optimizer.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and ``terachem`` on PATH.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and ``terachem`` on PATH.</span>
 <span class="sd">TeraChem runs only on NVIDIA CUDA GPUs and needs a license file (from PetaChem).</span>
 
 <span class="sd">Notes for TeraChem optimizations (manual: https://mtzweb.stanford.edu/terachem/):</span>
@@ -1659,10 +1673,10 @@ with <code>python script.py</code>. They live in the repository's
     <span class="p">},</span>
 <span class="p">)</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=..., collect_files=..., executables=...</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=... (seconds)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 <span class="c1"># Save the trajectory, e.g. to view in a molecule viewer:</span>

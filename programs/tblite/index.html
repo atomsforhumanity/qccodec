@@ -1436,10 +1436,12 @@ with <code>pip install tblite</code> (or <code>conda install -c conda-forge tbli
 <li><code>structure.charge</code> is the total charge and <code>structure.multiplicity - 1</code> the
   number of unpaired electrons (tblite's <code>uhf</code>).</li>
 <li><code>keywords</code> use tblite's own names. Calculator settings go to
-  <code>Calculator.set</code>: <code>accuracy</code>, <code>guess</code>, <code>max-iter</code>, <code>mixer-damping</code>,
-  <code>mixer-memory</code>, <code>temperature</code> (electronic temperature in <strong>Hartree</strong>, as tblite
-  takes it; multiply kelvin by 3.166808578545117e-6), <code>annealing</code>, and
-  <code>verbosity</code>. Interactions go to <code>Calculator.add</code>, with a single value or a list
+  <code>Calculator.set</code>: <code>acc</code> (the accuracy factor, <code>accuracy</code> in tblite's Python
+  API and <code>--acc</code> on its command line: the shared keyword <code>accuracy</code> is an
+  accuracy target, which tblite cannot honour, kind <code>unsupported</code>), <code>guess</code>,
+  <code>max-iter</code>, <code>mixer-damping</code>, <code>mixer-memory</code>, <code>temperature</code> (electronic
+  temperature in <strong>Hartree</strong>, as tblite takes it; multiply kelvin by
+  3.166808578545117e-6), <code>annealing</code>, and <code>verbosity</code>. Interactions go to <code>Calculator.add</code>, with a single value or a list
   of arguments: <code>alpb-solvation</code> and <code>gbsa-solvation</code> (a solvent name, or
   <code>[solvent, state]</code> with state <code>gsolv</code>, <code>bar1mol</code>, or <code>reference</code>),
   <code>ddX-solvation</code>, <code>gbe-solvation</code>, <code>gb-solvation</code>, <code>electric-field</code> (a
@@ -1450,10 +1452,14 @@ with <code>pip install tblite</code> (or <code>conda install -c conda-forge tbli
 <p>Calculation types: <code>energy</code> and <code>gradient</code>. tblite has no analytic Hessian; use
 <code>program="xtb"</code> for GFN2-xTB Hessians, or geomeTRIC with tblite gradients for
 optimizations. Every result records Mulliken partial charges in <code>atomic_charges</code>
-and the dipole moment (e bohr) in <code>scf_dipole_moment</code>.</p>
+and the dipole moment (e bohr) in <code>dipole_moment</code>.</p>
 <p>tblite never moves or reorients the molecule, so gradients are in the input's frame.
-No input field carries atom indices. An SCF that does not converge raises
-<code>CalculationError</code> with tblite's message.</p>
+No input field carries atom indices.</p>
+<p>A keyword that is not a tblite setting or interaction is refused before tblite runs
+(kind <code>input</code>, code <code>unknown_key</code>) with the closest name. Failures and their
+kinds: an SCF that does not converge is <code>convergence</code> (<code>scf_not_converged</code>); atoms
+on top of each other, a multiplicity the number of electrons cannot have, and an
+unknown solvent are <code>input</code>; elements beyond radon are <code>unsupported</code>.</p>
 
 
 
@@ -1481,9 +1487,9 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/tblite/single_point.py"><code>examples/tblite/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;tblite single point: GFN2-xTB, GFN1-xTB, or IPEA1-xTB energy or gradient.</span>
 
-<span class="sd">Requires: ``pip install qccompute tblite`` (or ``conda install -c conda-forge</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] tblite`` (or ``conda install -c conda-forge</span>
 <span class="sd">tblite-python``). tblite is a Python library, so nothing has to be on PATH: the</span>
-<span class="sd">calculation runs inside this Python process.</span>
+<span class="sd">calculation runs in a qccompute worker process of this Python environment.</span>
 
 <span class="sd">How the codec talks to tblite (https://tblite.readthedocs.io/):</span>
 
@@ -1521,7 +1527,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;gfn1&quot;, &quot;ipea1&quot;</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
         <span class="c1"># Calculator settings:</span>
-        <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># SCC accuracy; lower is tighter</span>
+        <span class="s2">&quot;acc&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># SCC accuracy factor; lower is tighter</span>
         <span class="s2">&quot;max-iter&quot;</span><span class="p">:</span> <span class="mi">250</span><span class="p">,</span>  <span class="c1"># maximum SCC iterations</span>
         <span class="c1"># &quot;temperature&quot;: 300 * 3.166808578545117e-6,  # electronic temperature (Hartree)</span>
         <span class="c1"># &quot;verbosity&quot;: 0,  # silence the SCC printout</span>
@@ -1544,7 +1550,7 @@ with <code>python script.py</code>. They live in the repository's
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Partial charges:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">atomic_charges</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">scf_dipole_moment</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">dipole_moment</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;tblite version:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">program_version</span><span class="p">)</span>
 </code></pre></div>
 

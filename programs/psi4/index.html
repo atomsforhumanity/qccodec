@@ -1498,9 +1498,24 @@ Psi4. The script calls the Psi4 driver for the calculation type and writes
 </li>
 <li>
 <p><code>cmdline_args</code> are appended to the <code>psi4</code> command, e.g. <code>["-n", "4"]</code> for
-  four threads or <code>["--memory", "8GB"]</code>.</p>
+  four threads or <code>["--memory", "8GB"]</code>. Without <code>-n</code> (or <code>threads</code>), Psi4 runs
+  on the calculation's thread count (<code>-n &lt;count&gt;</code>); called directly, with Psi4's
+  default of one.</p>
 </li>
 </ul>
+<p>Psi4's options are too many to list in the codec, but Psi4 checks every one itself:
+the driver sets them one at a time before calculating and reports each one Psi4 does
+not know (kind <code>input</code>, code <code>unknown_key</code>, with the closest option Psi4 has) and
+each value it does not take (kind <code>input</code>).</p>
+<p>Hessians are the full Cartesian second derivative: analytic, or from finite
+differences of gradients (or energies) in which Psi4 projects out only translations,
+as the codec leaves its <code>fd_project</code> unset. Setting <code>fd_project</code> true, which
+projects rotations out too, is refused for Hessians (kind <code>unsupported</code>). Psi4's
+harmonic analysis projects out rotations only where it judges the geometry
+stationary (gradient rms below 1e-2 Eh/bohr; <code>project_rot</code> overrides that);
+elsewhere it keeps the rotations among the modes, and the codec records
+<code>projection</code> as <code>translations</code> and flags them in <code>external</code>: the modes with
+the largest share in the mass-weighted rotational space.</p>
 <p>The molecule keeps the input's frame (<code>no_com</code>, <code>no_reorient</code>): Psi4 never moves
 or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
 input's coordinates, and symmetry detection only finds symmetry the frame already
@@ -1510,9 +1525,34 @@ frequencies, normal modes, and the gradient), <code>optimization</code> and
 <code>transition_state</code> (<code>psi4.optimize</code> with optking; every step carries its energy
 and gradient). A transition-state search sets <code>opt_type ts</code> and, unless given,
 <code>full_hess_every 0</code> (an exact Hessian at the first step). Every single point also
-records Mulliken charges in <code>atomic_charges</code> when the method supports them, the
-gradient on external point charges in <code>point_charge_gradient</code>, and all scalar Psi4
-variables in <code>extras["psi4_variables"]</code>.</p>
+records the dipole moment in <code>dipole_moment</code> for HF and DFT (after a correlated
+method such as MP2, Psi4 holds only the reference's dipole, so the codec leaves it
+out), Mulliken charges in <code>atomic_charges</code> when the method supports them, the
+gradient on external point charges in <code>point_charge_gradient</code>, all scalar Psi4
+variables in <code>extras["psi4_variables"]</code>, and the orbital levels in
+<code>wavefunction.orbitals</code>: <code>restricted</code> when Psi4's wavefunction has one set of
+spatial orbitals for both spins (RHF, RKS, ROHF), <code>unrestricted</code> otherwise (UHF,
+UKS, CUHF), even when a UHF lands on the closed-shell solution.</p>
+<p>Failures and their kinds: an SCF that does not converge is <code>convergence</code> (code
+<code>scf_not_converged</code>), with its last iterate's energy and orbital levels; coupled-
+perturbed (CPHF/CPKS) equations that end above their tolerance are <code>convergence</code>
+(<code>response_not_converged</code>), with the results Psi4 computed from them, since Psi4 1.11
+goes on with them without a word when its solver runs out of iterations
+(<code>solver_maxiter</code>); optking out of iterations <code>convergence</code> (<code>max_iter</code>),
+another iterative procedure <code>convergence</code>; an unknown option, method or basis set,
+an invalid value and a multiplicity the electrons cannot have are <code>input</code>; a method
+Psi4 has but not for this calculation is <code>unsupported</code>; an addon this Psi4 lacks
+(<code>ddx</code> for ddCOSMO) is <code>environment</code>; a calculation out of memory is <code>resource</code>
+(<code>host_memory</code>), including a <code>--memory</code> below Psi4's minimum of 250 MiB. Its
+<code>details</code> give <code>required_gib</code> and <code>available_gib</code> where Psi4 prints them, in the
+terms of Psi4's memory setting (<code>--memory</code>): the memory with which the calculation
+fits, and the memory it ran with. For the minimum that is the minimum; for density
+fitting's in-core tensors (<code>DFHelper Memory: AOs need 1.142 GiB; user supplied 0.189
+GiB</code>), which get a fixed share of Psi4's memory (<code>scf_mem_safety_factor</code>, 0.75 by
+default), it is that memory scaled by what the tensors need over what they got.</p>
+<p>With <code>fail_on_maxiter</code> false Psi4 carries on after an SCF that did not converge;
+the result then comes with the warning <code>loosely_converged</code>, giving the last
+iteration's energy change and orbital gradient against Psi4's thresholds.</p>
 <p>Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with <code>external_potentials</code> either fail or come back wrong (they disagree
 with finite differences of its own gradients by about as much as the charges change
@@ -1546,7 +1586,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/psi4/single_point.py"><code>examples/psi4/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Psi4 single point: energy, gradient, or Hessian.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge psi4`` (add ``pyddx`` for ddX implicit solvent).</span>
 
 <span class="sd">How the codec talks to Psi4 (https://psicode.org/psi4manual/master/):</span>
@@ -1615,8 +1655,6 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=3600,  # seconds before Psi4 is killed</span>
-    <span class="c1"># collect_files=True,  # keep every output file in output.results.files</span>
-    <span class="c1"># executables={&quot;psi4&quot;: &quot;/path/to/psi4&quot;},  # or set QCCOMPUTE_PSI4_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
@@ -1624,16 +1662,16 @@ with <code>python script.py</code>. They live in the repository's
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">freqs_wavenumber</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">frequencies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mulliken charges:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">atomic_charges</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">scf_dipole_moment</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">dipole_moment</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Psi4 variables:&quot;</span><span class="p">,</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">extras</span><span class="p">[</span><span class="s2">&quot;psi4_variables&quot;</span><span class="p">])[:</span><span class="mi">5</span><span class="p">],</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="optimization">Optimization<a class="headerlink" href="#optimization" title="Permanent link">&para;</a></h3>
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/psi4/optimization.py"><code>examples/psi4/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Psi4 geometry optimization with its built-in optimizer, optking.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge psi4``.</span>
 
 <span class="sd">Notes for Psi4 optimizations:</span>
@@ -1682,10 +1720,10 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">cmdline_args</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;--memory&quot;</span><span class="p">,</span> <span class="s2">&quot;2GB&quot;</span><span class="p">],</span>
 <span class="p">)</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=..., collect_files=..., executables=...</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>  <span class="c1"># timeout=... (seconds)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 <span class="c1"># Save the trajectory, e.g. to view in a molecule viewer:</span>
@@ -1695,7 +1733,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/psi4/transition_state.py"><code>examples/psi4/transition_state.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Psi4 transition-state search with optking.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge psi4``.</span>
 
 <span class="sd">Notes for Psi4 transition-state searches:</span>
@@ -1744,7 +1782,7 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state energy (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 </code></pre></div>

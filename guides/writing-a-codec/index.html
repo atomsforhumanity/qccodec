@@ -1167,10 +1167,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#options-and-wavefunction-propagation" class="md-nav__link">
+  <a href="#decode-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Options and wavefunction propagation
+        Decode options
       
     </span>
   </a>
@@ -1397,10 +1397,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#options-and-wavefunction-propagation" class="md-nav__link">
+  <a href="#decode-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Options and wavefunction propagation
+        Decode options
       
     </span>
   </a>
@@ -1530,19 +1530,62 @@ script the same way:</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_energy</span><span class="p">(</span><span class="n">stdout</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">re_search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;Total energy:\s+(-?\d+\.\d+)&quot;</span><span class="p">,</span> <span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
 </code></pre></div>
-<p>If the program uses several CPU threads or a GPU, say so in the native input:
-<code>SubprocessInput(..., threads=4)</code> or <code>SubprocessInput(..., gpus=1)</code>. qccompute runs
-lists of calculations side by side and uses these to keep within the machine's cores
-and give each GPU calculation its own device.</p>
-<p>Then run it with qccompute, either explicitly or by name after registering it:</p>
+<p>If the input asks for several CPU threads or a GPU, say so in the native input:
+<code>SubprocessInput(..., threads=4)</code> or <code>SubprocessInput(..., gpus=1)</code>. qccompute packs
+lists of calculations by these and gives each GPU calculation its own device: a
+subprocess sees it in <code>CUDA_VISIBLE_DEVICES</code>, and a Python library is handed it as this
+process's CUDA device (<code>cuda:N</code>) in the keyword <code>PythonInput(device_keyword=...)</code> names
+(<code>cpu</code> when the runner granted none; left out when called directly). Leave
+<code>threads</code> out when the input asks for none: the program then plans one thread, or
+all the runner has with <code>CodecProgram(codec, threads=None)</code> for a program that scales
+with threads, and runs with the runner's grant, through <code>OMP_NUM_THREADS</code> or, when the
+codec has <code>cap_threads</code>, written into the input. The shared <code>threads</code> keyword is taken
+by the adapter before your encoder sees the input.</p>
+<p>Refuse what the program would ignore. Every setting given must take effect, so an
+encoder checks keyword names against the program's settings where they can be listed,
+with <code>qccodec.reject_unknown(program, keywords, known)</code>, which raises
+<code>EncoderError(..., code="unknown_key")</code> naming the closest known name. <code>EncoderError</code>
+takes <code>kind</code> (<code>input</code>, or <code>unsupported</code> for a valid request the program does not
+implement) and <code>code</code> (<code>unknown_key</code>, <code>not_applicable</code>, <code>no_effect</code>, <code>not_modeled</code>).
+Give the same names to the program, <code>CodecProgram(codec, keywords=known)</code> (or a
+function of the calctype), and its <code>settings_schema</code> lists them; without them it
+lists only the shared <code>threads</code> and allows any other key, for a program that checks
+its own keywords.</p>
+<p>The shared keyword <code>accuracy</code> (an accuracy target, <code>{"energy": ..., "gradient": ...,
+"hessian": ...}</code>) never reaches your encoder: <code>Codec.encode</code> reads it with qcdata's
+<code>Accuracy.from_keywords</code>. A calculation with nothing to converge (a force field, an ML
+potential) meets any target as it is: the adapter accepts it and records it in the
+output's <code>record</code> as met, <code>{"accuracy": {"target": {...}, "thresholds": {}, "estimate":
+{...}}}</code> with an estimate of <code>0.0</code> for each target, and its
+<code>settings_schema</code> lists <code>accuracy</code>. A calculation with convergence settings refuses it
+with kind <code>unsupported</code>, since no codec maps targets onto its program's thresholds yet.
+Say which with <code>Codec(..., converges=False)</code>, or a function of the input
+(<code>converges=lambda inp: inp.model.method != "gfnff"</code>); the default is <code>True</code>.</p>
+<p>Then make it a program and run it with qccompute:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">qccodec</span><span class="o">,</span><span class="w"> </span><span class="nn">qccompute</span>
 
-<span class="n">output</span> <span class="o">=</span> <span class="n">qccompute</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">codec</span><span class="o">=</span><span class="n">codec</span><span class="p">)</span>
-
-<span class="n">qccodec</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">codec</span><span class="p">)</span>              <span class="c1"># now resolvable as program=&quot;myprog&quot;,</span>
-<span class="n">output</span> <span class="o">=</span> <span class="n">qccompute</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>   <span class="c1"># including as a geomeTRIC gradient child</span>
+<span class="n">qccompute</span><span class="o">.</span><span class="n">register_program</span><span class="p">(</span><span class="n">qccodec</span><span class="o">.</span><span class="n">CodecProgram</span><span class="p">(</span><span class="n">codec</span><span class="p">))</span>  <span class="c1"># program=&quot;myprog&quot;</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">qccompute</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>   <span class="c1"># also as a geomeTRIC gradient subprogram</span>
 </code></pre></div>
-<p><code>register()</code> also lets you override a built-in codec by name for the current process.</p>
+<p>A codec that calls a Python library (one that returns a <code>PythonInput</code>) takes over its
+process's output streams and working directory while it runs: make it
+<code>CodecProgram(codec, in_process=False)</code> and qccompute runs it in a worker process. A
+library that writes only where it is told and reports through Python loggers can run
+in the caller's process instead: name <code>PythonInput(directory_keyword="directory",
+loggers=(...))</code>, write every file under the directory the function is given, and the
+adapter calls it without changing the working directory, environment or output
+streams (geomeTRIC does this). A registered program reaches a worker only
+when it is defined at the top level of an importable module; publish it as an entry
+point (below) to be found everywhere. <code>CodecProgram(codec, executable=...,
+environment=...)</code> configures where the program is and what it runs with;
+<code>QCCODEC_&lt;PROGRAM&gt;_EXECUTABLE</code> does the first without code.</p>
+<p>A store reuses a result only while the program's numerics identity is unchanged
+(<code>CodecProgram.numerics</code>): the executable's version and sha256, or, for a launcher
+of a container, the image's digest (<code>CodecProgram(codec, image=...)</code> or
+<code>QCCODEC_&lt;PROGRAM&gt;_IMAGE</code>). A codec that calls a library gives the library's version
+and, for an ML potential, the digest of its model's weights file:
+<code>CodecProgram(codec, library=..., weights=...)</code> takes a function of the input that
+returns the file, or None when it is not on disk yet.</p>
 <h2 id="parsers">Parsers<a class="headerlink" href="#parsers" title="Permanent link">&para;</a></h2>
 <p>A parser is a plain function from file contents to a value. The decorator records
 where the value goes and when the parser runs, and returns the function unchanged so
@@ -1580,7 +1623,44 @@ success). When the hook returns a message, decoding recovers what it can and rai
 <code>CalculationError</code> with that data attached. This also happens when the program
 exits with an error, so the hook's explanation reaches the user rather than just an
 exit status. <code>parse(..., failed=True)</code> stays quiet and returns the recovered data;
-pass <code>report_failure=True</code> to raise the explanation there too.
+pass <code>report_failure=True</code> to raise the explanation there too.</p>
+<p>Give each failure the program is known to report a kind. A store reuses a stored
+failure only when its kind says the input determines it, so an SCF that does not
+converge must not look like a crash:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">codec</span> <span class="o">=</span> <span class="n">Codec</span><span class="p">(</span>
+    <span class="s2">&quot;myprog&quot;</span><span class="p">,</span>
+    <span class="n">calctypes</span><span class="o">=</span><span class="p">{</span><span class="n">CalcType</span><span class="o">.</span><span class="n">energy</span><span class="p">},</span>
+    <span class="n">errors</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;SCF not converged&quot;</span><span class="p">,</span> <span class="s2">&quot;convergence&quot;</span><span class="p">,</span> <span class="s2">&quot;scf_not_converged&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;unknown keyword&quot;</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown_key&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;atoms too close&quot;</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The first rule whose regular expression is found in the <code>CalculationError</code>'s message
+(the failure hook's explanation, or a decoder's) gives the failure its kind and code;
+anything else is <code>internal</code>, which means a bug. A failure that knows a number returns
+<code>(message, details)</code> from the hook instead of the message alone, and <code>details</code> becomes
+the error's <code>ErrorInfo.details</code>: a program out of memory (kind <code>resource</code>, code
+<code>host_memory</code> or <code>device_memory</code>) gives <code>required_gib</code> and <code>available_gib</code> there when
+its output says what it needed, in the terms of the memory setting that would make it
+fit: the setting with which it fits and the one it ran with (ORCA's per-process
+<code>%maxcore</code> figures times its processes). Record a fixture case of each failure with
+<code>"raises": "CalculationError", "kind": ..., "code": ...</code> (and <code>"details"</code>) in its
+<code>case.json</code>. The shared codes come first: an SCF that does not converge is
+<code>scf_not_converged</code> (attach the last iteration's energy where the output gives it),
+response equations (CPHF/CPKS) that do not are <code>response_not_converged</code>.</p>
+<p>A result the program delivered but the caller should know about gets a warning from a
+second hook, which runs on every output:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="nd">@codec</span><span class="o">.</span><span class="n">warning</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">warnings</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProgramWarning</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="s2">&quot;SCF not converged, continuing&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ProgramWarning</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="s2">&quot;loosely_converged&quot;</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;... residual and rule ...&quot;</span><span class="p">)]</span>
+</code></pre></div>
+<p>An SCF the program accepted without meeting its thresholds is the shared
+<code>loosely_converged</code>, its message giving the residual reached and the rule that
+accepted it. List the codes in the case's <code>case.json</code> as <code>"warnings": [...]</code>.
 Programs driven through a Python API skip parsers entirely:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="n">codec</span> <span class="o">=</span> <span class="n">Codec</span><span class="p">(</span><span class="s2">&quot;mlp&quot;</span><span class="p">,</span> <span class="n">calctypes</span><span class="o">=</span><span class="p">{</span><span class="n">CalcType</span><span class="o">.</span><span class="n">energy</span><span class="p">,</span> <span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">},</span> <span class="n">encode</span><span class="o">=</span><span class="n">encode</span><span class="p">,</span> <span class="n">decode</span><span class="o">=</span><span class="n">decode</span><span class="p">)</span>
 </code></pre></div>
@@ -1607,9 +1687,11 @@ structure still gets its own result. The key holds everything a batch must share
 keywords, calculation type) and nothing about the structure; return <code>None</code> for inputs
 the library computes one at a time, such as Hessians. The built-in machine-learned
 potentials use <code>batch_signature</code> from <code>qccodec.programs._python</code> as their key.</p>
-<h2 id="options-and-wavefunction-propagation">Options and wavefunction propagation<a class="headerlink" href="#options-and-wavefunction-propagation" title="Permanent link">&para;</a></h2>
-<p>A codec declares the decode options it accepts, with defaults. Callers override them
-per calculation and parsers read them from the context:</p>
+<h2 id="decode-options">Decode options<a class="headerlink" href="#decode-options" title="Permanent link">&para;</a></h2>
+<p>A codec declares the decode options it accepts, with defaults. Callers of <code>decode</code> and
+<code>parse</code> override them, and parsers read them from the context. A choice that should be
+made per calculation belongs in the input's keywords instead (CREST's
+<code>{"output": {"rotamers": True}}</code>), which parsers read from <code>ctx.input_data</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="n">codec</span> <span class="o">=</span> <span class="n">Codec</span><span class="p">(</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span> <span class="n">calctypes</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;collect_rotamers&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
 
 <span class="nd">@codec</span><span class="o">.</span><span class="n">parser</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="s2">&quot;directory&quot;</span><span class="p">,</span> <span class="n">calctypes</span><span class="o">=</span><span class="p">[</span><span class="n">CalcType</span><span class="o">.</span><span class="n">conformer_search</span><span class="p">])</span>
@@ -1619,12 +1701,8 @@ per calculation and parsers read them from the context:</p>
     <span class="o">...</span>
 
 <span class="n">decode</span><span class="p">(</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span> <span class="s2">&quot;conformer_search&quot;</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="n">d</span><span class="p">,</span> <span class="n">input_data</span><span class="o">=</span><span class="n">inp</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;collect_rotamers&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
-<span class="n">qccompute</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;collect_rotamers&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
 </code></pre></div>
-<p>Unknown option names raise <code>EncoderError</code>. For optimizers that chain calculations, a
-codec may set <code>codec.propagate_wfn = fn</code> where <code>fn(output, input_data)</code> returns a new
-input carrying the previous output's wavefunction as the initial guess; TeraChem copies
-<code>c0</code>/<code>ca0</code>/<code>cb0</code> and sets <code>guess</code>. qccompute calls it when <code>propagate_wfn=True</code>.</p>
+<p>Unknown option names raise <code>EncoderError</code>.</p>
 <h2 id="program-versions">Program versions<a class="headerlink" href="#program-versions" title="Permanent link">&para;</a></h2>
 <p>When a program changes its output format, register a parser per version range on the
 same target; the parser functions themselves stay version-free:</p>
@@ -1641,10 +1719,14 @@ matches <code>versions="&gt;=2023.8"</code>). When no version can be read, alter
 are tried in registration order and the first match wins. Pass <code>version=</code> to
 <code>decode</code>/<code>parse</code> for logs that never print one.</p>
 <h2 id="codecs-from-other-packages">Codecs from other packages<a class="headerlink" href="#codecs-from-other-packages" title="Permanent link">&para;</a></h2>
-<p>A package can ship a codec by publishing it as an entry point; <code>get_codec</code> and
-<code>qccompute.compute</code> then find it by program name with no registration call:</p>
+<p>A package can ship a codec by publishing it as entry points: the codec for
+<code>get_codec</code> and <code>decode</code>, and its program for <code>qccompute.compute</code>, which then finds it
+by name in every process with no registration call:</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project.entry-points.</span><span class="s2">&quot;qccodec.codecs&quot;</span><span class="k">]</span>
 <span class="n">myprog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.codec:codec&quot;</span>
+
+<span class="k">[project.entry-points.</span><span class="s2">&quot;qccompute.programs&quot;</span><span class="k">]</span>
+<span class="n">myprog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.codec:program&quot;</span><span class="w">   </span><span class="c1"># program = qccodec.CodecProgram(codec)</span>
 </code></pre></div>
 <h2 id="testing-a-codec">Testing a codec<a class="headerlink" href="#testing-a-codec" title="Permanent link">&para;</a></h2>
 <p><code>qccodec.testing</code> gives every codec the same test harness. A recorded program run is a

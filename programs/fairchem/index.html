@@ -1494,7 +1494,12 @@ reused.</p>
 </li>
 <li><code>device</code>: <code>"cpu"</code> or <code>"cuda"</code> (CUDA when available by default). A model on
     a GPU declares one for qccompute, which gives each calculation of a list its
-    own; an explicit index such as <code>"cuda:1"</code> opts out of that.</li>
+    own; an explicit index such as <code>"cuda:1"</code> opts out of that.
+    Unset (or <code>"cuda"</code>), it runs on the GPU qccompute granted, as this
+    process's CUDA device, and on the CPU when it granted none; called
+    directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+    CPU-only build) leaves an unset device on the CPU, with a
+    <code>backend_fallback</code> warning. <code>resolved.settings</code> names the device used.</li>
 <li>
 <p><code>inference_settings</code>: one of fairchem's presets by name (<code>"default"</code>,
     <code>"turbo"</code>, <code>"batch"</code>, ...) or a dictionary of <code>InferenceSettings</code> fields. The
@@ -1545,11 +1550,12 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/fairchem/single_point.py"><code>examples/fairchem/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;FAIR-Chem single point: energy, gradient, or Hessian from UMA or eSEN.</span>
 
-<span class="sd">Requires: ``pip install qccompute fairchem-core``, and access to the gated weights:</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] fairchem-core``, and access to the gated weights:</span>
 <span class="sd">request it at https://huggingface.co/facebook/UMA (or facebook/OMol25 for eSEN), then</span>
 <span class="sd">run ``hf auth login``. FAIR-Chem is a Python library, so nothing has to be on PATH: the</span>
-<span class="sd">model runs inside this Python process, on the GPU when PyTorch sees one. Later</span>
-<span class="sd">calculations in the same process reuse the loaded model.</span>
+<span class="sd">model runs in a qccompute worker process of this Python environment, on the GPU the</span>
+<span class="sd">runner grants (the CPU when it grants none). The worker keeps the loaded model for later</span>
+<span class="sd">calculations.</span>
 
 <span class="sd">How the codec talks to FAIR-Chem (https://fair-chem.github.io/):</span>
 
@@ -1588,7 +1594,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;uma-s-1p2p1&quot;</span><span class="p">),</span>  <span class="c1"># or &quot;uma-m-1p1&quot;, &quot;esen-sm-conserving-all-omol&quot;</span>
     <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;omol&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out to use a GPU when present</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="c1"># A fairchem preset by name, or InferenceSettings fields:</span>
         <span class="c1"># &quot;inference_settings&quot;: &quot;turbo&quot;,</span>
         <span class="c1"># &quot;inference_settings&quot;: {&quot;compile&quot;: False, &quot;base_precision_dtype&quot;: &quot;float64&quot;},</span>
@@ -1609,13 +1615,13 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/fairchem/many_calculations.py"><code>examples/fairchem/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;FAIR-Chem for many structures at once: a bond scan evaluated in batches.</span>
 
-<span class="sd">Requires: what examples/fairchem/single_point.py requires, and qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/fairchem/single_point.py requires.</span>
 
 <span class="sd">How batching works:</span>
 
 <span class="sd">- Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,</span>
 <span class="sd">  model, and keywords are evaluated in batches, one model call for up to</span>
-<span class="sd">  ``get_codec(&quot;fairchem&quot;).max_batch`` (32) structures, in this Python process. On a GPU</span>
+<span class="sd">  ``get_codec(&quot;fairchem&quot;).max_batch`` (32) structures, in one worker process. On a GPU</span>
 <span class="sd">  that is many times faster than one call per structure.</span>
 <span class="sd">- Each structure&#39;s results are what computing it alone gives, to the model&#39;s precision.</span>
 <span class="sd">  Structures in one batch may differ in size, composition, and charge.</span>
@@ -1659,7 +1665,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;uma-s-1p2p1&quot;</span><span class="p">),</span>
         <span class="n">keywords</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;omol&quot;</span><span class="p">,</span>
-            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out to use a GPU when present</span>
+            <span class="c1"># &quot;device&quot;: &quot;cpu&quot;,  # or &quot;cuda&quot;; leave out for the GPU the runner grants</span>
         <span class="p">},</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>

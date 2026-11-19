@@ -1449,7 +1449,7 @@
 <p>The codec writes <code>dftb_in.hsd</code> and <code>geometry.xyz</code> and runs <code>dftb+</code> in the
 calculation directory; results come from DFTB+'s machine-readable <code>results.tag</code>.
 Install DFTB+ with <code>conda install -c conda-forge dftbplus</code>; qccompute finds <code>dftb+</code>
-on <code>PATH</code> (or set <code>QCCOMPUTE_DFTBPLUS_EXECUTABLE</code>). Tested with DFTB+ 25.1, and the
+on <code>PATH</code> (or set <code>QCCODEC_DFTBPLUS_EXECUTABLE</code>). Tested with DFTB+ 25.1, and the
 input pins HSD parser version 14.</p>
 <p>Inputs map to DFTB+ as follows:</p>
 <ul>
@@ -1489,12 +1489,18 @@ the result has the Hessian but no energy or gradient at the input geometry; run 
 <code>gradient</code> for those. The codec tightens <code>SCCTolerance</code> to 1e-8 for these runs,
 since DFTB+'s default 1e-5 leaves noise of about 1e-4 in the Hessian), and <code>optimization</code> (<code>Driver = GeometryOptimisation</code> with
 LBFGS on all atoms; override any part through <code>keywords["Driver"]</code>). Energies and
-gradients also fill <code>atomic_charges</code> (Mulliken) and <code>scf_dipole_moment</code>. The
+gradients also fill <code>atomic_charges</code> (Mulliken) and <code>dipole_moment</code>. The
 optimization trajectory holds each step's structure and energy; the last step also
 carries the gradient.</p>
 <p>DFTB+ never moves or reorients the molecule, so results are in the input's frame.
-DFTB+ stops on any keyword it does not recognize, and the codec reports its error
-message.</p>
+DFTB+ stops on any keyword it does not recognize, before calculating, and the codec
+reports its message naming the input it ignored (kind <code>input</code>, code
+<code>unknown_key</code>). An SCC that does not converge is <code>convergence</code>
+(<code>scf_not_converged</code>), an optimization that runs out of steps <code>convergence</code>
+(<code>max_iter</code>); other errors DFTB+ reports are <code>internal</code>. With <code>ConvergentSCCOnly =
+No</code> DFTB+ carries on after an SCC that did not converge; the result then comes with
+the warning <code>loosely_converged</code>, giving the last SCC error against <code>SCCTolerance</code>. DFTB+ plans one thread
+unless <code>threads</code> asks for more (it reaches DFTB+ as <code>OMP_NUM_THREADS</code>).</p>
 
 
 
@@ -1522,7 +1528,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/dftbplus/single_point.py"><code>examples/dftbplus/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;DFTB+ single point: DFTB3, SCC-DFTB, or xTB energy, gradient, or Hessian.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and DFTB+ on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and DFTB+ on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge dftbplus`` (the program is ``dftb+``). The DFTB</span>
 <span class="sd">methods also need Slater-Koster parameter files, which DFTB+ does not ship: download</span>
 <span class="sd">sets from https://github.com/dftbparams (for example 3ob-3-1 and mio-1-1) into one</span>
@@ -1594,8 +1600,6 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=600,  # seconds before DFTB+ is killed</span>
-    <span class="c1"># collect_files=True,  # keep detailed.out, results.tag, ... in output.results.files</span>
-    <span class="c1"># executables={&quot;dftbplus&quot;: &quot;/path/to/dftb+&quot;},  # or QCCOMPUTE_DFTBPLUS_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
@@ -1605,7 +1609,7 @@ with <code>python script.py</code>. They live in the repository's
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hessian (Hartree/bohr^2), shape:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mulliken charges:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">atomic_charges</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">scf_dipole_moment</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dipole (e*bohr):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">dipole_moment</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DFTB+ version:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">program_version</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cite:&quot;</span><span class="p">,</span> <span class="n">dftb_parameter_sets</span><span class="o">.</span><span class="n">by_name</span><span class="p">(</span><span class="s2">&quot;3ob-3-1&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">citation</span><span class="p">)</span>
 </code></pre></div>
@@ -1661,7 +1665,7 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">prog_input</span><span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 </code></pre></div>

@@ -1503,7 +1503,12 @@ as the child, including ones registered with <code>qccodec.register</code>.</p>
   <code>enforce</code>, ... Two are handled by the codec: <code>coordsys</code> (<code>tric</code> by default, or
   <code>cart</code>, <code>prim</code>, <code>dlc</code>, <code>hdlc</code>) and <code>constraints</code> (geomeTRIC's constraint
   dictionary, e.g. <code>{"freeze": [{"type": "xyz", "indices": [0]}]}</code>, with <code>set</code>
-  distances in bohr; scans are not supported).</li>
+  distances in bohr; scans are not supported). geomeTRIC itself ignores parameters
+  it does not know, so the codec refuses them first (kind <code>input</code>, code
+  <code>unknown_key</code>, with the closest parameter named), as it refuses those it sets
+  itself (<code>transition</code>, <code>irc</code>, <code>xyzout</code>), those that only write files it does
+  not return (<code>qdata</code>, <code>write_cart_hess</code>, <code>wigner</code>), <code>meci</code> and <code>bigchem</code>;
+  <code>irc_direction</code> outside an IRC is <code>not_applicable</code>.</li>
 <li><code>cmdline_args</code> are not accepted.</li>
 </ul>
 <p>Calculation types: <code>optimization</code>, <code>transition_state</code> (<code>transition=True</code>;
@@ -1515,16 +1520,30 @@ the end of its forward branch, each frame the child calculation at that point. I
 frames are the accepted points only; rejected trial steps are left out. geomeTRIC
 finishes each branch by optimizing to the minimum once the IRC has converged, so the
 ends are minima (its <code>irc_direction</code> keyword can limit the IRC to one branch).</p>
-<p>The trajectory holds one frame per optimizer step. Gradients at the displaced
+<p>The trajectory holds one frame per structure the optimizer evaluated, the starting
+structure first, so n steps give n + 1 frames. Gradients at the displaced
 geometries of a finite-difference Hessian are not steps, so they are left out, unless
 one fails. Each Hessian geomeTRIC computes is attached to the frame at its geometry
 (<code>frame.results.hessian</code>): the first frame for <code>hessian="first"</code>, the default for
 transition states, and also the last frame for <code>"first+last"</code> or <code>"last"</code>.
 Atom indices in <code>constraints</code> are 0-based, as in geomeTRIC's Python interface.</p>
-<p>With qccompute, <code>propagate_wfn=True</code> starts each child calculation from the previous
-step's orbitals when the child codec supports it (TeraChem). The optimization declares
-the threads and GPUs its child does, so lists of optimizations share the machine
-correctly.</p>
+<p>Each step is a calculation of the subprogram through the runner (<code>ctx.compute</code>), so
+the step's program runs wherever the runner places it. Called directly, the program
+hands itself to <code>qccompute.compute</code>. Its subprogram runs on the optimization's thread
+count (unless the subprogram sets <code>threads</code>), and the optimization plans the GPUs its
+subprogram's plan asks for; its own Python holds its thread pools at one thread.</p>
+<p>geomeTRIC runs in the caller's process: it writes its files in the calculation
+directory, its log (the <code>geometric.nifty</code> logger) goes to the output's <code>logs</code>
+rather than the caller's handlers, and several optimizations run side by side in
+threads. Its subprograms are therefore found as any calculation in that process finds
+them, including programs registered there with <code>qccompute.register_program</code>. A
+timeout stops its subprograms, not geomeTRIC's own Python.</p>
+<p>Failures and their kinds: running out of iterations (<code>maxiter</code>) is <code>convergence</code>
+(code <code>max_iter</code>); an IRC started from a structure that is not a first-order saddle
+point is <code>input</code> (<code>not_first_order_saddle</code>); parameters geomeTRIC rejects are
+<code>input</code>; non-finite gradients are <code>numerical</code>; a failed subprogram is <code>program</code>,
+with its error as the cause. The trajectory so far is attached to every failure, and
+geomeTRIC's traceback is in the output's <code>traceback</code>.</p>
 
 
 
@@ -1552,7 +1571,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/optimization.py"><code>examples/geometric/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC geometry optimization driving another program&#39;s gradients.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[geometric]`` (geomeTRIC itself) and the</span>
 <span class="sd">gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:</span>
 <span class="sd">https://github.com/crest-lab/crest/releases (official static build).</span>
 
@@ -1649,14 +1668,11 @@ with <code>python script.py</code>. They live in the repository's
 
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
-    <span class="c1"># propagate_wfn=True,  # TeraChem: start each step from the previous orbitals</span>
     <span class="c1"># timeout=3600,  # seconds before the whole optimization is stopped</span>
-    <span class="c1"># collect_files=True,  # keep each child&#39;s output files in its results.files</span>
-    <span class="c1"># executables={&quot;crest&quot;: &quot;/path/to/crest&quot;},  # the child&#39;s executable</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
@@ -1668,7 +1684,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/transition_state.py"><code>examples/geometric/transition_state.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC transition-state search driving another program&#39;s gradients.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[geometric]`` (geomeTRIC itself) and the</span>
 <span class="sd">gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:</span>
 <span class="sd">https://github.com/crest-lab/crest/releases (official static build).</span>
 
@@ -1678,7 +1694,7 @@ with <code>python script.py</code>. They live in the repository's
 <span class="sd">  geomeTRIC needs a starting Hessian, which it builds by finite differences of child</span>
 <span class="sd">  gradients (two per Cartesian coordinate). Those displaced gradients are not</span>
 <span class="sd">  optimizer steps, so ``results.frames`` leaves them out: it holds one frame per</span>
-<span class="sd">  step, and each Hessian geomeTRIC computes is attached to the frame at its</span>
+<span class="sd">  structure the optimizer evaluated, the starting structure first, and each Hessian geomeTRIC computes is attached to the frame at its</span>
 <span class="sd">  geometry (``frame.results.hessian``).</span>
 <span class="sd">- ``&quot;hessian&quot;`` chooses when: ``&quot;first&quot;`` (the default) at the start,</span>
 <span class="sd">  ``&quot;first+last&quot;`` also at the end, which is how this example checks its result,</span>
@@ -1743,12 +1759,11 @@ with <code>python script.py</code>. They live in the repository's
 
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
-    <span class="c1"># propagate_wfn=True,  # TeraChem: start each step from the previous orbitals</span>
     <span class="c1"># timeout=3600,</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state energy (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transition-state structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 
@@ -1761,22 +1776,21 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/many_calculations.py"><code>examples/geometric/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC for many structures at once: optimizations run side by side.</span>
 
-<span class="sd">Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST), and</span>
-<span class="sd">qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST).</span>
 
-<span class="sd">How lists of Python calculations work (geomeTRIC, tblite):</span>
+<span class="sd">How lists of Python calculations work (geomeTRIC, tblite, the ML potentials):</span>
 
-<span class="sd">- geomeTRIC runs in Python, and a Python calculation takes over its process&#39;s output</span>
-<span class="sd">  streams and working directory while it runs. So when a list holds two or more,</span>
-<span class="sd">  qccompute runs them side by side in worker processes, started with</span>
-<span class="sd">  ``python -m qccompute._worker``: this script is never imported again and needs no</span>
-<span class="sd">  ``if __name__ == &quot;__main__&quot;:`` guard.</span>
-<span class="sd">- ``max_workers`` is the budget of CPU threads, by default the cores this process may</span>
-<span class="sd">  use. An optimization counts the threads of its gradient program (CREST ``threads``</span>
-<span class="sd">  here). Each worker starts with ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``, and</span>
-<span class="sd">  ``MKL_NUM_THREADS`` set to its share (unless you set them), so numpy in each worker</span>
-<span class="sd">  does not start a thread per core.</span>
-<span class="sd">- The gradient calculations run inside each optimization as usual.</span>
+<span class="sd">- geomeTRIC runs in this process: it writes only in its calculation directory and</span>
+<span class="sd">  logs through one logger, so a list&#39;s optimizations run side by side in threads, and</span>
+<span class="sd">  a program registered in this script can be its gradient program. tblite and the ML</span>
+<span class="sd">  potentials run in worker processes instead (``python -m qccompute.serve``), which</span>
+<span class="sd">  stay alive between calls until the runner closes; this script is never imported</span>
+<span class="sd">  again there and needs no ``if __name__ == &quot;__main__&quot;:`` guard.</span>
+<span class="sd">- A list is packed into the runner&#39;s threads (all the cores this process may use, or</span>
+<span class="sd">  ``qccompute.Runner(threads=...)``): an optimization counts the threads of its</span>
+<span class="sd">  gradient program (CREST ``threads`` here). A worker sets each call&#39;s threads for</span>
+<span class="sd">  PyTorch and the BLAS and OpenMP runtimes, so numpy does not start a thread per core.</span>
+<span class="sd">- The gradient calculations run inside each optimization, through the runner.</span>
 <span class="sd">- Failures are reported as for any list: see examples/xtb/many_calculations.py.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
@@ -1804,7 +1818,7 @@ with <code>python script.py</code>. They live in the repository's
     <span class="n">program</span><span class="o">=</span><span class="s2">&quot;crest&quot;</span><span class="p">,</span>
     <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
     <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
-    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>  <span class="c1"># threads for each gradient, counted against max_workers</span>
+    <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>  <span class="c1"># threads for each gradient, packed into the runner&#39;s</span>
 <span class="p">)</span>
 <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
     <span class="n">ProgramInput</span><span class="p">(</span>
@@ -1818,14 +1832,15 @@ with <code>python script.py</code>. They live in the repository's
 <span class="p">]</span>
 
 <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
-<span class="n">outputs</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>  <span class="c1"># four workers, one optimization each</span>
-<span class="c1"># outputs = compute(inputs, max_workers=2)  # at most two at a time</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>  <span class="c1"># four optimizations side by side</span>
+<span class="c1"># with qccompute.Runner(threads=2) as runner:  # at most two at a time</span>
+<span class="c1">#     outputs = runner.compute(inputs)</span>
 <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
 
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">outputs</span><span class="p">):</span>
     <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
     <span class="nb">print</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;Optimization </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">)</span><span class="si">}</span><span class="s2"> steps, final energy &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Optimization </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">)</span><span class="si">}</span><span class="s2"> frames, final energy &quot;</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.8f</span><span class="si">}</span><span class="s2"> Hartree&quot;</span>
     <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Four optimizations side by side: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s&quot;</span><span class="p">)</span>
@@ -1834,7 +1849,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/geometric/irc.py"><code>examples/geometric/irc.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;geomeTRIC intrinsic reaction coordinate (IRC) driving another program&#39;s gradients.</span>
 
-<span class="sd">Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec] qccodec[geometric]`` (geomeTRIC itself) and the</span>
 <span class="sd">gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:</span>
 <span class="sd">https://github.com/crest-lab/crest/releases (official static build).</span>
 

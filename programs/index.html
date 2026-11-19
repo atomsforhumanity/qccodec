@@ -561,6 +561,50 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#threads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versions-and-numerics-identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versions and numerics identities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hessians" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hessians
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#programs-that-are-python-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1367,6 +1411,50 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#threads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versions-and-numerics-identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versions and numerics identities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hessians" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hessians
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#programs-that-are-python-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1478,6 +1566,13 @@ program's quirks for that kind of calculation.</p>
   program in its native form, so the program's documentation applies. The program
   pages say where each codec puts them (an input file, command-line flags, a TOML
   document, ...).</li>
+<li><strong>Every keyword must take effect.</strong> A keyword the program does not know fails at
+  once, before anything runs, naming the closest one (kind <code>input</code>, code
+  <code>unknown_key</code>): the codec checks it against the program's settings where they can be
+  listed (xtb, tblite, geomeTRIC, Sella, CREST's tables, the machine-learned
+  potentials), and where they cannot (ORCA's words and blocks, Psi4's options, DFTB+'s
+  input) the program refuses it itself before calculating and the codec reports that
+  the same way. TeraChem's keywords are passed through unchecked.</li>
 <li><strong>Structured data stays structured.</strong> The method and basis go in <code>model</code>; the
   geometry, charge, and multiplicity go in <code>structure</code>. Codecs reject keywords that
   duplicate them.</li>
@@ -1492,17 +1587,224 @@ program's quirks for that kind of calculation.</p>
   frequency, whatever form the program writes them in. Their sign is the program's.
   <code>qccodec.testing.check_normal_modes</code> verifies a codec's modes against its Hessian.</li>
 <li><strong>Coordinates are in bohr</strong> and energies in Hartree, as everywhere in qcdata.</li>
-<li><strong>Errors carry the program's explanation.</strong> When a program fails, the error
-  message says why, and any partial results are attached.</li>
+<li><strong>Errors carry the program's explanation</strong> and a kind (see <a href="#errors">Errors</a>). When
+  a program fails, the error message says why, and any partial results are attached.</li>
 </ul>
 <h2 id="finding-the-program">Finding the program<a class="headerlink" href="#finding-the-program" title="Permanent link">&para;</a></h2>
-<p>qccompute runs a program by name from <code>PATH</code>. To use a different build, or one that
-isn't on <code>PATH</code>, pass <code>compute(..., executables={"orca": "/path/to/orca"})</code> or set
-<code>QCCOMPUTE_ORCA_EXECUTABLE</code> (the program name in capitals).</p>
+<p>qccodec runs a program by name from <code>PATH</code>, always by its absolute path (recorded in
+<code>execution.extras["executable"]</code>). To use a different build, or one that isn't on
+<code>PATH</code>, set <code>QCCODEC_ORCA_EXECUTABLE</code> (the program name in capitals), or register
+<code>qccodec.CodecProgram(codec, executable="/path/to/orca")</code> in your process.</p>
+<h2 id="threads">Threads<a class="headerlink" href="#threads" title="Permanent link">&para;</a></h2>
+<p><code>keywords={"threads": n}</code> sets a calculation's thread count, for every program; the
+codec writes it in the program's own spelling (ORCA's <code>pal</code>, Psi4's <code>-n</code>, xtb's
+<code>parallel</code>, CREST's <code>threads</code>) or sets <code>OMP_NUM_THREADS</code>. Giving both <code>threads</code> and the
+program's own setting is an error. Without it, a calculation runs on its caller's whole
+count (<a href="https://qccompute.docs.afh.org/threads/">qccompute's Threads page</a>), and a
+program uses all of it unless it caps itself:</p>
+<table>
+<thead>
+<tr>
+<th>program</th>
+<th>without <code>threads</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Psi4, CREST, tblite, DFTB+, the machine-learned potentials on the CPU</td>
+<td>the calculation's count</td>
+</tr>
+<tr>
+<td>geomeTRIC, Sella</td>
+<td>their own Python on one thread; their gradient subprogram gets the count</td>
+</tr>
+<tr>
+<td>xtb</td>
+<td>one: it nests OpenMP threads and slows down badly with more</td>
+</tr>
+<tr>
+<td>ORCA</td>
+<td>one: parallel ORCA needs OpenMPI's <code>mpirun</code>, so <code>pal</code> is asked for, never assumed</td>
+</tr>
+<tr>
+<td>TeraChem, a machine-learned potential on a GPU</td>
+<td>one (a calculation given GPUs gets one thread)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="versions-and-numerics-identities">Versions and numerics identities<a class="headerlink" href="#versions-and-numerics-identities" title="Permanent link">&para;</a></h2>
+<p>Each program reports two strings, both computed once per process:</p>
+<ul>
+<li><strong><code>version()</code></strong> is the program's own version: what its executable answers to
+  <code>--version</code>, or the installed version of a Python library. It is the version
+  provenance records (<code>results.provenance.program_version</code>).</li>
+<li><strong><code>numerics(spec)</code></strong> identifies the code that produces the numbers. A store records
+  it for every run (<code>identities</code>, <code>{program: numerics}</code>) and reuses a run only when the
+  programs that would run now report the same strings. For an executable it is the
+  version followed by the sha256 of the executable file, so two builds that print the
+  same version (upstream xtb and the g-xTB build) stay apart, and so does a launcher
+  script that stays the same while the program behind it changes (Psi4's <code>psi4</code>). For
+  a Python library it is the library's version.</li>
+</ul>
+<p>What they look like on one machine:</p>
+<table>
+<thead>
+<tr>
+<th>program</th>
+<th><code>version()</code></th>
+<th><code>numerics(spec)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xtb</code> (the g-xTB build)</td>
+<td><code>6.7.1</code></td>
+<td><code>6.7.1 sha256:cab4190d6e72bcac483481f904051083b3730d417a43fb47d1fafe9f75b24e1a</code></td>
+</tr>
+<tr>
+<td><code>orca</code></td>
+<td><code>6.0.0</code></td>
+<td><code>6.0.0 sha256:588ebd02b7d2653f2641381ac92c9666a00d5b8e02215ce2faeeb7337e4bd8f3</code></td>
+</tr>
+<tr>
+<td><code>psi4</code></td>
+<td><code>1.11</code></td>
+<td><code>1.11 sha256:c0edf90d4f8a53c8e7c3e759cbd33e2efbf48f699ddb458c2f45444c35686ef0</code></td>
+</tr>
+<tr>
+<td><code>tblite</code></td>
+<td><code>0.7.0</code></td>
+<td><code>0.7.0</code></td>
+</tr>
+<tr>
+<td><code>geometric</code></td>
+<td><code>1.1.1</code></td>
+<td><code>1.1.1</code></td>
+</tr>
+<tr>
+<td><code>files</code> (<code>FileInput</code>)</td>
+<td>qccodec's</td>
+<td><code>sha256:...</code> of the command's executable</td>
+</tr>
+</tbody>
+</table>
+<p>A program that is not installed reports <code>not installed</code> for both, and an executable
+whose answer to <code>--version</code> names no version reports <code>unknown</code>. To look a result up in
+a store by hand, take the identities from <code>find_program(name).numerics(spec)</code> rather
+than writing them out: <code>store.get(key, {"tblite": "0.7.0"})</code> matches a tblite run,
+<code>{"xtb": "6.7.1"}</code> matches no xtb run.</p>
+<h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
+<p>A failed calculation raises <code>qcdata.ProgramError</code> whose <code>error.kind</code> says why, in the
+vocabulary every qc* program shares, and <code>error.code</code> refines it. Kinds decide which
+stored failures a store reuses (only those the input determines), so each codec maps
+every failure its program is known to report; anything else is <code>internal</code>. The kinds
+and codes the codecs use:</p>
+<table>
+<thead>
+<tr>
+<th>failure</th>
+<th>kind</th>
+<th>code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a keyword the program does not have (with the closest one named)</td>
+<td><code>input</code></td>
+<td><code>unknown_key</code></td>
+</tr>
+<tr>
+<td>a keyword of another calculation type</td>
+<td><code>input</code></td>
+<td><code>not_applicable</code></td>
+</tr>
+<tr>
+<td>a charge or multiplicity the model cannot describe</td>
+<td><code>input</code></td>
+<td><code>not_modeled</code></td>
+</tr>
+<tr>
+<td>atoms on top of each other, a multiplicity the electrons cannot have, an unknown method, basis set or solvent, a value the program does not take</td>
+<td><code>input</code></td>
+<td></td>
+</tr>
+<tr>
+<td>a request the program does not implement</td>
+<td><code>unsupported</code></td>
+<td></td>
+</tr>
+<tr>
+<td>the SCF did not converge (with its last iterate's energy where the program prints it)</td>
+<td><code>convergence</code></td>
+<td><code>scf_not_converged</code></td>
+</tr>
+<tr>
+<td>coupled-perturbed (CPHF/CPKS) equations did not converge, where the output tells</td>
+<td><code>convergence</code></td>
+<td><code>response_not_converged</code></td>
+</tr>
+<tr>
+<td>an optimizer ran out of iterations</td>
+<td><code>convergence</code></td>
+<td><code>max_iter</code></td>
+</tr>
+<tr>
+<td>an IRC started from a structure that is not a first-order saddle point</td>
+<td><code>input</code></td>
+<td><code>not_first_order_saddle</code></td>
+</tr>
+<tr>
+<td>a subprogram failed (<code>error.cause</code> holds its error)</td>
+<td><code>program</code></td>
+<td></td>
+</tr>
+<tr>
+<td>no usable GPU</td>
+<td><code>backend</code></td>
+<td></td>
+</tr>
+<tr>
+<td>the program is not installed</td>
+<td><code>environment</code></td>
+<td></td>
+</tr>
+<tr>
+<td>the deadline passed, or the calculation was cancelled (an external program is killed within about a second)</td>
+<td><code>timeout</code></td>
+<td></td>
+</tr>
+<tr>
+<td>the calculation was asked to stop (<code>runner.stop</code>): an external program is killed within about a second, keeping what was recovered</td>
+<td><code>stopped</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Each program page lists its own. A failure keeps everything recovered so far
+(<code>exc.output.results</code>, an optimization's trajectory), the program's log
+(<code>exc.output.logs</code>) and the traceback (<code>exc.output.traceback</code>). A program out of memory
+(<code>resource</code>, <code>host_memory</code> or <code>device_memory</code>) gives <code>required_gib</code> and <code>available_gib</code>
+in <code>error.details</code> where its output says what it needed, in the terms of its own memory
+setting (ORCA's <code>%maxcore</code>, Psi4's <code>--memory</code>, TeraChem's <code>gpumem</code>): the setting with
+which the calculation fits and the one it ran with.</p>
+<p>A result the program accepted without meeting its convergence thresholds (an SCF it
+carried on with: ORCA's <code>ConvIgnored</code>, Psi4's <code>fail_on_maxiter</code> off, DFTB+'s
+<code>ConvergentSCCOnly = No</code>) succeeds with the warning <code>loosely_converged</code> in
+<code>output.warnings</code>, whose message gives the residual reached and the rule.</p>
+<h2 id="hessians">Hessians<a class="headerlink" href="#hessians" title="Permanent link">&para;</a></h2>
+<p><code>results.hessian</code> is the full Cartesian second derivative of the energy at the input
+geometry, never projected, as qcdata defines it, so it serves away from stationary
+points too (the start of a transition-state search, an IRC's updates). Every codec's
+Hessian is checked against central differences of the program's own gradients on a
+distorted water molecule. xtb projects translations and rotations out of the Hessian it
+writes, so its codec reads the one xtb writes before projecting; Psi4 projects
+rotations out of finite-difference Hessians only with <code>fd_project</code>, which its codec
+refuses for Hessians. Projection belongs to the harmonic analysis
+(<code>vibrational_analysis</code>), which records what it projected in <code>projection</code>.</p>
 <h2 id="programs-that-are-python-libraries">Programs that are Python libraries<a class="headerlink" href="#programs-that-are-python-libraries" title="Permanent link">&para;</a></h2>
 <p>tblite and the machine-learned potentials (AIMNet2, FAIR-Chem, MACE, Orb, TorchANI)
-are Python libraries, not programs: qccompute calls them inside the calling Python
-process, so install the library next to qccompute instead of putting anything on
+are Python libraries, not programs: qccompute calls them in a worker process of the
+same Python, so install the library next to qccompute instead of putting anything on
 <code>PATH</code>. They share a few conventions:</p>
 <ul>
 <li><strong>Models load once per process.</strong> The first calculation downloads and loads the
@@ -1511,8 +1813,13 @@ process, so install the library next to qccompute instead of putting anything on
   GPU): the <code>QCCODEC_MAX_MODELS</code> most recently used stay loaded (2 by default; raise it
   on large GPUs, or set 0 to load every time), and <code>qccodec.clear_model_cache()</code>
   unloads them all.</li>
-<li><strong><code>device</code> picks the hardware</strong>: <code>"cpu"</code>, <code>"cuda"</code>, or <code>"cuda:1"</code>. Without it, a GPU
-  is used when PyTorch sees one.</li>
+<li><strong><code>device</code> picks the hardware</strong>: <code>"cpu"</code>, <code>"cuda"</code>, or <code>"cuda:1"</code>. Without it, or with
+  <code>"cuda"</code>, the calculation asks the runner for one GPU and runs on the one it is
+  granted, or on the CPU when the runner has none to give; <code>resolved.settings</code> records
+  the device it ran on. An explicit index (<code>"cuda:1"</code>) asks the runner for none.</li>
+<li><strong>Threads.</strong> On a GPU a calculation gets one CPU thread unless it asks; on the CPU,
+  its whole count. The worker's numerical libraries (PyTorch's threads among them) get
+  it for each call.</li>
 <li><strong>Keywords are checked.</strong> Each codec accepts a short list of settings and rejects
   anything else, so a misspelled option fails instead of being ignored.</li>
 <li><strong>Charge and spin</strong> reach models that understand them (AIMNet2-NSE, FAIR-Chem's
@@ -1524,6 +1831,14 @@ process, so install the library next to qccompute instead of putting anything on
 <li>Some libraries pin incompatible dependencies; <code>fairchem-core</code> cannot share an
   environment with <code>mace-torch</code> or <code>orb-models</code>.</li>
 </ul>
+<p>geomeTRIC, also a Python library, runs in the caller's process instead: it writes only
+in its calculation directory and logs through one logger, so several optimizations run
+side by side in threads and their subprograms are found as any calculation in that
+process finds them, including programs registered there with
+<code>qccompute.register_program</code>. The others need a process of their own: tblite's Fortran
+writes to the process's standard output and takes its threads from <code>OMP_NUM_THREADS</code>,
+the machine-learned potentials set PyTorch's threads and CUDA devices for the whole
+process, and importing Sella imports JAX and sets its environment variables.</p>
 <h2 id="xtb-tblite-or-crest">xtb, tblite, or CREST?<a class="headerlink" href="#xtb-tblite-or-crest" title="Permanent link">&para;</a></h2>
 <p>All three run the GFN-xTB methods and give the same GFN2-xTB energies and gradients.
 Use <code>program="tblite"</code> for fast in-process energies and gradients (no program to

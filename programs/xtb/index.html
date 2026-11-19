@@ -1473,20 +1473,38 @@
 </code></pre></div>
 <p><code>model.method</code> selects the Hamiltonian: <code>gfn0</code>, <code>gfn1</code>, <code>gfn2</code>, <code>gfnff</code>, or
 <code>gxtb</code>. g-xTB needs the xtb build distributed with g-xTB
-(https://github.com/grimme-lab/g-xtb); point qccompute at it with
-<code>executables={"xtb": ...}</code> or <code>QCCOMPUTE_XTB_EXECUTABLE</code>. GFN0 reads its parameter
-file from the directory named by <code>XTBPATH</code>.</p>
+(https://github.com/grimme-lab/g-xtb); point qccodec at it with
+<code>QCCODEC_XTB_EXECUTABLE</code>. GFN0 reads its parameter
+file from the directory named by <code>XTBPATH</code>. That build reports the version of
+upstream xtb 6.7.1, so results also name the build's commit from xtb's version line in
+<code>provenance.program_commit</code> (<code>26dd68d</code> for the g-xTB build, <code>edcfbbe</code> for
+upstream 6.7.1).</p>
 <p>Keywords become command-line flags in xtb's own spelling: <code>{"alpb": "water"}</code> gives
 <code>--alpb water</code>, <code>{"etemp": 1000}</code> gives <code>--etemp 1000</code>, a list gives several
 values (<code>{"alpb": ["water", "bar1M"]}</code>), <code>True</code> gives a bare flag, and <code>False</code> or
 <code>None</code> leaves the flag out. For optimizations, <code>{"opt": "tight"}</code> sets the
-optimization level. Detailed input (<code>$constrain</code>, <code>$fix</code>, <code>$wall</code>, ...) goes in
+optimization level. A keyword that is not one of xtb's options is refused before xtb
+runs (kind <code>input</code>, code <code>unknown_key</code>) with the closest option named, and so are
+flags the codec sets itself (<code>chrg</code>, <code>uhf</code>, the method and run-type flags) and
+flags that would run something else or move the molecule (<code>cma</code>); xtb itself only
+warns about an unknown flag and runs without it. xtb runs on one thread unless the
+input asks for more (<code>threads</code>, or xtb's own <code>parallel</code>, not both): it nests OpenMP
+threads and slows down badly otherwise, so parallelize over calculations instead. Detailed input (<code>$constrain</code>, <code>$fix</code>, <code>$wall</code>, ...) goes in
 an <code>xcontrol</code> file supplied through <code>files</code> and named with <code>{"input":
 "xcontrol"}</code>; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.</p>
-<p>Hessians also fill frequencies and normal modes from <code>g98.out</code>, where xtb writes
-mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
-Cartesian displacements, as qcdata defines them.</p>
+<p>Hessians are xtb's numerical second derivatives (central differences of
+gradients) at the input geometry, with nothing projected out. xtb projects
+translations and rotations out of the Hessian it writes to <code>hessian</code>, which is
+wrong away from a stationary point, where the gradient fixes the Hessian's
+rotational part; so the codec has xtb also write the Hessian before projection
+(<code>$write hessian.out=true</code> in the <code>xcontrol</code> file, appended to yours if you
+supply one) and returns that one. Hessians also fill frequencies and normal modes
+from <code>g98.out</code> (with translations and rotations projected out), where xtb writes
+mass-weighted vectors rounded to two decimals; the codec converts them to
+unit-length Cartesian displacements, as qcdata defines them. A Hessian also carries the
+energy and the gradient at the input geometry: the codec adds <code>--grad</code> to <code>--hess</code>,
+which costs one more gradient beside the Hessian's displaced ones.</p>
 <p>One keyword is not an xtb flag: <code>external_potentials</code>, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: <code>[[charge, [x, y,
 z]], ...]</code> in bohr. An optional third entry, <code>[charge, [x, y, z], atomic_number]</code>,
@@ -1496,6 +1514,13 @@ the <code>xcontrol</code> file (appending to yours if you supply one); gradients
 <code>point_charge_gradient</code> from xtb's <code>pcgrad</code>. Only GFN1- and GFN2-xTB apply point
 charges: GFN0, GFN-FF, and g-xTB ignore them without a warning, so the codec rejects
 them there.</p>
+<p>Failures and their kinds: an SCF that does not converge is <code>convergence</code> (code
+<code>scf_not_converged</code>), an optimization that runs out of cycles <code>convergence</code>
+(<code>max_iter</code>), with its trajectory attached; atoms on top of each other, a
+multiplicity the number of electrons cannot have, and a solvent xtb has no
+parameters for are <code>input</code>; an unknown option given in <code>cmdline_args</code> is
+<code>input</code> (<code>unknown_key</code>); <code>gxtb</code> on an xtb build without g-xTB is
+<code>environment</code>.</p>
 
 
 
@@ -1523,7 +1548,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/single_point.py"><code>examples/xtb/single_point.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;xtb single point: energy, gradient, or Hessian with GFN-xTB, GFN-FF, or g-xTB.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and xtb on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and xtb on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge xtb``. For g-xTB (``method=&quot;gxtb&quot;``) use the xtb build</span>
 <span class="sd">from https://github.com/grimme-lab/g-xtb instead; it also runs every other method.</span>
 <span class="sd">GFN0-xTB reads its parameter file from the directory named by ``XTBPATH``.</span>
@@ -1602,8 +1627,6 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=600,  # seconds before xtb is killed</span>
-    <span class="c1"># collect_files=True,  # keep every output file in output.results.files</span>
-    <span class="c1"># executables={&quot;xtb&quot;: &quot;/path/to/g-xtb/bin/xtb&quot;},  # or QCCOMPUTE_XTB_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
@@ -1611,8 +1634,11 @@ with <code>python script.py</code>. They live in the repository's
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient (Hartree/bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">gradient</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">hessian</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">freqs_wavenumber</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Normal modes (modes, atoms, xyz):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">normal_modes_cartesian</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frequencies (cm^-1):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">frequencies</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Normal modes (modes, atoms, xyz):&quot;</span><span class="p">,</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">vibrational_analysis</span><span class="o">.</span><span class="n">normal_modes_cartesian</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Partial charges:&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">atomic_charges</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">point_charge_gradient</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Gradient on point charges:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">point_charge_gradient</span><span class="p">)</span>
@@ -1622,7 +1648,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/optimization.py"><code>examples/xtb/optimization.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;xtb geometry optimization with its built-in optimizer, ANCopt.</span>
 
-<span class="sd">Requires: ``pip install qccompute`` (it installs qccodec) and xtb on PATH, e.g.</span>
+<span class="sd">Requires: ``pip install qccompute[qccodec]`` and xtb on PATH, e.g.</span>
 <span class="sd">``conda install -c conda-forge xtb`` (or the g-xTB build of xtb for ``method=&quot;gxtb&quot;``,</span>
 <span class="sd">https://github.com/grimme-lab/g-xtb).</span>
 
@@ -1688,12 +1714,10 @@ with <code>python script.py</code>. They live in the repository's
 <span class="n">output</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
     <span class="n">prog_input</span><span class="p">,</span>
     <span class="c1"># timeout=600,  # seconds before xtb is killed</span>
-    <span class="c1"># collect_files=True,  # keep every output file (xtbopt.xyz, ...) in results.files</span>
-    <span class="c1"># executables={&quot;xtb&quot;: &quot;/path/to/xtb&quot;},  # or QCCOMPUTE_XTB_EXECUTABLE</span>
 <span class="p">)</span>
 
 <span class="n">results</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">results</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Steps:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Frames (structures evaluated):&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Energies (Hartree):&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final structure (bohr):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">final_structure</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
 <span class="c1"># Save the trajectory, e.g. to view in a molecule viewer:</span>
@@ -1703,7 +1727,7 @@ with <code>python script.py</code>. They live in the repository's
 <p><a href="https://github.com/atomsforhumanity/qccodec/blob/master/examples/xtb/many_calculations.py"><code>examples/xtb/many_calculations.py</code></a></p>
 <div class="language-python highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;xtb for many structures at once: calculations run side by side.</span>
 
-<span class="sd">Requires: what examples/xtb/single_point.py requires, and qccompute 0.21.0 or newer.</span>
+<span class="sd">Requires: what examples/xtb/single_point.py requires.</span>
 
 <span class="sd">How lists work (the same for every program that runs as its own process: ORCA,</span>
 <span class="sd">Psi4, CREST, DFTB+, TeraChem, ...):</span>
@@ -1711,27 +1735,26 @@ with <code>python script.py</code>. They live in the repository's
 <span class="sd">- Pass ``compute`` a list of inputs to get a list of outputs in the same order. Each</span>
 <span class="sd">  calculation runs in its own process and directory, so several run at once in</span>
 <span class="sd">  threads; no ``if __name__ == &quot;__main__&quot;:`` guard is needed.</span>
-<span class="sd">- ``max_workers`` is a budget of CPU threads, by default the cores this process may</span>
-<span class="sd">  use. Each calculation counts the threads it asks for: here xtb&#39;s ``parallel``</span>
-<span class="sd">  (``-P``), for ORCA ``pal``, for Psi4 ``-n``, for CREST ``threads``. With 16 cores</span>
-<span class="sd">  and ``parallel`` 2, eight xtb calculations run at once. GPU programs (TeraChem) get</span>
-<span class="sd">  one GPU each through ``CUDA_VISIBLE_DEVICES``.</span>
+<span class="sd">- A list shares the runner&#39;s threads (all the cores this process may use for</span>
+<span class="sd">  ``qccompute.compute``, or ``qccompute.Runner(threads=...)``): each calculation gets</span>
+<span class="sd">  its ``threads`` keyword, else its part of them, and never more run at once. With 16</span>
+<span class="sd">  cores and ``threads`` 2, eight xtb calculations run at once (xtb itself runs on one</span>
+<span class="sd">  thread unless asked). GPU programs (TeraChem) get their own GPUs through</span>
+<span class="sd">  ``CUDA_VISIBLE_DEVICES``.</span>
 <span class="sd">- The inputs may mix programs, methods, and calculation types.</span>
-<span class="sd">- Every calculation runs first. Then, if any failed, ``ComputeErrors`` (an</span>
-<span class="sd">  ``ExceptionGroup``) is raised; each error has the failed input&#39;s position as</span>
-<span class="sd">  ``input_index``, and ``.outputs`` holds every output. With ``raise_exc=False`` the</span>
-<span class="sd">  outputs are returned as they are; check ``output.success``.</span>
-<span class="sd">- ``print_logs=True`` prints each line prefixed with its input&#39;s index, such as</span>
-<span class="sd">  ``[3]``. An ``update_func`` receives ``(index, all_logs, new_logs)`` from the thread</span>
-<span class="sd">  running that calculation.</span>
+<span class="sd">- Every calculation runs first. Then, if any failed, ``qcdata.ProgramErrors`` (an</span>
+<span class="sd">  ``ExceptionGroup``) is raised: each error is a ``qcdata.ProgramError`` whose</span>
+<span class="sd">  ``output`` is the failed output, and ``.results`` holds every output in input</span>
+<span class="sd">  order. With ``raise_exc=False`` the outputs are returned as they are; check</span>
+<span class="sd">  ``output.success``. For outputs as they finish, ``runner.submit`` each input (with</span>
+<span class="sd">  ``threads``) and use ``concurrent.futures.as_completed``.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComputeErrors</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">qcdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalcType</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ProgramInput</span><span class="p">,</span> <span class="n">Structure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qccompute</span><span class="w"> </span><span class="kn">import</span> <span class="n">Runner</span><span class="p">,</span> <span class="n">compute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qcdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalcType</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ProgramErrors</span><span class="p">,</span> <span class="n">ProgramInput</span><span class="p">,</span> <span class="n">Structure</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">water</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Structure</span><span class="p">:</span>
@@ -1754,7 +1777,7 @@ with <code>python script.py</code>. They live in the repository's
         <span class="n">calctype</span><span class="o">=</span><span class="n">CalcType</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
         <span class="n">structure</span><span class="o">=</span><span class="n">water</span><span class="p">(</span><span class="n">r</span><span class="p">),</span>
         <span class="n">model</span><span class="o">=</span><span class="n">Model</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;gfn2&quot;</span><span class="p">),</span>
-        <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;parallel&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>  <span class="c1"># threads for each xtb, counted against max_workers</span>
+        <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;threads&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>  <span class="c1"># each xtb&#39;s threads, out of the runner&#39;s</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">distances</span>
 <span class="p">]</span>
@@ -1763,18 +1786,18 @@ with <code>python script.py</code>. They live in the repository's
 <span class="k">try</span><span class="p">:</span>
     <span class="n">outputs</span> <span class="o">=</span> <span class="n">compute</span><span class="p">(</span>
         <span class="n">inputs</span><span class="p">,</span>
-        <span class="c1"># max_workers=8,  # CPU threads all calculations may use at once</span>
-        <span class="c1"># print_logs=True,  # stream every program&#39;s output, prefixed with [index]</span>
         <span class="c1"># timeout=600,  # seconds each calculation may run</span>
     <span class="p">)</span>
-<span class="k">except</span> <span class="n">ComputeErrors</span> <span class="k">as</span> <span class="n">errors</span><span class="p">:</span>
-    <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">errors</span><span class="o">.</span><span class="n">exceptions</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input </span><span class="si">{</span><span class="n">error</span><span class="o">.</span><span class="n">input_index</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">outputs</span> <span class="o">=</span> <span class="n">errors</span><span class="o">.</span><span class="n">outputs</span>  <span class="c1"># every output, failed ones with success=False</span>
+<span class="k">except</span> <span class="n">ProgramErrors</span> <span class="k">as</span> <span class="n">errors</span><span class="p">:</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">errors</span><span class="o">.</span><span class="n">results</span>  <span class="c1"># every output, failed ones with success=False</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">outputs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">parallel</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
 
 <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
-<span class="n">compute</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># one at a time, for comparison</span>
+<span class="k">with</span> <span class="n">Runner</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="k">as</span> <span class="n">runner</span><span class="p">:</span>  <span class="c1"># one at a time, for comparison</span>
+    <span class="n">runner</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
 <span class="n">serial</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;r (bohr)  energy (Hartree)&quot;</span><span class="p">)</span>
