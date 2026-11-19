@@ -29,9 +29,27 @@ distances and degrees for angles. The codec writes them as TeraChem's
 ``indices`` to TeraChem's 1-based atom numbers and distances to angstrom. Scans are not
 supported. ``indices`` is the only input field that carries atom indices.
 
-The orbital files ``c0`` (or ``ca0``/``cb0``) can seed the next calculation: qccompute's
-``propagate_wfn=True`` does this between geomeTRIC steps. A run is a failure unless
-stdout ends with ``Job finished:``.
+The orbital files ``c0`` (or ``ca0``/``cb0``) of an output can seed another input as
+its guess (``codec.propagate_wfn(output, input)``). A run is a failure unless
+stdout ends with ``Job finished:``. A basis set TeraChem has no file for is kind
+``input``; an SCF that does not converge is ``convergence`` (``scf_not_converged``),
+with the energy of its last iteration, which TeraChem prints; coupled-perturbed
+equations that do not (TeraChem's ``CPSCF``/``CPCIS failed to converge``) are
+``convergence`` (``response_not_converged``); out of GPU memory is ``resource``
+(``device_memory``), and out of its pinned host buffer ``resource`` (``host_memory``);
+no usable GPU is ``backend``; any other unfinished job is ``internal``. When an
+allocation overflows TeraChem's GPU buffer, the error's ``details`` are in the terms of
+TeraChem's memory keyword ``gpumem`` (the buffer, in megawords of 8 bytes) converted
+to GiB: ``available_gib`` the buffer it ran with, ``required_gib`` the buffer with
+which the allocation fits (what the buffer held plus the allocation that failed).
+TeraChem's keywords are passed through unchecked. TeraChem plans one CPU thread: its
+work is on the GPUs it declares, so several can share a machine's GPUs.
+
+TeraChem often runs from a container image through a launcher script named
+``terachem``. Name the image with ``QCCODEC_TERACHEM_IMAGE`` (the image the launcher
+runs, such as ``mtzgroup/terachem:1.9-2026.10-dev``): the numerics identity of every
+result is then TeraChem's version and the image's digest, not the launcher's, which
+stays the same while the image behind it changes.
 """
 
 from __future__ import annotations
@@ -53,8 +71,9 @@ from qcref import constants
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_finditer, re_search
-from ._common import invocation, unit_modes
+from ._common import invocation, unit_modes, vibrations
 
 codec = Codec(
     "terachem",
@@ -64,6 +83,19 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's messages below.
+    errors=[
+        (r"TeraChem has no basis set", "input", None),
+        (r"TeraChem: the SCF did not converge", "convergence", "scf_not_converged"),
+        (
+            r"TeraChem: the response equations did not converge",
+            "convergence",
+            "response_not_converged",
+        ),
+        (r"TeraChem ran out of GPU memory", "resource", "device_memory"),
+        (r"TeraChem ran out of host memory", "resource", "host_memory"),
+        (r"TeraChem could not use a GPU", "backend", None),
+    ],
 )
 
 
@@ -264,11 +296,34 @@ codec.propagate_wfn = propagate_wfn
 
 
 @codec.failure
-def failure(ctx: Context) -> str | None:
-    """TeraChem prints ``Job finished:`` only when a calculation completed."""
-    if ctx.stdout is not None and not calculation_succeeded(ctx.stdout):
-        return "TeraChem did not finish: no 'Job finished:' line in its output."
-    return None
+def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
+    """TeraChem prints ``Job finished:`` only when a calculation completed.
+
+    A missing basis set file, memory running out (`out_of_memory`) and an unusable GPU
+    are named; anything else is reported as an unfinished job.
+    """
+    stdout = ctx.stdout
+    if stdout is None or calculation_succeeded(stdout):
+        return None
+    basis = re.search(r"Unable to open file \S*/basis/(\S+)", stdout)
+    if basis:
+        return f"TeraChem has no basis set {basis.group(1)!r}."
+    scf = re.search(r"Reached max number of SCF iterations \(maxit = (\d+)\)", stdout)
+    if scf or "SCF did not converge" in stdout:
+        cycles = f" in {scf.group(1)} iterations (maxit)" if scf else ""
+        return f"TeraChem: the SCF did not converge{cycles}."
+    response = re.search(r"(CPSCF|CPCIS) failed to converge", stdout)
+    if response:
+        return (
+            f"TeraChem: the response equations did not converge ({response.group(1)})."
+        )
+    memory = out_of_memory(stdout)
+    if memory is not None:
+        return memory
+    cuda = re.search(r"CUDA error: ([^,\n]+)", stdout)
+    if cuda:
+        return f"TeraChem could not use a GPU: {cuda.group(1)}."
+    return "TeraChem did not finish: no 'Job finished:' line in its output."
 
 
 @codec.parser(
@@ -364,23 +419,29 @@ def _frequency_blocks(contents: str) -> tuple[list[float], list[list[list[float]
     return freqs, modes
 
 
-@codec.parser(
-    file="scr*/Frequencies.dat",
-    target="freqs_wavenumber",
-    calctypes=[CalcType.hessian],
-    required=False,
-)
 def parse_frequencies(contents: str) -> list[float]:
     """Parse vibrational frequencies (cm^-1) from ``scr.*/Frequencies.dat``."""
     return _frequency_blocks(contents)[0]
 
 
 @codec.parser(
-    file="scr*/Frequencies.dat",
-    target="normal_modes_cartesian",
+    file="directory",
+    target="vibrational_analysis",
     calctypes=[CalcType.hessian],
     required=False,
 )
+def parse_vibrations(ctx: Context) -> dict[str, Any]:
+    """The vibrational analysis of ``scr.*/Frequencies.dat``."""
+    if ctx.input_data is None:  # the masses come from the input's elements
+        raise FileNotFoundError("input_data")
+    contents = ctx.read("scr*/Frequencies.dat")
+    return vibrations(
+        parse_frequencies(contents),
+        parse_normal_modes(contents),
+        ctx.input_data.require_structure(),
+    )
+
+
 def parse_normal_modes(contents: str) -> list[list[list[float]]]:
     """Parse normal modes (n_modes, n_atoms, 3) from ``scr.*/Frequencies.dat``.
 
@@ -397,6 +458,15 @@ def parse_version(stdout: str) -> str:
     Example: ``'v1.9-2022.03-dev [4daa16dd21e78d64be5415f7663c3d7c2785203c]'``
     """
     return f"{parse_terachem_version(stdout)} [{parse_version_control_details(stdout)}]"
+
+
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's git commit: ``Git Version: 175124dcc4ac54a6f38882b0f4668eab6c9d9e8d``.
+
+    Builds that print an ``Hg Version`` (a branch name) name no commit.
+    """
+    return re_search(r"Git Version: (\w+)", stdout).group(1)
 
 
 @codec.parser(target="calcinfo_natoms")
@@ -525,6 +595,53 @@ def parse_terachem_version(stdout: str) -> str:
     return re_search(r"TeraChem (v\S*)", stdout).group(1)
 
 
+def out_of_memory(stdout: str) -> tuple[str, dict[str, Any]] | None:
+    """Read TeraChem running out of GPU or host memory, with what it needed.
+
+    TeraChem allocates from a GPU buffer of ``gpumem`` megawords (8 MiB each,
+    ``Initialize GPUBox with N MW of memory``); an allocation that does not fit prints
+    the bytes free and requested. The buffer is what the calculation could use, and
+    it needed at least what the buffer held plus the allocation. A CUDA allocation
+    that fails outright says only that the device ran out.
+
+    Args:
+        stdout: TeraChem's output.
+
+    Returns:
+        The failure's message and details (``required_gib`` and ``available_gib``
+        for an overflowing GPU buffer), or None when memory did not run out.
+    """
+    overflow = re.search(
+        r"Allocation oversubscribes device buffer\.\s*\n"
+        r"Available: (\d+) Requested: (\d+)",
+        stdout,
+    )
+    if overflow:
+        free, requested = int(overflow.group(1)), int(overflow.group(2))
+        size = re.search(r"Initialize GPUBox with (\d+) MW of memory", stdout)
+        message = (
+            f"TeraChem ran out of GPU memory: an allocation of {requested / 2**20:.1f}"
+            f" MiB did not fit in the {free / 2**20:.1f} MiB free in its GPU buffer; "
+            "raise gpumem."
+        )
+        if size is None:
+            return message, {}
+        buffer = int(size.group(1)) * 8 * 2**20
+        return message, {
+            "required_gib": round((buffer - free + requested) / 2**30, 9),
+            "available_gib": round(buffer / 2**30, 9),
+        }
+    if re.search(
+        r"Failed to allocate GPU memory|CUDA error: out of memory"
+        r"|Insufficient memory available in GPUBox::gpuAlloc",
+        stdout,
+    ):
+        return "TeraChem ran out of GPU memory.", {}
+    if re.search(r"Allocation oversubscribes host buffer|GPUBox::cpuAlloc", stdout):
+        return "TeraChem ran out of host memory in its pinned buffer.", {}
+    return None
+
+
 def calculation_succeeded(stdout: str) -> bool:
     """Determine from stdout whether a calculation completed."""
     return re.search(r"Job finished:", stdout) is not None
@@ -541,3 +658,7 @@ def parse_calctype(stdout: str) -> CalcType:
         if re.search(regex, stdout):
             return calctype
     raise MatchNotFoundError(regex, stdout)
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'terachem').
+program = CodecProgram(codec)

@@ -13,10 +13,12 @@ Inputs map to tblite as follows:
 - ``structure.charge`` is the total charge and ``structure.multiplicity - 1`` the
   number of unpaired electrons (tblite's ``uhf``).
 - ``keywords`` use tblite's own names. Calculator settings go to
-  ``Calculator.set``: ``accuracy``, ``guess``, ``max-iter``, ``mixer-damping``,
-  ``mixer-memory``, ``temperature`` (electronic temperature in **Hartree**, as tblite
-  takes it; multiply kelvin by 3.166808578545117e-6), ``annealing``, and
-  ``verbosity``. Interactions go to ``Calculator.add``, with a single value or a list
+  ``Calculator.set``: ``acc`` (the accuracy factor, ``accuracy`` in tblite's Python
+  API and ``--acc`` on its command line: the shared keyword ``accuracy`` is an
+  accuracy target, which tblite cannot honour, kind ``unsupported``), ``guess``,
+  ``max-iter``, ``mixer-damping``, ``mixer-memory``, ``temperature`` (electronic
+  temperature in **Hartree**, as tblite takes it; multiply kelvin by
+  3.166808578545117e-6), ``annealing``, and ``verbosity``. Interactions go to ``Calculator.add``, with a single value or a list
   of arguments: ``alpb-solvation`` and ``gbsa-solvation`` (a solvent name, or
   ``[solvent, state]`` with state ``gsolv``, ``bar1mol``, or ``reference``),
   ``ddX-solvation``, ``gbe-solvation``, ``gb-solvation``, ``electric-field`` (a
@@ -27,11 +29,16 @@ Inputs map to tblite as follows:
 Calculation types: ``energy`` and ``gradient``. tblite has no analytic Hessian; use
 ``program="xtb"`` for GFN2-xTB Hessians, or geomeTRIC with tblite gradients for
 optimizations. Every result records Mulliken partial charges in ``atomic_charges``
-and the dipole moment (e bohr) in ``scf_dipole_moment``.
+and the dipole moment (e bohr) in ``dipole_moment``.
 
 tblite never moves or reorients the molecule, so gradients are in the input's frame.
-No input field carries atom indices. An SCF that does not converge raises
-``CalculationError`` with tblite's message.
+No input field carries atom indices.
+
+A keyword that is not a tblite setting or interaction is refused before tblite runs
+(kind ``input``, code ``unknown_key``) with the closest name. Failures and their
+kinds: an SCF that does not converge is ``convergence`` (``scf_not_converged``); atoms
+on top of each other, a multiplicity the number of electrons cannot have, and an
+unknown solvent are ``input``; elements beyond radon are ``unsupported``.
 """
 
 from __future__ import annotations
@@ -43,10 +50,11 @@ from qcdata import CalcType, ProgramInput
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
     SinglePoint,
     package_version,
-    reject_unknown,
     require_model,
     single_point_decoder,
 )
@@ -56,10 +64,11 @@ METHODS: dict[str, str] = {
     "gfn1": "GFN1-xTB",
     "ipea1": "IPEA1-xTB",
 }
-# Calculator.set attributes and Calculator.add interactions, by tblite's names.
+# Calculator.set attributes and Calculator.add interactions, by tblite's names, but
+# for the accuracy factor: "accuracy" is the shared keyword of an accuracy target.
 SETTINGS = frozenset(
     {
-        "accuracy",
+        "acc",
         "guess",
         "max-iter",
         "mixer-damping",
@@ -121,7 +130,11 @@ def encode(inp: ProgramInput) -> PythonInput:
             "positions": inp.require_structure().geometry.tolist(),
             "charge": inp.require_structure().charge,
             "uhf": inp.require_structure().multiplicity - 1,
-            "settings": {k: v for k, v in inp.keywords.items() if k in SETTINGS},
+            "settings": {
+                ("accuracy" if k == "acc" else k): v
+                for k, v in inp.keywords.items()
+                if k in SETTINGS
+            },
             "interactions": interactions,
         },
     )
@@ -155,7 +168,7 @@ def invoke_tblite(
         "energy": float(result.get("energy")),
         "gradient": np.asarray(result.get("gradient")).tolist(),
         "atomic_charges": np.asarray(result.get("charges")).tolist(),
-        "scf_dipole_moment": np.asarray(result.get("dipole")).tolist(),
+        "dipole_moment": np.asarray(result.get("dipole")).tolist(),
         "version": package_version("tblite"),
     }
 
@@ -165,4 +178,17 @@ codec = Codec(
     calctypes={CalcType.energy, CalcType.gradient},
     encode=encode,
     decode=single_point_decoder("tblite"),
+    # tblite's own messages (TBLiteRuntimeError), quoted by the decoder.
+    errors=[
+        (r"SCF not converged", "convergence", "scf_not_converged"),
+        (r"Too close interatomic distances", "input", None),
+        (r"unpaired electrons .* not compatible", "input", None),
+        (r"not found among database of solvents", "input", None),
+        (r"No support for elements", "unsupported", None),
+    ],
+)
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'tblite').
+program = CodecProgram(
+    codec, in_process=False, library="tblite", keywords=SETTINGS | INTERACTIONS
 )

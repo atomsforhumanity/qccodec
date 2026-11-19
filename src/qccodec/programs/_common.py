@@ -1,12 +1,14 @@
-"""Helpers shared by file-based program codecs."""
+"""Helpers shared by codecs: invocations, keyword checks, vibrations and paths."""
 
 from __future__ import annotations
 
+import difflib
 import re
+from collections.abc import Collection, Iterable
 from typing import Any
 
 import numpy as np
-from qcdata import Frame, ProgramInput
+from qcdata import Frame, ProgramInput, Structure
 from qcref import constants, periodic_table
 
 from ..codec import Context
@@ -23,7 +25,7 @@ def invocation(
     wavefunction_files: tuple[str, ...] = (),
     environment: dict[str, str] | None = None,
     arguments: tuple[str, ...] = (),
-    threads: int = 1,
+    threads: int | None = None,
     gpus: int = 0,
 ) -> SubprocessInput:
     """Build ``<program> <filename> <arguments> <cmdline_args>`` and the input files.
@@ -47,6 +49,55 @@ def invocation(
         threads=threads,
         gpus=gpus,
     )
+
+
+def suggest(name: str, known: Iterable[str]) -> str | None:
+    """Return the known name closest to a misspelled one, if any is close.
+
+    Case is ignored when comparing, and the known name is returned as spelled.
+    """
+    spelled = {k.lower(): k for k in known}
+    close = difflib.get_close_matches(name.lower(), list(spelled), n=1, cutoff=0.6)
+    return spelled[close[0]] if close else None
+
+
+def reject_unknown(
+    program: str,
+    keywords: Iterable[str],
+    known: Collection[str],
+    *,
+    where: str = "keyword",
+) -> None:
+    """Refuse names that are not settings of the program, so typos fail at once.
+
+    Every setting given must affect the calculation, and a misspelled one would
+    otherwise be ignored or reach the program as something else.
+
+    Args:
+        program: The program, for the message.
+        keywords: The names given.
+        known: The names the program accepts here.
+        where: What the names are, for the message (``keyword``, ``block``,
+            ``option in group 'calculation'``).
+
+    Raises:
+        EncoderError: Kind ``input``, code ``unknown_key``, naming each unknown name
+            with the closest known one, or listing the known names when none is
+            close.
+    """
+    unknown = sorted(set(keywords) - set(known))
+    if not unknown:
+        return
+    hints = {name: suggest(name, known) for name in unknown}
+    named = ", ".join(
+        f"{name!r} (did you mean {hint!r}?)" if hint else repr(name)
+        for name, hint in hints.items()
+    )
+    plural = "s" if len(unknown) > 1 else ""
+    message = f"Unknown {program} {where}{plural}: {named}."
+    if not any(hints.values()):
+        message += f" Known: {', '.join(sorted(known))}."
+    raise EncoderError(message, code="unknown_key")
 
 
 def parse_g98_freqs(contents: str) -> list[float]:
@@ -100,6 +151,36 @@ def _g98_coordinates(contents: str) -> np.ndarray:
     return np.array(rows, dtype=float) * constants.ANGSTROM_TO_BOHR
 
 
+def vibrations(
+    frequencies: Any,
+    modes: Any,
+    structure: Structure,
+    projection: str = "translations_rotations",
+    external: list[bool] | None = None,
+) -> dict[str, Any]:
+    """The `VibrationalAnalysis` fields of a program's printed vibrations.
+
+    Programs print the vibrations after projecting translations and rotations out of
+    the mass-weighted Hessian, so by default the modes are the vibrations only. The
+    masses are the standard atomic masses of the input structure's elements.
+
+    Args:
+        frequencies: Wavenumbers (cm^-1), negative for imaginary modes.
+        modes: Unit-length Cartesian displacements, n_modes x n_atoms x 3.
+        structure: The input structure.
+        projection: What the program projected out (a `qcdata.Projection` value).
+        external: Per mode, whether it is a translation or rotation the program left
+            among the modes; None when it left none.
+    """
+    return {
+        "masses": [float(periodic_table[s].mass) for s in structure.symbols],
+        "projection": projection,
+        "frequencies": list(frequencies),
+        "external": external or [],
+        "normal_modes_cartesian": modes,
+    }
+
+
 def unit_modes(modes: Any) -> list[list[list[float]]]:
     """Scale each normal mode to unit length, as qcdata defines them."""
     array = np.asarray(modes, dtype=float)
@@ -136,6 +217,17 @@ def rotation_onto(source: np.ndarray, target: np.ndarray) -> np.ndarray:
             "mapped onto the input."
         )
     return rotation
+
+
+def parse_g98_vibrations(ctx: Context) -> dict[str, Any]:
+    """The vibrational analysis xtb and CREST write to ``g98.out``."""
+    if ctx.input_data is None:
+        raise ParserError("Vibrational analysis parsing requires input_data.")
+    return vibrations(
+        parse_g98_freqs(ctx.read("g98.out")),
+        parse_g98_normal_modes(ctx),
+        ctx.input_data.require_structure(),
+    )
 
 
 def parse_g98_normal_modes(ctx: Context) -> list[list[list[float]]]:

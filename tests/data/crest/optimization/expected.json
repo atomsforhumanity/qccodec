@@ -10,6 +10,7 @@
     "extras": {},
     "program": "crest",
     "program_version": "3.0.2",
+    "program_commit": "af7eb99",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -80,6 +81,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.7918798035,
@@ -87,10 +89,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -166,6 +165,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.9229264187,
@@ -173,10 +173,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -252,6 +249,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0483521241,
@@ -259,10 +257,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -338,6 +333,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.017059761,
@@ -345,10 +341,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -424,6 +417,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0491088307,
@@ -431,10 +425,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -510,6 +501,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0660326493,
@@ -517,10 +509,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -596,6 +585,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0730217268,
@@ -603,10 +593,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -682,6 +669,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.072307888,
@@ -689,10 +677,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -768,6 +753,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0683269168,
@@ -775,10 +761,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -854,6 +837,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0732163707,
@@ -861,10 +845,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -940,6 +921,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0733841586,
@@ -947,10 +929,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -1026,6 +1005,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0734021646,
@@ -1033,10 +1013,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -1112,6 +1089,7 @@
           "extras": {},
           "program": "crest",
           "program_version": "3.0.2",
+          "program_commit": "af7eb99",
           "qcdata_version": "0.23.0"
         },
         "energy": -5.0734025156,
@@ -1135,10 +1113,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cache
 from importlib import import_module
-from importlib.metadata import entry_points
+from importlib.metadata import EntryPoint, entry_points
 from typing import Any
 
 from qcdata import CalcType, FileInput, Inputs, ProgramInput, StructuredData
@@ -59,17 +60,30 @@ def unregister(program: str) -> None:
     _REGISTERED.pop(program, None)
 
 
+@cache
+def _plugin_entry_points() -> dict[str, EntryPoint]:
+    """The installed codec entry points by program, read once per process.
+
+    Reading package metadata scans every installed distribution (about 1.3 ms with a
+    typical environment); doing it on every ``compute`` call dominated the cost of fast
+    in-process programs. Packages installed after the first lookup need a new process.
+    """
+    found: dict[str, EntryPoint] = {}
+    for ep in entry_points(group=ENTRY_POINT_GROUP):
+        found.setdefault(ep.name, ep)
+    return found
+
+
 def supported_programs() -> tuple[str, ...]:
     """Built-in and installed plugin program names plus any registered in this process."""
-    plugins = [ep.name for ep in entry_points(group=ENTRY_POINT_GROUP)]
+    plugins = list(_plugin_entry_points())
     return tuple(dict.fromkeys([*_BUILTIN, *plugins, *_REGISTERED]))
 
 
 def _plugin(name: str) -> Codec | None:
     """Load an installed codec published under the entry point group, if any."""
-    for ep in entry_points(group=ENTRY_POINT_GROUP):
-        if ep.name != name:
-            continue
+    ep = _plugin_entry_points().get(name)
+    if ep is not None:
         loaded = ep.load()
         if not isinstance(loaded, Codec):
             raise CodecNotFoundError(

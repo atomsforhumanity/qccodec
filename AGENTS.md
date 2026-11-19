@@ -4,7 +4,7 @@ Instructions for AI coding agents (and a quick reference for people) working in 
 
 ## This package
 
-`qccodec` holds everything program-specific: one `Codec` per program in `src/qccodec/programs/<program>.py` that encodes a `ProgramInput` into a `SubprocessInput` or `PythonInput` and decodes native output into `qcdata` results. It never executes programs; that is `qccompute`'s job.
+`qccodec` holds everything that comes from running external programs: one `Codec` per program in `src/qccodec/programs/<program>.py` that encodes a `ProgramInput` into a `SubprocessInput` or `PythonInput` and decodes native output into `qcdata` results, and the adapter (`qccodec.program.CodecProgram`, with `qccodec.run`) that runs it as a program qccompute finds under the `qccompute.programs` entry points. Programs run through the structural protocol; qccompute is imported only where the runner is needed: geomeTRIC and Sella called directly hand themselves to `qccompute.compute`, and the ASE calculator is usually given `qccompute.compute`.
 
 - Keywords pass through to the program in its native form, so each program's own documentation applies. The exception is atom indices: they are 0-based in `ProgramInput` (matching `structure`), and each codec converts them for programs that count from 1. List those fields in the codec module's docstring.
 - Results must describe the input structure exactly. Many programs move, reorient, or symmetrize the molecule (center of mass, standard orientation, symmetry frame); every codec must turn that off (for example Psi4's `no_com`, `no_reorient`, `symmetry c1`) so gradients, Hessians, normal modes, and trajectories are in the input's frame and atom order. Check this for each new program, test it (compare a gradient with a reference or an optimization's first geometry with the input), and document it in the codec module's docstring. If a program cannot be stopped from transforming the structure, the codec must transform its results back.
@@ -14,7 +14,7 @@ Instructions for AI coding agents (and a quick reference for people) working in 
 
 ## The qc* suite
 
-Dependencies point one way: qcref -> qcdata -> {qcinf, qccodec} -> qccompute. Never import a package that sits later in that order (the integration tests in `tests/integration/` may use `qccompute`, a test-only dependency), and keep changes that span packages in separate pull requests, released in that order.
+Dependencies point one way: qcref -> qcdata -> qccompute -> qccodec. qccodec depends on qccompute (programs with subprograms and the ASE calculator need its runner) and registers its programs with it through entry points; qccompute reaches qccodec only through the optional extra `qccompute[qccodec]`. Never import a package that sits later in that order, and keep changes that span packages in separate pull requests, released in that order.
 
 ## Commands
 

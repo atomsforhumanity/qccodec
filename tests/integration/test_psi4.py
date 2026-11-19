@@ -6,12 +6,13 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
 )
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("psi4")]
 
@@ -53,8 +54,19 @@ def test_energy(run: Run, water: Structure) -> None:
     assert (
         results.atomic_charges is not None and abs(sum(results.atomic_charges)) < 1e-6
     )
-    assert results.scf_dipole_moment is not None
+    assert results.dipole_moment is not None
     assert "SCF TOTAL ENERGY" in results.extras["psi4_variables"]
+
+
+def test_correlated_method_has_no_reference_dipole(run: Run, water: Structure) -> None:
+    """MP2 leaves dipole_moment empty: Psi4 holds only the HF reference's dipole."""
+    inp = _input(water, CalcType.energy, mp2_type="conv").model_copy(
+        update={"model": Model(method="mp2", basis="sto-3g")}
+    )
+    results = run(inp).results
+    assert isinstance(results, SinglePointData)
+    assert results.energy is not None and results.energy < ENERGY
+    assert results.dipole_moment is None
 
 
 def test_gradient_in_input_frame(run: Run, water: Structure) -> None:
@@ -72,9 +84,9 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert hessian.shape == (9, 9)
     assert np.allclose(hessian, hessian.T, atol=1e-8)
     assert np.allclose(results.gradient, GRADIENT, atol=1e-7)
-    assert results.freqs_wavenumber
-    modes = np.asarray(results.normal_modes_cartesian)
-    assert modes.shape == (len(results.freqs_wavenumber), 3, 3)
+    assert len(results.vibrational_analysis.frequencies)
+    modes = np.asarray(results.vibrational_analysis.normal_modes_cartesian)
+    assert modes.shape == (len(results.vibrational_analysis.frequencies), 3, 3)
 
 
 def test_optimization(run: Run, water: Structure) -> None:
@@ -126,10 +138,104 @@ def test_options_pass_through(run: Run, water: Structure) -> None:
     assert np.isclose(output.results.energy, ENERGY, atol=1e-8)
 
 
-def test_invalid_option_fails(run: Run, water: Structure) -> None:
-    """Psi4 rejects unknown options, and the error says so."""
-    with pytest.raises(Exception, match="NOT_A_PSI4_OPTION is not a valid option"):
-        run(_input(water, CalcType.energy, not_a_psi4_option=1))
+def test_unknown_option_fails(run: Run, water: Structure) -> None:
+    """Psi4 rejects unknown options; the error names each, with the closest option."""
+    with pytest.raises(ProgramError, match="did you mean 'maxiter'") as e:
+        run(_input(water, CalcType.energy, maxiterr=10), case="unknown_option")
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+
+
+@pytest.mark.parametrize(
+    ("case", "model", "keywords", "change", "kind", "code"),
+    [
+        ("invalid_option_value", None, {"reference": "rhff"}, {}, "input", None),
+        ("unknown_basis", Model(method="hf", basis="sto-3gg"), {}, {}, "input", None),
+        ("unknown_method", Model(method="hff", basis="sto-3g"), {}, {}, "input", None),
+        ("impossible_multiplicity", None, {}, {"multiplicity": 2}, "input", None),
+        (
+            "scf_not_converged",
+            None,
+            {"maxiter": 2},
+            {},
+            "convergence",
+            "scf_not_converged",
+        ),
+    ],
+)
+def test_failures_have_kinds(
+    run: Run,
+    water: Structure,
+    case: str,
+    model: Model | None,
+    keywords: dict[str, object],
+    change: dict[str, object],
+    kind: str,
+    code: str | None,
+) -> None:
+    """Psi4's failures are classified, so a store reuses only input-determined ones."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    inp = _input(structure, CalcType.energy, **keywords)
+    if model is not None:
+        inp = inp.model_copy(update={"model": model})
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == (kind, code), e.value.error
+
+
+def test_scf_failure_keeps_its_last_iterate(run: Run, water: Structure) -> None:
+    """An SCF out of iterations fails with its last iterate's energy and orbitals."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.gradient, maxiter=3))
+    assert e.value.error.code == "scf_not_converged"
+    assert e.value.output is not None
+    results = e.value.output.results
+    assert np.isclose(results.energy, ENERGY, atol=0.05)
+    assert results.wavefunction.orbitals is not None
+
+
+def test_scf_carried_on_unconverged_warns(run: Run, water: Structure) -> None:
+    """With fail_on_maxiter false Psi4 carries on: a success, warned."""
+    output = run(
+        _input(water, CalcType.gradient, maxiter=3, fail_on_maxiter=False),
+        case="scf_fail_on_maxiter_off_gradient",
+    )
+    assert [w.code for w in output.warnings] == ["loosely_converged"]
+    assert "fail_on_maxiter" in output.warnings[0].message
+
+
+def test_unconverged_cphf_is_response_not_converged(run: Run, water: Structure) -> None:
+    """Psi4 goes on with CPHF equations out of iterations; the codec does not."""
+    with pytest.raises(ProgramError) as e:
+        run(
+            _input(water, CalcType.hessian, solver_maxiter=2),
+            case="cphf_not_converged",
+        )
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "response_not_converged",
+    )
+    assert e.value.output is not None
+    assert e.value.output.results.hessian is not None
+
+
+def test_optimization_out_of_iterations(run: Run, water: Structure) -> None:
+    """optking out of iterations is convergence (max_iter), trajectory attached."""
+    inp = _input(water, CalcType.optimization, geom_maxiter=2)
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="optimization_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == ("convergence", "max_iter")
+
+
+def test_unrestricted_orbitals_are_recorded(run: Run, water: Structure) -> None:
+    """A UHF wavefunction is unrestricted even when it lands on the RHF solution."""
+    output = run(
+        _input(water, CalcType.energy, reference="uhf"), case="water_uhf_energy"
+    )
+    orbitals = output.results.wavefunction.orbitals
+    assert orbitals.spin == "unrestricted"
+    assert np.allclose(orbitals.energies_a, orbitals.energies_b)
+    restricted = run(_input(water, CalcType.energy)).results.wavefunction.orbitals
+    assert restricted.spin == "restricted" and restricted.energies_b is None
 
 
 # Slightly pyramidal ammonia (bohr); its inversion saddle point is planar.
@@ -155,7 +261,9 @@ def test_transition_state(run: Run) -> None:
     assert isinstance(results, OptimizationData)
     assert np.isclose(results.energies[-1], -55.4376653, atol=1e-6)
     final = results.frames[-1].structure
-    frequencies = run(_input(final, CalcType.hessian)).results.freqs_wavenumber
+    frequencies = run(
+        _input(final, CalcType.hessian)
+    ).results.vibrational_analysis.frequencies
     assert sum(f < 0 for f in frequencies) == 1
 
 
@@ -175,20 +283,74 @@ def test_symmetry_changes_nothing_but_speed(run: Run) -> None:
     assert np.allclose(detected.gradient, off.gradient, atol=1e-8)
     assert detected.wavefunction is not None and off.wavefunction is not None
     assert np.allclose(
-        detected.wavefunction.scf_eigenvalues_a,
-        off.wavefunction.scf_eigenvalues_a,
+        detected.wavefunction.orbitals.energies_a,
+        off.wavefunction.orbitals.energies_a,
         atol=1e-8,
     )
     assert np.array_equal(
-        detected.wavefunction.scf_occupations_a, off.wavefunction.scf_occupations_a
+        detected.wavefunction.orbitals.occupations_a,
+        off.wavefunction.orbitals.occupations_a,
     )
 
 
 def test_projecting_rotations(run: Run, water: Structure) -> None:
-    """Away from a stationary point Psi4 keeps rotations unless told to project them."""
-    default = run(_input(water, CalcType.hessian)).results.freqs_wavenumber
+    """Away from a stationary point Psi4 keeps rotations unless told to project them.
+
+    The analysis records what Psi4 did and flags the rotations it kept.
+    """
+    default = run(_input(water, CalcType.hessian)).results.vibrational_analysis
     projected = run(
         _input(water, CalcType.hessian, project_rot=True)
-    ).results.freqs_wavenumber
-    assert len(default) == 6  # 3N - 3: rotations kept at this non-stationary geometry
-    assert len(projected) == 3  # 3N - 6
+    ).results.vibrational_analysis
+    # 3N - 3: rotations kept at this non-stationary geometry (imaginary here).
+    assert len(default.frequencies) == 6
+    assert default.projection == "translations"
+    assert default.external == [True, True, True, False, False, False]
+    assert len(default.vibrational_frequencies) == 3
+    assert len(projected.frequencies) == 3  # 3N - 6
+    assert projected.projection == "translations_rotations"
+    assert not projected.external
+
+
+@pytest.mark.parametrize("dertype", [None, "gradient"])
+def test_hessian_is_not_projected(
+    run: Run, water: Structure, dertype: str | None
+) -> None:
+    """Analytic and finite-difference Hessians agree with differences of gradients."""
+    keywords = {"dertype": dertype} if dertype else {}
+    finite_difference_check(
+        run, _input(water, CalcType.gradient, **keywords), atol=2e-5, hessian=True
+    )
+
+
+def test_memory_below_psis_minimum_is_host_memory(run: Run, water: Structure) -> None:
+    """Psi4 stops at startup below 250 MiB; the details say so in GiB."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"cmdline_args": ["--memory", "100MB"]}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="memory_below_minimum")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    assert details["required_gib"] == pytest.approx(250 / 1024, rel=1e-5)
+    assert details["available_gib"] == pytest.approx(100e6 / 1024**3, rel=1e-2)
+
+
+def test_in_core_density_fitting_out_of_memory_is_host_memory(
+    run: Run, water: Structure
+) -> None:
+    """MemDF's tensors need more than Psi4's memory can give them."""
+    inp = ProgramInput(
+        program="psi4",
+        structure=water,
+        calctype=CalcType.energy,
+        model=Model(method="hf", basis="aug-cc-pv5z"),
+        keywords={"scf_type": "mem_df"},
+        cmdline_args=["--memory", "300MB"],
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="density_fitting_out_of_memory")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    assert details["available_gib"] == pytest.approx(300e6 / 1024**3, rel=1e-3)
+    assert details["required_gib"] > details["available_gib"]

@@ -1,6 +1,6 @@
 """CREST conformer search (iMTD-GC: metadynamics, then optimization and sorting).
 
-Requires: ``pip install qccompute`` (it installs qccodec) and CREST 3 on PATH, the
+Requires: ``pip install qccompute[qccodec]`` and CREST 3 on PATH, the
 official static build from https://github.com/crest-lab/crest/releases. No separate
 xtb is needed.
 
@@ -20,7 +20,7 @@ Notes for CREST conformer searches (https://crest-lab.github.io/crest-docs/):
 - ``results.conformers`` are frames sorted by energy, lowest first: each holds a
   ``structure`` and its ``results.energy``. ``conformer_energies`` lists those
   energies in Hartree; ``results.structures`` lists the structures. Rotamers (often thousands) are read only when asked for, with
-  ``options={"collect_rotamers": True}``.
+  the keywords ``{"output": {"rotamers": True}}``.
 - Water has a single conformer; replace it with your molecule (Structure.open reads
   an xyz file in angstrom) and expect a longer run.
 """
@@ -42,7 +42,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="gfnff"),  # or "gfn2" (slower)
     keywords={
-        "threads": 4,  # default: number of CPUs, at most 16
+        "threads": 4,  # default: the calculation's thread count
         # "runtype": "nci",  # for non-covalent clusters; default "imtd-gc"
         # "topo": False,  # allow changes in bonding topology between conformers
         "calculation": {
@@ -52,6 +52,7 @@ prog_input = ProgramInput(
                 }
             ],
         },
+        # "output": {"rotamers": True},  # also return crest_rotamers.xyz
         # Sorting and deduplication of the ensemble:
         "cregen": {
             "ewin": 6.0,  # keep conformers within 6 kcal/mol of the lowest
@@ -64,10 +65,7 @@ prog_input = ProgramInput(
 
 output = compute(
     prog_input,
-    # options={"collect_rotamers": True},  # also read crest_rotamers.xyz
     # timeout=3600,  # seconds before CREST is killed
-    # collect_files=True,  # keep every output file in output.results.files
-    # executables={"crest": "/path/to/crest"},  # or QCCOMPUTE_CREST_EXECUTABLE
 )
 
 results = output.results

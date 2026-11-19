@@ -20,6 +20,11 @@ Inputs map to AIMNet2 as follows:
   or charges a model was not trained on). Nothing else is accepted. A model on a GPU
   declares one for qccompute, which gives each calculation of a list its own; an
   explicit index such as ``"cuda:1"`` opts out of that.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -30,6 +35,12 @@ forces and Hessian, to Hartree and bohr.
 AIMNet2 does not move the molecule, so results are in the input's frame. No input
 field carries atom indices.
 
+The numerics identity of a calculation is aimnet's version and the sha256 of the
+model's weights file: the file given as ``model.method``, or the one a registry name
+(aimnet 0.2's ``model_registry.yaml``, aliases included) names in aimnet's cache
+(``AIMNET_CACHE_DIR``, else ``~/.cache/aimnet``) once it is downloaded. Before the
+first download, and for Hugging Face repositories, aimnet's version stands alone.
+
 Energies and gradients of several structures can be computed as one batch:
 ``qccompute.compute`` does this for a list of inputs that share a model, keywords, and
 calculation type, evaluating them in one pass instead of one call each. Hessians are
@@ -38,7 +49,11 @@ computed one structure at a time.
 
 from __future__ import annotations
 
+import functools
+import importlib.util
+import os
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from qcdata import CalcType, ProgramInput
@@ -46,21 +61,27 @@ from qcdata import CalcType, ProgramInput
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
     from_ev,
     gpu_count,
+    model_file,
     package_version,
     pop_device,
     positions_angstrom,
-    reject_unknown,
     require_model,
     resolve_device,
     single_point_decoder,
     split_atoms,
 )
+
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "validate_species"})
 
 
 def encode(inp: ProgramInput) -> PythonInput:
@@ -75,9 +96,10 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError("AIMNet2 runs in Python; cmdline_args and files are unused.")
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("aimnet2", keywords, frozenset({"validate_species"}))
+    reject_unknown("aimnet2", keywords, KEYWORDS)
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_aimnet2,
         kwargs={
             "model": model,
@@ -104,11 +126,12 @@ def invoke_aimnet2(
     forces: bool,
     hessian: bool,
     validate_species: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one AIMNet2 single point with a cached model."""
     from aimnet.calculators import AIMNet2Calculator
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     calculator = cached_model(
         ("aimnet2", model, device), lambda: AIMNet2Calculator(model, device=device)
     )
@@ -130,6 +153,7 @@ def invoke_aimnet2(
     )
     result["atomic_charges"] = out["charges"].detach().cpu().numpy().ravel().tolist()
     result["version"] = package_version("aimnet")
+    result["device"] = device
     return result
 
 
@@ -143,6 +167,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_aimnet2_batch,
         kwargs={
             "model": first["model"],
@@ -164,12 +189,13 @@ def invoke_aimnet2_batch(
     forces: bool,
     validate_species: bool,
     molecules: list[tuple[list[int], list[list[float]], int, int]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one AIMNet2 pass: atoms concatenated, mol_idx."""
     import numpy as np
     from aimnet.calculators import AIMNet2Calculator
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     calculator = cached_model(
         ("aimnet2", model, device), lambda: AIMNet2Calculator(model, device=device)
     )
@@ -202,8 +228,54 @@ def invoke_aimnet2_batch(
         result = from_ev(float(energy), f)
         result["atomic_charges"] = q.tolist()
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
+
+
+def weights(spec: Any) -> Path | None:
+    """The file of a spec's model weights on disk, for its numerics identity.
+
+    Args:
+        spec: A `qcdata.ProgramInput` or `qcdata.ProgramSpec`.
+
+    Returns:
+        The model file given as ``model.method``; else the file a registry name or
+        alias names in aimnet's cache, once downloaded; else None.
+    """
+    path = model_file(spec)
+    if path is not None or spec.model is None:
+        return path
+    registry = _registry()
+    name = registry.get("aliases", {}).get(spec.model.method, spec.model.method)
+    entry = registry.get("models", {}).get(name)
+    if not isinstance(entry, dict) or not entry.get("file"):
+        return None
+    cache = os.environ.get("AIMNET_CACHE_DIR") or Path.home() / ".cache" / "aimnet"
+    path = Path(cache) / str(entry["file"])
+    return path if path.is_file() else None
+
+
+@functools.cache
+def _registry() -> dict[str, Any]:
+    """Aimnet's model registry, read without importing aimnet (and PyTorch).
+
+    Empty when aimnet is not installed or has no ``calculators/model_registry.yaml``
+    (versions before 0.2).
+    """
+    found = importlib.util.find_spec("aimnet")
+    if found is None or not found.submodule_search_locations:
+        return {}
+    path = Path(
+        found.submodule_search_locations[0], "calculators", "model_registry.yaml"
+    )
+    try:
+        import yaml  # an aimnet dependency
+
+        loaded = yaml.safe_load(path.read_text())
+    except Exception:  # noqa: BLE001 - no PyYAML, no file or bad YAML: no registry
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
 
 
 codec = Codec(
@@ -213,4 +285,16 @@ codec = Codec(
     decode=single_point_decoder("aimnet2"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
+    # The model cannot describe the structure's charge or spin.
+    errors=[(r"is closed-shell; use 'aimnet2-nse'", "input", "not_modeled")],
+)
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'aimnet2').
+program = CodecProgram(
+    codec,
+    in_process=False,
+    library="aimnet",
+    weights=weights,
+    keywords=KEYWORDS,
 )

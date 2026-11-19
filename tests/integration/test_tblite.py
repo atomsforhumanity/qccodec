@@ -6,6 +6,7 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     ProgramSpec,
     Structure,
@@ -48,7 +49,7 @@ def test_gradient(run: Run, water: Structure) -> None:
     assert np.isclose(results.energy, XTB_ENERGY, atol=1e-7)
     assert np.allclose(results.gradient, XTB_GRADIENT, atol=1e-5)
     assert np.allclose(results.atomic_charges, [-0.561, 0.2805, 0.2805], atol=1e-3)
-    assert results.scf_dipole_moment is not None
+    assert results.dipole_moment is not None
 
 
 def test_energy_has_no_gradient(run: Run, water: Structure) -> None:
@@ -66,7 +67,7 @@ def test_gradient_matches_finite_differences(run: Run, water: Structure) -> None
 def test_implicit_solvent_and_settings(run: Run, water: Structure) -> None:
     """ALPB water lowers the energy; settings reach the calculator."""
     solvated = run(
-        _input(water, CalcType.energy, **{"alpb-solvation": "water", "accuracy": 0.1})
+        _input(water, CalcType.energy, **{"alpb-solvation": "water", "acc": 0.1})
     ).results
     assert solvated.energy < ENERGY - 1e-3
 
@@ -96,3 +97,33 @@ def test_geometric_optimization_with_tblite_gradients(
     final = trajectory[-1].results
     assert final.energy is not None and final.energy < ENERGY
     assert final.gradient is not None and np.abs(final.gradient).max() < 5e-4
+
+
+@pytest.mark.parametrize(
+    ("keywords", "change", "kind"),
+    [
+        ({"max-iter": 1}, {}, "convergence"),
+        ({}, {"geometry": [[0, 0, 0], [0, 0, 0], [1.4, 0, 1.1]]}, "input"),
+        ({}, {"multiplicity": 2}, "input"),
+        ({"alpb-solvation": "watr"}, {}, "input"),
+    ],
+)
+def test_failures_have_kinds(
+    run: Run,
+    water: Structure,
+    keywords: dict[str, object],
+    change: dict[str, object],
+    kind: str,
+) -> None:
+    """tblite's failures are classified, so a store reuses only input-determined ones."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    inp = ProgramInput(
+        program="tblite",
+        calctype=CalcType.energy,
+        structure=structure,
+        model=Model(method="gfn2"),
+        keywords=keywords,
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp)
+    assert e.value.error.kind == kind, e.value.error

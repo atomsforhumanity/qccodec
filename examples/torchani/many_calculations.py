@@ -1,12 +1,12 @@
 """TorchANI for many structures at once: a bond scan evaluated in batches.
 
-Requires: what examples/torchani/single_point.py requires, and qccompute 0.21.0 or newer.
+Requires: what examples/torchani/single_point.py requires.
 
 How batching works:
 
 - Pass ``compute`` a list of inputs. Energy and gradient inputs with the same program,
   model, and keywords are evaluated in batches, one model call for up to
-  ``get_codec("torchani").max_batch`` (32) structures, in this Python process. On a GPU
+  ``get_codec("torchani").max_batch`` (32) structures, in one worker process. On a GPU
   that is many times faster than one call per structure.
 - Each structure's results are what computing it alone gives, to the model's precision.
   Structures in one batch may differ in size, composition, and charge.
@@ -50,7 +50,7 @@ inputs = [
         model=Model(method="ANI2x"),
         keywords={
             "dtype": "float64",
-            # "device": "cpu",  # or "cuda"; leave out to use a GPU when present
+            # "device": "cpu",  # or "cuda"; leave out for the GPU the runner grants
         },
     )
     for r in distances

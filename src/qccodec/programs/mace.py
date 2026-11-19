@@ -28,6 +28,11 @@ Inputs map to MACE as follows:
   otherwise: float64 for MACE-OFF and MACE-OMOL, float32 for MACE-MP). Nothing else is
   accepted. A model on a GPU declares one for qccompute, which gives each calculation
   of a list its own; an explicit index such as ``"cuda:1"`` opts out of that.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -54,16 +59,19 @@ from qcdata import CalcType, ProgramInput
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
     from_ev,
     gpu_count,
+    model_file,
     package_version,
     pop_device,
     positions_angstrom,
-    reject_unknown,
     require_model,
     resolve_device,
     single_point_decoder,
@@ -97,6 +105,10 @@ def split_method(method: str) -> tuple[str | None, str | None]:
     return None, method
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "default_dtype"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, device, precision, and molecule in angstrom.
 
@@ -122,11 +134,12 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(
             f"{method} describes neutral closed-shell molecules only; got charge "
             f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}. "
-            "MACE-OMOL ('mace-omol') takes charge and spin."
+            "MACE-OMOL ('mace-omol') takes charge and spin.",
+            code="not_modeled",
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("mace", keywords, frozenset({"default_dtype"}))
+    reject_unknown("mace", keywords, KEYWORDS)
     dtype = keywords.get("default_dtype")
     if dtype is not None and dtype not in DTYPES:
         raise EncoderError(
@@ -134,6 +147,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_mace,
         kwargs={
             "loader": FAMILIES[family] if family else None,
@@ -168,9 +182,10 @@ def invoke_mace(
     positions: list[list[float]],
     forces: bool,
     hessian: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one MACE single point on the cached raw model."""
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     network = _network(loader, model, device, default_dtype)
     graph = _graph(network, loader, numbers, positions, charge_and_spin)
     out = _evaluate(network, [graph], device, forces=forces or hessian, hessian=hessian)
@@ -180,6 +195,7 @@ def invoke_mace(
         out["hessian"].detach().cpu().double().numpy() if hessian else None,
     )
     snapshot["version"] = package_version("mace-torch")
+    snapshot["device"] = device
     return snapshot
 
 
@@ -193,6 +209,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_mace_batch,
         kwargs={
             **{k: first[k] for k in ("loader", "model", "device", "default_dtype")},
@@ -212,9 +229,10 @@ def invoke_mace_batch(
     default_dtype: str | None,
     forces: bool,
     molecules: list[tuple[list[int], list[list[float]], tuple[int, int] | None]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one MACE pass, as one batch of graphs."""
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     network = _network(loader, model, device, default_dtype)
     graphs = [_graph(network, loader, n, p, cs) for n, p, cs in molecules]
     out = _evaluate(network, graphs, device, forces=forces, hessian=False)
@@ -230,6 +248,7 @@ def invoke_mace_batch(
     for energy, f in zip(energies, per_forces, strict=True):
         result = from_ev(float(energy), f)
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 
@@ -348,4 +367,14 @@ codec = Codec(
     decode=single_point_decoder("mace"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
+)
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'mace').
+program = CodecProgram(
+    codec,
+    in_process=False,
+    library="mace-torch",
+    weights=model_file,
+    keywords=KEYWORDS,
 )

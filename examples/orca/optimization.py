@@ -1,8 +1,8 @@
 """ORCA geometry optimization with its built-in optimizer.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and ORCA on PATH, ahead of
+Requires: ``pip install qccompute[qccodec]`` and ORCA on PATH, ahead of
 ``/usr/bin/orca`` (the GNOME screen reader on many Linux desktops); or set
-QCCOMPUTE_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.
+QCCODEC_ORCA_EXECUTABLE. See single_point.py for installing and running ORCA.
 
 Notes for ORCA optimizations (manual: https://www.faccts.de/docs/orca/6.0/manual/,
 "Geometry Optimization"):
@@ -47,10 +47,10 @@ prog_input = ProgramInput(
     },
 )
 
-output = compute(prog_input)  # timeout=..., collect_files=..., executables=...
+output = compute(prog_input)  # timeout=... (seconds)
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

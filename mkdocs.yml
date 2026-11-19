@@ -43,7 +43,7 @@ theme:
     repo: fontawesome/brands/github-alt
 
 repo_url: https://github.com/atomsforhumanity/qccodec
-edit_uri: edit/master/docs/
+edit_uri: edit/next/docs/
 site_author: Colton Hicks
 plugins:
   - search

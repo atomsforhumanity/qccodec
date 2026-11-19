@@ -1,6 +1,6 @@
 """xtb geometry optimization with its built-in optimizer, ANCopt.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and xtb on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and xtb on PATH, e.g.
 ``conda install -c conda-forge xtb`` (or the g-xTB build of xtb for ``method="gxtb"``,
 https://github.com/grimme-lab/g-xtb).
 
@@ -66,12 +66,10 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before xtb is killed
-    # collect_files=True,  # keep every output file (xtbopt.xyz, ...) in results.files
-    # executables={"xtb": "/path/to/xtb"},  # or QCCOMPUTE_XTB_EXECUTABLE
 )
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final structure (bohr):\n", results.final_structure.geometry)
 # Save the trajectory, e.g. to view in a molecule viewer:

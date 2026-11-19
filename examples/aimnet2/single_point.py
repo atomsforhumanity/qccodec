@@ -1,9 +1,10 @@
 """AIMNet2 single point: energy, gradient, or Hessian from a machine-learned potential.
 
-Requires: ``pip install qccompute aimnet``. AIMNet2 is a Python library, so nothing has
-to be on PATH: the model runs inside this Python process, on the GPU when PyTorch sees
-one. Weights download on first use; later calculations in the same process reuse the
-loaded model, so an optimization or path pays the loading cost once.
+Requires: ``pip install qccompute[qccodec] aimnet``. AIMNet2 is a Python library, so nothing has
+to be on PATH: the model runs in a qccompute worker process of this Python environment,
+on the GPU the runner grants (the CPU when it grants none). Weights download on first
+use; the worker keeps the loaded model, so an optimization or path pays the loading
+cost once.
 
 How the codec talks to AIMNet2 (https://github.com/isayevlab/aimnetcentral):
 
@@ -39,7 +40,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="aimnet2"),  # or "aimnet2-rxn", "aimnet2-nse", "aimnet2-2025"
     keywords={
-        "device": "cpu",  # or "cuda", "cuda:1"; leave out to use a GPU when present
+        "device": "cpu",  # or "cuda", "cuda:1"; leave out for the GPU the runner grants
         # "validate_species": False,  # allow elements/charges outside the training set
     },
 )

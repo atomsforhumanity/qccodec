@@ -10,6 +10,7 @@
     "extras": {},
     "program": "orca",
     "program_version": "6.1.0",
+    "program_commit": "679e74b",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -84,6 +85,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.320385565717,
@@ -107,10 +109,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -190,6 +189,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.321113618631,
@@ -213,10 +213,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -296,6 +293,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.32125161185,
@@ -319,10 +317,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -402,6 +397,7 @@
           "extras": {},
           "program": "orca",
           "program_version": "6.1.0",
+          "program_commit": "679e74b",
           "qcdata_version": "0.23.0"
         },
         "energy": -76.321270536009,
@@ -425,10 +421,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"

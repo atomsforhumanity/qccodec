@@ -7,26 +7,29 @@
 
 Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program.
 
-**Documentation, including a copy-and-paste example script for every program and calculation type: [qccodec.docs.afh.org](https://qccodec.docs.afh.org)**
+**Documentation, including a copy-and-paste example script for every program and calculation type: [qccodec.docs.afh.org](https://qccodec.docs.afh.org/)**
 
 ## The QC Suite
 
 These packages work together to make quantum chemistry fast, structured, and interoperable.
 
 - [qcref](https://github.com/atomsforhumanity/qcref) - Reference data for computational chemistry: CODATA physical constants, conversion factors, a periodic table, and solvent properties, each value with its source.
-- [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.afh.org)
+- [qcdata](https://github.com/atomsforhumanity/qcdata) - Data structures for quantum chemistry inputs and results, with Jupyter visualizations. [Documentation](https://qcdata.docs.afh.org/)
 - [qcinf](https://github.com/atomsforhumanity/qcinf) - Cheminformatics algorithms and structure utilities for [qcdata](https://github.com/atomsforhumanity/qcdata) structures.
-- [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program. [Documentation](https://qccodec.docs.afh.org)
-- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs quantum chemistry programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs using [qccodec](https://github.com/atomsforhumanity/qccodec) codecs and returns structured results. [Documentation](https://qccompute.docs.afh.org)
+- [qccodec](https://github.com/atomsforhumanity/qccodec) - Translates [qcdata](https://github.com/atomsforhumanity/qcdata) inputs into native program inputs and parses program outputs back into qcdata objects, one codec per program. [Documentation](https://qccodec.docs.afh.org/)
+- [qccompute](https://github.com/atomsforhumanity/qccompute) - Runs programs on [qcdata](https://github.com/atomsforhumanity/qcdata) inputs: one input or many, in process or in workers, with a calculation store; external programs come with `qccompute[qccodec]`. [Documentation](https://qccompute.docs.afh.org/)
+- [qcstore](https://github.com/atomsforhumanity/qcstore) - Keeps results under their calculation key: immutable runs, tags, and an optional index.
 - [BigChem](https://github.com/mtzgroup/bigchem) - Distributed execution of qccompute calculations across clusters of computers or the cloud.
 - [ChemCloud](https://github.com/mtzgroup/chemcloud-client) - A [web application](https://github.com/mtzgroup/chemcloud-server) and [Python client](https://github.com/mtzgroup/chemcloud-client) that expose a BigChem cluster securely over the internet.
 
 ## ✨ Basic Usage
 
-qccodec never runs programs itself; [qccompute](https://github.com/atomsforhumanity/qccompute) runs them and uses qccodec on both ends.
+Every codec is also a program [qccompute](https://github.com/atomsforhumanity/qccompute) runs by name: qccodec registers it under the `qccompute.programs` entry points, and runs the program in a scratch directory with its output captured, a deadline, and its threads and GPUs from the runner.
+
+Install it with the runner:
 
 ```sh
-python -m pip install qccompute   # also installs qccodec
+python -m pip install "qccompute[qccodec]"
 ```
 
 ```python
@@ -54,7 +57,7 @@ from pathlib import Path
 from qccodec import decode
 
 data = decode("terachem", "hessian", stdout=Path("tc.out").read_text())
-data.energy, data.hessian, data.freqs_wavenumber
+data.energy, data.hessian, data.vibrational_analysis
 ```
 
 ```sh
@@ -65,7 +68,7 @@ See [Decoding program output](https://qccodec.docs.afh.org/guides/decoding/) for
 
 ## Supported programs
 
-Each program has a documentation page and a runnable example script for every calculation type in [`examples/`](./examples).
+Each program has a documentation page and a runnable example script for every calculation type in [`examples/`](https://github.com/atomsforhumanity/qccodec/tree/master/examples).
 
 | `program` | Calculation types | Notes |
 | --- | --- | --- |
@@ -85,13 +88,13 @@ Each program has a documentation page and a runnable example script for every ca
 | [`orb`](https://qccodec.docs.afh.org/programs/orb/) | energy, gradient | Orb v3 and OrbMol |
 | [`torchani`](https://qccodec.docs.afh.org/programs/torchani/) | energy, gradient, hessian | ANI-2x, ANI-1ccx, ... |
 
-The last six run in the calling Python process: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
+The last six are Python libraries, which qccompute runs in a worker process of the same Python environment: install the library next to qccompute (for example `pip install tblite`) instead of putting a program on `PATH`. Run any of them under `geometric` or `sella` for optimizations and transition states.
 
-To support a new program, see [Writing a codec](https://qccodec.docs.afh.org/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](./CONTRIBUTING.md).
+To support a new program, see [Writing a codec](https://qccodec.docs.afh.org/guides/writing-a-codec/) and the step-by-step walkthrough in [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process.
+See [CONTRIBUTING.md](https://github.com/atomsforhumanity/qccodec/blob/master/CONTRIBUTING.md) for development setup, the pre-commit workflow, running tests, and the release process.
 
 If there's data you'd like parsed from output files or a program you'd like supported, open an issue describing the data and include an example output file, like [this](https://github.com/atomsforhumanity/qccodec/issues/2).
 

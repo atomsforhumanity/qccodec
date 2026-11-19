@@ -1,6 +1,6 @@
 """Sella intrinsic reaction coordinate (IRC) from a transition state.
 
-Requires: ``pip install qccompute qccodec[sella]`` (Sella and ASE) and the child
+Requires: ``pip install qccompute[qccodec] qccodec[sella]`` (Sella and ASE) and the child
 program on PATH. This example uses xtb (GFN2-xTB): ``conda install -c conda-forge xtb``.
 
 Notes for Sella IRCs (https://github.com/zadorlab/sella):

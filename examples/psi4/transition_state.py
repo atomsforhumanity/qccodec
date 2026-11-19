@@ -1,6 +1,6 @@
 """Psi4 transition-state search with optking.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and Psi4 on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and Psi4 on PATH, e.g.
 ``conda install -c conda-forge psi4``.
 
 Notes for Psi4 transition-state searches:
@@ -49,6 +49,6 @@ prog_input = ProgramInput(
 output = compute(prog_input)
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Transition-state energy (Hartree):", results.energies[-1])
 print("Transition-state structure (bohr):\n", results.final_structure.geometry)

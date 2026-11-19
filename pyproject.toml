@@ -1,7 +1,7 @@
 [project]
 name = "qccodec"
-version = "0.21.1"
-description = "Encode qcdata inputs into native quantum chemistry files and decode (parse) program outputs into structured qcdata objects."
+version = "0.22.0"
+description = "External quantum chemistry programs as qccompute programs: encode qcdata inputs into native input files, run the programs, and decode their outputs into qcdata objects."
 readme = "README.md"
 authors = [{ name = "Colton Hicks", email = "github@coltonhicks.com" }]
 requires-python = ">=3.11"
@@ -9,8 +9,10 @@ license = { file = "LICENSE" }
 dependencies = [
     "tomli-w>=1.0.0",
     "packaging>=23.0",
-    "qcdata>=0.23.1,<0.24",
+    "qcdata>=0.24.0",
+    "qccompute>=0.23.0",
     "qcref>=0.4.0",
+    "threadpoolctl>=3.1",
 ]
 
 classifiers = [
@@ -38,7 +40,7 @@ keywords = [
 
 [project.urls]
 Homepage = 'https://github.com/atomsforhumanity/qccodec'
-Documentation = 'https://github.com/atomsforhumanity/qccodec#readme'
+Documentation = 'https://qccodec.docs.afh.org'
 Source = 'https://github.com/atomsforhumanity/qccodec'
 Changelog = 'https://github.com/atomsforhumanity/qccodec/blob/master/CHANGELOG.md'
 "Bug Tracker" = 'https://github.com/atomsforhumanity/qccodec/issues'
@@ -70,13 +72,32 @@ docs = [
     "pymdown-extensions~=10.9",
 ]
 integration = [
-    "qccompute>=0.21.0",
     # No Python 3.15 wheels yet; the integration workflow runs on 3.12.
     "tblite>=0.4; python_version < '3.15'",
 ]
 
 [project.scripts]
 qccodec = "qccodec.cli:main"
+
+# Every external program qccodec brings in, as a program qccompute finds by name.
+[project.entry-points."qccompute.programs"]
+terachem = "qccodec.programs.terachem:program"
+orca = "qccodec.programs.orca:program"
+crest = "qccodec.programs.crest:program"
+xtb = "qccodec.programs.xtb:program"
+psi4 = "qccodec.programs.psi4:program"
+geometric = "qccodec.programs.geometric:program"
+sella = "qccodec.programs.sella:program"
+tblite = "qccodec.programs.tblite:program"
+dftbplus = "qccodec.programs.dftbplus:program"
+aimnet2 = "qccodec.programs.aimnet2:program"
+torchani = "qccodec.programs.torchani:program"
+mace = "qccodec.programs.mace:program"
+orb = "qccodec.programs.orb:program"
+fairchem = "qccodec.programs.fairchem:program"
+terachem-fe = "qccodec.programs.tcpb:terachem_fe"
+terachem-pbs = "qccodec.programs.tcpb:terachem_pbs"
+files = "qccodec.programs.file:program"
 
 [build-system]
 requires = ["hatchling"]

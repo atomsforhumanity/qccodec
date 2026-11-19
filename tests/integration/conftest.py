@@ -5,11 +5,15 @@ Integration tests are marked ``integration`` and deselected by default. Run them
     uv sync --group integration --extra geometric
     uv run pytest -m integration
 
+They run each program through ``qccompute.compute``, which finds it under the
+``qccompute.programs`` entry points this package installs.
+
 Each test skips when its program is not on ``PATH``. Pass ``--record-cases`` to save
 each run that names a case as ``tests/data/<program>/<case>_<version>/`` for the
 offline parser tests, with this machine's home directory and hostname replaced in
-text files; review and prune the files before committing them. Existing
-cases are never overwritten, so delete one first to re-record it.
+text files; review and prune the files before committing them. A failed run that
+names a case is recorded too, as a case that must raise with the same error kind and
+code. Existing cases are never overwritten, so delete one first to re-record it.
 """
 
 from __future__ import annotations
@@ -26,7 +30,14 @@ from typing import Any
 
 import numpy as np
 import pytest
-from qcdata import CalcType, ProgramInput, ProgramOutput, SinglePointData, Structure
+from qcdata import (
+    CalcType,
+    ProgramError,
+    ProgramInput,
+    ProgramOutput,
+    SinglePointData,
+    Structure,
+)
 
 from qccodec import get_codec
 from qccodec.native import SubprocessInput
@@ -93,6 +104,7 @@ def run(request: pytest.FixtureRequest, tmp_path: Path) -> Run:
     """
     # Imported here so the unit-test suite collects without the integration group.
     from qccompute import compute
+    from qccompute.program import RunContext, find_program
 
     record = bool(request.config.getoption("--record-cases"))
 
@@ -100,16 +112,25 @@ def run(request: pytest.FixtureRequest, tmp_path: Path) -> Run:
         input_data: ProgramInput, case: str | None = None, **kwargs: Any
     ) -> ProgramOutput:
         scratch = tmp_path / "scratch"
-        if record and case:
-            kwargs.update(scratch_dir=scratch, rm_scratch_dir=False)
         try:
-            output = compute(input_data, **kwargs)
-        except Exception as exc:
+            if record and case:
+                # The adapter directly, in a scratch directory that is kept.
+                scratch.mkdir()
+                program = find_program(input_data.program)
+                assert program is not None
+                output = program.compute(input_data, RunContext(scratch=scratch))
+            else:
+                output = compute(input_data, **kwargs)
+        except ProgramError as exc:
             # Show the program's own output; pytest prints it under "Captured stdout".
-            logs = getattr(exc, "logs", None)
+            logs = exc.output.logs if exc.output is not None else None
             if logs:
                 print(f"--- last 100 lines of {input_data.program} output ---")
                 print("\n".join(logs.splitlines()[-100:]))
+            if record and case and exc.output is not None and exc.output.results:
+                _record_case(
+                    exc.output, scratch, DATA_DIR / input_data.program, case, exc
+                )
             raise
         if record and case:
             _record_case(output, scratch, DATA_DIR / input_data.program, case)
@@ -118,10 +139,18 @@ def run(request: pytest.FixtureRequest, tmp_path: Path) -> Run:
     return _run
 
 
-def _record_case(output: ProgramOutput, scratch: Path, root: Path, case: str) -> None:
+def _record_case(
+    output: ProgramOutput,
+    scratch: Path,
+    root: Path,
+    case: str,
+    failure: ProgramError | None = None,
+) -> None:
     """Write ``output`` and its scratch directory as ``root/<case>_<version>``.
 
-    The program version in the name keeps fixtures from different releases apart.
+    The program version in the name keeps fixtures from different releases apart. A
+    failed run (``failure``) is recorded as a case that must raise
+    ``CalculationError`` with the failure's kind and code.
     """
     input_data = output.input_data
     codec = get_codec(input_data.program)
@@ -138,6 +167,18 @@ def _record_case(output: ProgramOutput, scratch: Path, root: Path, case: str) ->
     (dest / "input.json").write_text(input_data.model_dump_json(indent=2) + "\n")
     expected = _without_execution(json.loads(output.results.model_dump_json()))
     (dest / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    settings: dict[str, Any] = {}
+    if failure is not None:
+        settings["raises"] = "CalculationError"
+        settings["kind"] = failure.error.kind.value
+        settings["code"] = failure.error.code
+        if failure.error.details:
+            settings["details"] = failure.error.details
+    warned = codec.warnings(input_data, stdout=output.logs, directory=scratch)
+    if warned:
+        settings["warnings"] = [w.code for w in warned]
+    if settings:
+        (dest / "case.json").write_text(json.dumps(settings, indent=2) + "\n")
     if output.logs is not None:
         (dest / "stdout").write_text(output.logs)
     if isinstance(native, SubprocessInput):

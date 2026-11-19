@@ -6,22 +6,40 @@ The codec writes ``structure.xyz`` and runs::
 
 ``model.method`` selects the Hamiltonian: ``gfn0``, ``gfn1``, ``gfn2``, ``gfnff``, or
 ``gxtb``. g-xTB needs the xtb build distributed with g-xTB
-(https://github.com/grimme-lab/g-xtb); point qccompute at it with
-``executables={"xtb": ...}`` or ``QCCOMPUTE_XTB_EXECUTABLE``. GFN0 reads its parameter
-file from the directory named by ``XTBPATH``.
+(https://github.com/grimme-lab/g-xtb); point qccodec at it with
+``QCCODEC_XTB_EXECUTABLE``. GFN0 reads its parameter
+file from the directory named by ``XTBPATH``. That build reports the version of
+upstream xtb 6.7.1, so results also name the build's commit from xtb's version line in
+``provenance.program_commit`` (``26dd68d`` for the g-xTB build, ``edcfbbe`` for
+upstream 6.7.1).
 
 Keywords become command-line flags in xtb's own spelling: ``{"alpb": "water"}`` gives
 ``--alpb water``, ``{"etemp": 1000}`` gives ``--etemp 1000``, a list gives several
 values (``{"alpb": ["water", "bar1M"]}``), ``True`` gives a bare flag, and ``False`` or
 ``None`` leaves the flag out. For optimizations, ``{"opt": "tight"}`` sets the
-optimization level. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
+optimization level. A keyword that is not one of xtb's options is refused before xtb
+runs (kind ``input``, code ``unknown_key``) with the closest option named, and so are
+flags the codec sets itself (``chrg``, ``uhf``, the method and run-type flags) and
+flags that would run something else or move the molecule (``cma``); xtb itself only
+warns about an unknown flag and runs without it. xtb runs on one thread unless the
+input asks for more (``threads``, or xtb's own ``parallel``, not both): it nests OpenMP
+threads and slows down badly otherwise, so parallelize over calculations instead. Detailed input (``$constrain``, ``$fix``, ``$wall``, ...) goes in
 an ``xcontrol`` file supplied through ``files`` and named with ``{"input":
 "xcontrol"}``; such files are passed through verbatim, so atom indices in them are
 1-based as xtb expects.
 
-Hessians also fill frequencies and normal modes from ``g98.out``, where xtb writes
-mass-weighted vectors rounded to two decimals; the codec converts them to unit-length
-Cartesian displacements, as qcdata defines them.
+Hessians are xtb's numerical second derivatives (central differences of
+gradients) at the input geometry, with nothing projected out. xtb projects
+translations and rotations out of the Hessian it writes to ``hessian``, which is
+wrong away from a stationary point, where the gradient fixes the Hessian's
+rotational part; so the codec has xtb also write the Hessian before projection
+(``$write hessian.out=true`` in the ``xcontrol`` file, appended to yours if you
+supply one) and returns that one. Hessians also fill frequencies and normal modes
+from ``g98.out`` (with translations and rotations projected out), where xtb writes
+mass-weighted vectors rounded to two decimals; the codec converts them to
+unit-length Cartesian displacements, as qcdata defines them. A Hessian also carries the
+energy and the gradient at the input geometry: the codec adds ``--grad`` to ``--hess``,
+which costs one more gradient beside the Hessian's displaced ones.
 
 One keyword is not an xtb flag: ``external_potentials``, point charges for QM/MM
 electrostatic embedding, in the same form the Psi4 codec takes: ``[[charge, [x, y,
@@ -32,6 +50,14 @@ the ``xcontrol`` file (appending to yours if you supply one); gradients then als
 ``point_charge_gradient`` from xtb's ``pcgrad``. Only GFN1- and GFN2-xTB apply point
 charges: GFN0, GFN-FF, and g-xTB ignore them without a warning, so the codec rejects
 them there.
+
+Failures and their kinds: an SCF that does not converge is ``convergence`` (code
+``scf_not_converged``), an optimization that runs out of cycles ``convergence``
+(``max_iter``), with its trajectory attached; atoms on top of each other, a
+multiplicity the number of electrons cannot have, and a solvent xtb has no
+parameters for are ``input``; an unknown option given in ``cmdline_args`` is
+``input`` (``unknown_key``); ``gxtb`` on an xtb build without g-xTB is
+``environment``.
 """
 
 from __future__ import annotations
@@ -53,14 +79,18 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_search
-from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
+from ._common import invocation, parse_g98_vibrations, reject_unknown
 
 STRUCTURE_FILE = "structure.xyz"
 ENGRAD_FILE = "structure.engrad"
 XCONTROL_FILE = "xcontrol"
 POINT_CHARGE_FILE = "pcharge"
 POINT_CHARGE_GRADIENT_FILE = "pcgrad"
+# xtb's Hessian before it projects out translations and rotations.
+HESSIAN_FILE = "hessian.out"
+WRITE_HESSIAN_GROUP = f"$write\n   {HESSIAN_FILE}=true\n$end\n"
 # xtb 6.7.1 reads $embedding for these Hamiltonians and silently ignores it otherwise.
 EMBEDDING_METHODS = {"gfn1", "gfn2"}
 EMBEDDING_GROUP = (
@@ -76,6 +106,27 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's message, which quotes xtb's error lines.
+    errors=[
+        (
+            r"Self consistent charge iterator did not converge|SCF not converged",
+            "convergence",
+            "scf_not_converged",
+        ),
+        (r"(?i)failed to converge geometry optimization", "convergence", "max_iter"),
+        (r"has no g-xTB", "environment", None),
+        (r"ignored unknown options", "input", "unknown_key"),
+        (r"(?i)very\* short distance", "input", None),
+        (r"unpaired electrons .* not consistent", "input", None),
+        (r"is not parametrized", "input", None),
+    ],
+    # GFN-FF is a force field: a single point has nothing to converge (an
+    # optimization still has the optimizer's convergence).
+    converges=lambda inp: (
+        inp.calctype == CalcType.optimization
+        or inp.model is None
+        or inp.model.method.lower().replace("-", "") != "gfnff"
+    ),
 )
 
 METHODS: dict[str, tuple[str, ...]] = {
@@ -91,32 +142,38 @@ RUNTYPES: dict[CalcType, str] = {
     CalcType.hessian: "--hess",
     CalcType.optimization: "--opt",
 }
-# Flags the codec sets itself from the input, or that would change the run type.
-RESERVED = {
-    "chrg",
-    "uhf",
-    "gfn",
-    "gfnff",
-    "gxtb",
-    "sp",
-    "grad",
-    "hess",
-    "ohess",
-    "bhess",
-    "md",
-    "omd",
-    "metadyn",
-    "siman",
-    "modef",
-    "path",
-    "dock",
-    "vip",
-    "vea",
-    "vipea",
-    "vomega",
-    "vfukui",
-    "scc",
-}
+# Every command-line option of xtb 6.7.1 (its prog_main_parseArguments) and of the
+# xtb build distributed with g-xTB, by long name.
+FLAGS = frozenset(
+    {
+        "acc", "alpb", "alpha", "bhess", "bias-input", "ceasefiles", "ceh", "charge",
+        "chrg", "citation", "cma", "coffee", "color", "copy", "cosmo", "cpcmx", "cut",
+        "cycles", "define", "dipole", "dipro", "driver", "efield", "enso", "esp",
+        "etemp", "ewin", "fod", "gb", "gbe", "gbsa", "gesc", "gff", "gfn", "gfn0",
+        "gfn1", "gfn2", "gfnff", "gmd", "grad", "gxtb", "help", "hess", "iff",
+        "input", "iterations", "json", "license", "lmo", "maxiterations", "mcgfnff",
+        "md", "mdopt", "metadyn", "metaopt", "modef", "molden", "mopac", "namespace",
+        "nat", "nocellopt", "nocopy", "norestart", "ohess", "omd", "oniom", "opt",
+        "orca", "parallel", "path", "pop", "ptb", "quadrupole", "raman", "restart",
+        "scc", "screen", "silent", "siman", "sp", "spinpol", "stm", "strict",
+        "tblite", "tm", "tmcosmo", "uhf", "vea", "verbose", "version",
+        "very-verbose", "vfukui", "vip", "vipea", "vomega", "vparam", "wbo",
+        "wrtopo", "xparam",
+    }
+)  # fmt: skip
+# Flags the codec sets itself from the input; flags that change the run type, run
+# another program, or stop before calculating; and those that move the molecule
+# (cma) or rename its output files (namespace).
+RESERVED = frozenset(
+    {
+        "chrg", "charge", "uhf", "gfn", "gfn0", "gfn1", "gfn2", "gfnff", "gff",
+        "mcgfnff", "gxtb", "ptb", "sp", "scc", "grad", "hess", "ohess", "bhess", "md",
+        "omd", "mdopt", "gmd", "metadyn", "metaopt", "siman", "modef", "path", "vip",
+        "vea", "vipea", "vomega", "vfukui", "dipro", "ceh", "enso", "screen",
+        "driver", "orca", "mopac", "tm", "help", "version", "citation", "license",
+        "define", "coffee", "cma", "namespace",
+    }
+)  # fmt: skip
 
 
 # ------------------------------------------------------------------ encoding
@@ -127,8 +184,9 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     """Write the structure and build the xtb command line.
 
     Raises:
-        EncoderError: The model is missing or unknown, or a keyword names a flag the
-            codec sets itself.
+        EncoderError: The model is missing or unknown, a keyword is not an xtb option
+            (code ``unknown_key``, with the closest one), or it names a flag the
+            codec sets itself or one that would run something else.
     """
     if inp.model is None:
         raise EncoderError("xtb requires a model, e.g. {'method': 'gfn2'}.")
@@ -139,37 +197,51 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         )
     keywords = dict(inp.keywords)
     point_charges = keywords.pop("external_potentials", None)
-    reserved = sorted(RESERVED & {k.lower() for k in keywords})
+    reject_unknown("xtb", keywords, FLAGS)
+    reserved = sorted(RESERVED & set(keywords))
     if reserved:
         raise EncoderError(
             f"Keywords {reserved} are set from the input's calctype, model, and "
-            "structure; remove them."
+            "structure, or would run something other than this calculation; remove "
+            "them.",
+            code="unknown_key",
         )
 
     runtype: list[str] = [RUNTYPES[inp.calctype]]
+    if inp.calctype == CalcType.hessian:
+        runtype.append("--grad")  # the gradient at the same point, from the same run
     level = keywords.pop("opt", None)
     if level is not None:
         if inp.calctype != CalcType.optimization:
-            raise EncoderError("The 'opt' keyword sets the optimization level only.")
+            raise EncoderError(
+                "The 'opt' keyword sets the optimization level only.",
+                code="not_applicable",
+            )
         runtype.append(str(level))
 
     generated: dict[str, str | bytes] = {
         STRUCTURE_FILE: inp.require_structure().to_xyz()
     }
-    files = dict(inp.files)
+    groups = ""  # appended to the xcontrol file
     if point_charges:
         if method not in EMBEDDING_METHODS:
             raise EncoderError(
                 f"xtb applies point charges only with {sorted(EMBEDDING_METHODS)}; "
-                f"with {method} it ignores them without a warning."
+                f"with {method} it ignores them without a warning.",
+                kind="unsupported",
             )
+        generated[POINT_CHARGE_FILE] = point_charge_file(point_charges)
+        groups += EMBEDDING_GROUP
+    if inp.calctype == CalcType.hessian:
+        groups += WRITE_HESSIAN_GROUP
+    files = dict(inp.files)
+    if groups:
         xcontrol = str(keywords.get("input", XCONTROL_FILE))
         keywords["input"] = xcontrol
-        generated[POINT_CHARGE_FILE] = point_charge_file(point_charges)
         user_xcontrol = files.pop(xcontrol, "")
         if isinstance(user_xcontrol, bytes):
             user_xcontrol = user_xcontrol.decode()
-        generated[xcontrol] = user_xcontrol + EMBEDDING_GROUP
+        generated[xcontrol] = user_xcontrol + groups
     inp = inp.model_copy(update={"files": files})
 
     arguments = (
@@ -187,7 +259,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         STRUCTURE_FILE,
         arguments=arguments,
         environment={"OMP_NUM_THREADS": "1"},
-        threads=int(inp.keywords.get("parallel", 1) or 1),
+        threads=int(inp.keywords["parallel"]) if inp.keywords.get("parallel") else None,
     )
 
 
@@ -256,8 +328,7 @@ def failure(ctx: Context) -> str | None:
         if "--gxtb" in unknown:
             message += (
                 " This xtb build has no g-xTB; run the xtb build from"
-                " https://github.com/grimme-lab/g-xtb (with qccompute, set"
-                " QCCOMPUTE_XTB_EXECUTABLE or executables={'xtb': path})."
+                " https://github.com/grimme-lab/g-xtb (set QCCODEC_XTB_EXECUTABLE to it)."
             )
         return message
     match = re.search(r"FAILED TO CONVERGE GEOMETRY OPTIMIZATION[^*\n]*", stdout)
@@ -281,6 +352,25 @@ def parse_version(stdout: str) -> str:
     return version
 
 
+def _commit(stdout: str) -> str | None:
+    """Return the commit of the build from the version line, or None."""
+    match = re.search(r"xtb version \S+ \((\w+)\)", stdout)
+    return match.group(1) if match else None
+
+
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's commit, which tells builds of one version apart.
+
+    The g-xTB build of xtb prints ``xtb version 6.7.1 (26dd68d)``, upstream xtb
+    6.7.1 ``xtb version 6.7.1 (edcfbbe)``.
+    """
+    commit = _commit(stdout)
+    if commit is None:
+        raise MatchNotFoundError(r"xtb version \S+ \((\w+)\)", stdout)
+    return commit
+
+
 @codec.parser(
     target="energy", calctypes=[CalcType.energy, CalcType.gradient, CalcType.hessian]
 )
@@ -289,7 +379,11 @@ def parse_energy(stdout: str) -> float:
     return float(re_search(r"TOTAL ENERGY\s+(-?\d+\.\d+) Eh", stdout).group(1))
 
 
-@codec.parser(file=ENGRAD_FILE, target="gradient", calctypes=[CalcType.gradient])
+@codec.parser(
+    file=ENGRAD_FILE,
+    target="gradient",
+    calctypes=[CalcType.gradient, CalcType.hessian],
+)
 def parse_engrad_gradient(contents: str) -> list[list[float]]:
     """Parse the gradient (Hartree/Bohr) from xtb's ORCA-style ``.engrad`` file."""
     block = re_search(r"# The current gradient in Eh/bohr\n#\n([\s\S]*?)\n#", contents)
@@ -297,22 +391,31 @@ def parse_engrad_gradient(contents: str) -> list[list[float]]:
     return [values[i : i + 3] for i in range(0, len(values), 3)]
 
 
-@codec.parser(file="hessian", target="hessian", calctypes=[CalcType.hessian])
+@codec.parser(file=HESSIAN_FILE, target="hessian", calctypes=[CalcType.hessian])
 def parse_hessian(contents: str) -> list[list[float]]:
-    """Parse the mass-unweighted Hessian (Hartree/Bohr^2) from the ``hessian`` file."""
-    values = [float(v) for v in contents.split("$hessian", 1)[1].split()]
+    """Parse the Hessian (Hartree/bohr^2) before projection from ``hessian.out``.
+
+    xtb writes the symmetrized Cartesian Hessian there column by column, before it
+    projects out translations and rotations for its ``hessian`` file and its
+    frequencies.
+
+    Raises:
+        ParserError: The values do not form a square matrix, or one did not fit
+            xtb's fixed-width format.
+    """
+    try:
+        values = [float(v) for v in contents.split()]
+    except ValueError as exc:
+        raise ParserError(f"Unreadable value in {HESSIAN_FILE}: {exc}") from None
     n = int(round(len(values) ** 0.5))
-    if n * n != len(values):
+    if n == 0 or n * n != len(values):
         raise ParserError(f"Expected a square Hessian, found {len(values)} values.")
-    return [values[i * n : (i + 1) * n] for i in range(n)]
+    return [values[i::n] for i in range(n)]
 
 
-codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])(
-    parse_g98_freqs
-)
 codec.parser(
-    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
-)(parse_g98_normal_modes)
+    file="directory", target="vibrational_analysis", calctypes=[CalcType.hessian]
+)(parse_g98_vibrations)
 
 
 @codec.parser(
@@ -368,8 +471,11 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         charge=ctx.input_data.require_structure().charge,
         multiplicity=ctx.input_data.require_structure().multiplicity,
     )
-    version = _version(ctx.stdout or "")
-    provenance = Provenance(program="xtb", program_version=version)
+    provenance = Provenance(
+        program="xtb",
+        program_version=_version(ctx.stdout or ""),
+        program_commit=_commit(ctx.stdout or ""),
+    )
     trajectory = []
     for structure in structures:
         comment = structure.extras[Structure._xyz_comment_key]
@@ -385,3 +491,27 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     if not trajectory and not ctx.failed:
         raise ParserError("xtb optimization trajectory is empty.")
     return trajectory
+
+
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``parallel`` lowered to ``threads``."""
+    return inp.model_copy(update={"keywords": {**inp.keywords, "parallel": threads}})
+
+
+codec.cap_threads = cap_threads
+
+
+def keywords(calctype: CalcType) -> frozenset[str]:
+    """The keywords xtb takes for a calctype, for its settings schema.
+
+    xtb's flags but those the codec sets or refuses, ``opt`` for optimizations only,
+    and ``external_potentials``.
+    """
+    flags = FLAGS - RESERVED - ({"opt"} if calctype != CalcType.optimization else set())
+    return flags | {"external_potentials"}
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'xtb').
+#: xtb nests OpenMP threads and slows down badly with more than one, so it runs on one
+#: unless its input asks for more (``threads``, or its own ``parallel``).
+program = CodecProgram(codec, keywords=keywords, threads=1)

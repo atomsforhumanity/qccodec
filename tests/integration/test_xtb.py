@@ -9,11 +9,18 @@ from typing import Any
 
 import numpy as np
 import pytest
-from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramError,
+    ProgramInput,
+    Structure,
+)
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("xtb")]
 
@@ -42,6 +49,7 @@ def test_energy(run: Run, water: Structure) -> None:
     """GFN2-xTB energy and partial charges."""
     output = run(_input(water, CalcType.energy), case="water_energy")
     assert output.results.provenance.program == "xtb"
+    assert output.results.provenance.program_commit  # the build, from the banner
     assert np.isclose(output.results.energy, ENERGY, atol=1e-6)
     assert np.allclose(
         output.results.atomic_charges, [-0.561, 0.2805, 0.2805], atol=1e-3
@@ -60,12 +68,31 @@ def test_hessian(run: Run, water: Structure) -> None:
     output = run(_input(water, CalcType.hessian), case="water_hessian")
     hessian = np.asarray(output.results.hessian)
     assert hessian.shape == (9, 9)
+    # The gradient at the same point comes with it, from the same run (--grad).
+    gradient = run(_input(water, CalcType.gradient)).results.gradient
+    assert np.allclose(output.results.gradient, gradient, atol=1e-6)
     assert np.allclose(hessian, hessian.T, atol=1e-5)
     assert np.allclose(
-        output.results.freqs_wavenumber, [1587.67, 3520.44, 3527.26], atol=1.0
+        output.results.vibrational_analysis.frequencies,
+        [1587.67, 3520.44, 3527.26],
+        atol=1.0,
     )
-    assert np.asarray(output.results.normal_modes_cartesian).shape == (3, 3, 3)
+    assert np.asarray(
+        output.results.vibrational_analysis.normal_modes_cartesian
+    ).shape == (3, 3, 3)
     check_normal_modes(output.results, list(water.symbols))
+
+
+@pytest.mark.parametrize("method", ["gfn2", "gfnff"])
+def test_hessian_is_not_projected(run: Run, water: Structure, method: str) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    xtb's own ``hessian`` file has translations and rotations projected out, which
+    differs from the true Hessian here by about the gradient (1e-2 Eh/bohr).
+    """
+    finite_difference_check(
+        run, _input(water, CalcType.gradient, method), atol=1e-4, hessian=True
+    )
 
 
 def test_hessian_modes_across_blocks(run: Run) -> None:
@@ -82,7 +109,7 @@ def test_hessian_modes_across_blocks(run: Run) -> None:
         ),
     )
     output = run(_input(ammonia, CalcType.hessian), case="ammonia_hessian")
-    assert len(output.results.freqs_wavenumber) == 6
+    assert len(output.results.vibrational_analysis.frequencies) == 6
     check_normal_modes(output.results, list(ammonia.symbols))
 
 
@@ -148,12 +175,59 @@ def test_gxtb(run: Run, water: Structure, calctype: CalcType) -> None:
     assert np.isclose(output.results.energy, -76.437424197961, atol=1e-6)
     if calctype == CalcType.hessian:
         assert np.asarray(output.results.hessian).shape == (9, 9)
+        finite_difference_check(
+            run, _input(water, CalcType.gradient, "gxtb"), atol=1e-4, hessian=True
+        )
+
+
+def test_unknown_keywords_fail_before_running(run: Run, water: Structure) -> None:
+    """A misspelled keyword is refused with the flag it was probably meant to be."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.energy, alpbb="water"))
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+    assert "did you mean 'alpb'" in e.value.error.message
 
 
 def test_unknown_option_fails(run: Run, water: Structure) -> None:
     """xtb only warns about unknown flags; the codec turns that into a failure."""
-    with pytest.raises(Exception, match="unknown options"):
-        run(_input(water, CalcType.energy, gfn2_typo=True))
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"cmdline_args": ["--alpbb", "water"]}
+    )
+    with pytest.raises(ProgramError, match="unknown options") as e:
+        run(inp, case="unknown_option")
+    assert (e.value.error.kind, e.value.error.code) == ("input", "unknown_key")
+
+
+@pytest.mark.parametrize(
+    ("case", "change", "keywords"),
+    [
+        ("overlapping_atoms", {"geometry": [[0, 0, 0], [0, 0, 0], [1.4, 0, 1.1]]}, {}),
+        ("impossible_multiplicity", {"multiplicity": 2}, {}),
+        ("unknown_solvent", {}, {"alpb": "watr"}),
+    ],
+)
+def test_input_failures(
+    run: Run,
+    water: Structure,
+    case: str,
+    change: dict[str, Any],
+    keywords: dict[str, Any],
+) -> None:
+    """Inputs xtb cannot run fail with kind input, so a store may reuse the failure."""
+    structure = Structure.model_validate({**water.model_dump(), **change})
+    with pytest.raises(ProgramError) as e:
+        run(_input(structure, CalcType.energy, **keywords), case=case)
+    assert e.value.error.kind == "input", e.value.error
+
+
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """An SCF that runs out of iterations is kind convergence, code scf_not_converged."""
+    with pytest.raises(ProgramError) as e:
+        run(_input(water, CalcType.energy, iterations=1))
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
 
 
 def test_point_charges(run: Run, water: Structure) -> None:
@@ -178,3 +252,23 @@ def test_point_charges(run: Run, water: Structure) -> None:
                 energies.append(run(inp).results.energy)
             numeric = (energies[0] - energies[1]) / (2 * step)
             assert np.isclose(pc_gradient[i, k], numeric, atol=1e-6)
+
+
+def test_an_accuracy_target_is_refused_by_gfn2_and_met_by_gfnff(
+    water: Structure,
+) -> None:
+    """GFN2's SCC has thresholds the codec cannot set from a target; GFN-FF has none."""
+    from qccompute import compute
+
+    target = {"gradient": 1e-6}
+    with pytest.raises(ProgramError) as e:
+        compute(_input(water, CalcType.gradient, accuracy=target))
+    assert e.value.error.kind == "unsupported"
+    met = compute(_input(water, CalcType.gradient, "gfnff", accuracy=target))
+    assert met.record["accuracy"] == {
+        "target": target,
+        "thresholds": {},
+        "estimate": {"gradient": 0.0},
+    }
+    plain = compute(_input(water, CalcType.gradient, "gfnff"))
+    assert met.results.energy == plain.results.energy

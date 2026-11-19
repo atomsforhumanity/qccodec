@@ -6,21 +6,21 @@
   "calcinfo_nmo": 7,
   "extras": {
     "psi4_variables": {
-      "CURRENT ENERGY": -74.96441401121291,
-      "CURRENT REFERENCE ENERGY": -74.96441401121291,
+      "CURRENT ENERGY": -74.96441401121285,
+      "CURRENT REFERENCE ENERGY": -74.96441401121285,
       "DD SOLVATION ENERGY": 0.0,
-      "HF KINETIC ENERGY": 74.56271983022016,
-      "HF POTENTIAL ENERGY": -149.52713384143306,
-      "HF TOTAL ENERGY": -74.96441401121291,
-      "HF VIRIAL RATIO": 2.005387332730182,
+      "HF KINETIC ENERGY": 74.56271983022017,
+      "HF POTENTIAL ENERGY": -149.52713384143303,
+      "HF TOTAL ENERGY": -74.96441401121285,
+      "HF VIRIAL RATIO": 2.0053873327301814,
       "NUCLEAR REPULSION ENERGY": 9.08842963006359,
-      "ONE-ELECTRON ENERGY": -122.18136470189135,
+      "ONE-ELECTRON ENERGY": -122.18136470189137,
       "PCM POLARIZATION ENERGY": 0.0,
       "PE ENERGY": 0.0,
-      "SCF ITERATION ENERGY": -74.96441401121291,
+      "SCF ITERATION ENERGY": -74.96441401121285,
       "SCF ITERATIONS": 6.0,
-      "SCF TOTAL ENERGY": -74.96441401121291,
-      "TWO-ELECTRON ENERGY": 38.12852106061486
+      "SCF TOTAL ENERGY": -74.96441401121285,
+      "TWO-ELECTRON ENERGY": 38.12852106061493
     }
   },
   "files": {},
@@ -28,65 +28,89 @@
     "extras": {},
     "program": "psi4",
     "program_version": "1.11",
-    "qcdata_version": "0.20.1"
+    "program_commit": null,
+    "qcdata_version": "0.24.0a2"
   },
-  "energy": -74.96441401121291,
+  "energy": -74.96441401121285,
   "gradient": null,
   "hessian": null,
   "nuclear_repulsion_energy": 9.08842963006359,
   "wavefunction": {
     "extras": {},
-    "scf_eigenvalues_a": [
-      -20.243879153092003,
-      -1.2633158576621064,
-      -0.6110763407509822,
-      -0.45295293034720313,
-      -0.39094368438001714,
-      0.5954144450148607,
-      0.7274045381723042
-    ],
-    "scf_eigenvalues_b": [
-      -20.243879153092003,
-      -1.2633158576621064,
-      -0.6110763407509822,
-      -0.45295293034720313,
-      -0.39094368438001714,
-      0.5954144450148607,
-      0.7274045381723042
-    ],
-    "scf_occupations_a": [
-      1.0,
-      1.0,
-      1.0,
-      1.0,
-      1.0,
-      0.0,
-      0.0
-    ],
-    "scf_occupations_b": [
-      1.0,
-      1.0,
-      1.0,
-      1.0,
-      1.0,
-      0.0,
-      0.0
-    ],
-    "qcdata_version": "0.20.1"
+    "orbitals": {
+      "extras": {},
+      "spin": "restricted",
+      "kind": "canonical",
+      "localization": null,
+      "energies_a": [
+        -20.243879153092045,
+        -1.263315857662108,
+        -0.6110763407509948,
+        -0.45295293034720835,
+        -0.39094368438001703,
+        0.5954144450148722,
+        0.7274045381723124
+      ],
+      "energies_b": null,
+      "occupations_a": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "occupations_b": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "electronic_temperature": 0.0,
+      "fermi_level_a": null,
+      "fermi_level_b": null,
+      "core_electrons": null,
+      "coefficients_a": null,
+      "coefficients_b": null,
+      "qcdata_version": "0.24.0a2"
+    },
+    "overlap": null,
+    "hamiltonian_a": null,
+    "hamiltonian_b": null,
+    "core_hamiltonian": null,
+    "qcdata_version": "0.24.0a2"
   },
-  "freqs_wavenumber": [],
-  "normal_modes_cartesian": null,
-  "gibbs_free_energy": null,
-  "scf_dipole_moment": [
-    0.4996376199522121,
-    0.3699352107153606,
-    -0.26157737779869916
+  "dipole_moment": [
+    0.4996376199522117,
+    0.36993521071536295,
+    -0.26157737779869705
   ],
   "atomic_charges": [
-    -0.3549110860904712,
-    0.17740284184983424,
-    0.17750824424063327
+    -0.3549110860904676,
+    0.1774028418498329,
+    0.17750824424063238
   ],
+  "atomic_charges_kind": null,
+  "atomic_spin_populations": null,
+  "atomic_spin_populations_kind": null,
+  "atomic_dipoles": null,
+  "atomic_quadrupoles": null,
+  "shell_populations": null,
+  "shell_atoms": null,
+  "shell_angular_momenta": null,
   "point_charge_gradient": null,
-  "qcdata_version": "0.20.1"
+  "energy_components": {},
+  "scf_iterations": null,
+  "scf_s_squared": null,
+  "quadrupole_moment": null,
+  "polarizability": null,
+  "bond_orders": null,
+  "bond_orders_kind": null,
+  "vibrational_analysis": null,
+  "thermochemistry": [],
+  "qcdata_version": "0.24.0a2"
 }

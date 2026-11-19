@@ -1,6 +1,6 @@
 """geomeTRIC geometry optimization driving another program's gradients.
 
-Requires: ``pip install qccompute qccodec[geometric]`` (geomeTRIC itself) and the
+Requires: ``pip install qccompute[qccodec] qccodec[geometric]`` (geomeTRIC itself) and the
 gradient program on PATH. This example uses CREST for fast GFN2-xTB gradients:
 https://github.com/crest-lab/crest/releases (official static build).
 
@@ -97,14 +97,11 @@ prog_input = ProgramInput(
 
 output = compute(
     prog_input,
-    # propagate_wfn=True,  # TeraChem: start each step from the previous orbitals
     # timeout=3600,  # seconds before the whole optimization is stopped
-    # collect_files=True,  # keep each child's output files in its results.files
-    # executables={"crest": "/path/to/crest"},  # the child's executable
 )
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final gradient (Hartree/bohr):\n", results.frames[-1].results.gradient)
 print("Final structure (bohr):\n", results.final_structure.geometry)

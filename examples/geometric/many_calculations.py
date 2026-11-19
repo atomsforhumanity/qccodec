@@ -1,21 +1,20 @@
 """geomeTRIC for many structures at once: optimizations run side by side.
 
-Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST), and
-qccompute 0.21.0 or newer.
+Requires: what examples/geometric/optimization.py requires (geomeTRIC and CREST).
 
-How lists of Python calculations work (geomeTRIC, tblite):
+How lists of Python calculations work (geomeTRIC, tblite, the ML potentials):
 
-- geomeTRIC runs in Python, and a Python calculation takes over its process's output
-  streams and working directory while it runs. So when a list holds two or more,
-  qccompute runs them side by side in worker processes, started with
-  ``python -m qccompute._worker``: this script is never imported again and needs no
-  ``if __name__ == "__main__":`` guard.
-- ``max_workers`` is the budget of CPU threads, by default the cores this process may
-  use. An optimization counts the threads of its gradient program (CREST ``threads``
-  here). Each worker starts with ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``, and
-  ``MKL_NUM_THREADS`` set to its share (unless you set them), so numpy in each worker
-  does not start a thread per core.
-- The gradient calculations run inside each optimization as usual.
+- geomeTRIC runs in this process: it writes only in its calculation directory and
+  logs through one logger, so a list's optimizations run side by side in threads, and
+  a program registered in this script can be its gradient program. tblite and the ML
+  potentials run in worker processes instead (``python -m qccompute.serve``), which
+  stay alive between calls until the runner closes; this script is never imported
+  again there and needs no ``if __name__ == "__main__":`` guard.
+- A list is packed into the runner's threads (all the cores this process may use, or
+  ``qccompute.Runner(threads=...)``): an optimization counts the threads of its
+  gradient program (CREST ``threads`` here). A worker sets each call's threads for
+  PyTorch and the BLAS and OpenMP runtimes, so numpy does not start a thread per core.
+- The gradient calculations run inside each optimization, through the runner.
 - Failures are reported as for any list: see examples/xtb/many_calculations.py.
 """
 
@@ -43,7 +42,7 @@ gradient_program = ProgramSpec(
     program="crest",
     calctype=CalcType.gradient,
     model=Model(method="gfn2"),
-    keywords={"threads": 1},  # threads for each gradient, counted against max_workers
+    keywords={"threads": 1},  # threads for each gradient, packed into the runner's
 )
 inputs = [
     ProgramInput(
@@ -57,14 +56,15 @@ inputs = [
 ]
 
 start = time.perf_counter()
-outputs = compute(inputs)  # four workers, one optimization each
-# outputs = compute(inputs, max_workers=2)  # at most two at a time
+outputs = compute(inputs)  # four optimizations side by side
+# with qccompute.Runner(threads=2) as runner:  # at most two at a time
+#     outputs = runner.compute(inputs)
 elapsed = time.perf_counter() - start
 
 for i, output in enumerate(outputs):
     results = output.results
     print(
-        f"Optimization {i}: {len(results.frames)} steps, final energy "
+        f"Optimization {i}: {len(results.frames)} frames, final energy "
         f"{results.energies[-1]:.8f} Hartree"
     )
 print(f"Four optimizations side by side: {elapsed:.2f} s")

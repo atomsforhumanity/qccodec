@@ -38,6 +38,10 @@
 
 ::: qccodec.re_finditer
 
+## Checking keywords
+
+::: qccodec.reject_unknown
+
 ## Exceptions
 
 ::: qccodec.exceptions

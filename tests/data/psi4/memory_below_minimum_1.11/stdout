@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/opt/psi4/bin/psi4", line 275, in <module>
+    psi4.set_memory(args["memory"], quiet=True)
+  File "/opt/psi4/lib/python3.12/site-packages/psi4/driver/p4util/util.py", line 215, in set_memory
+    raise ValidationError(
+psi4.driver.p4util.exceptions.ValidationError: set_memory(): Requested 95.4 MiB (1e+02 MB); minimum 250 MiB (263 MB). Please, sir, I want some more.

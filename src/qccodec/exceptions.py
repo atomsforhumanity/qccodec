@@ -31,7 +31,24 @@ class DecoderError(BaseError):
 
 
 class EncoderError(BaseError):
-    """Raised when an input cannot be encoded for a program."""
+    """An input the codec refuses before anything runs.
+
+    Args:
+        message: Why, naming the setting and, for a misspelled key, the closest one.
+        kind: The `qcdata.ErrorKind` of the refusal: ``input`` (settings or a
+            structure the program cannot run as given) or ``unsupported`` (a valid
+            request the program does not implement).
+        code: The shared code refining it, if one applies: ``unknown_key``,
+            ``not_applicable``, ``no_effect`` or ``not_modeled``.
+    """
+
+    def __init__(
+        self, message: str, *, kind: str = "input", code: str | None = None
+    ) -> None:
+        """Keep the message, kind and code."""
+        super().__init__(message)
+        self.kind: str = kind
+        self.code: str | None = code
 
 
 class ParserError(BaseError):
@@ -68,8 +85,43 @@ class CodecNotFoundError(EncoderError):
 
 
 class CalculationError(ParserError):
-    """The program reported failure; data holds any recovered scientific results."""
+    """The program reported failure; data holds any recovered scientific results.
+
+    Args:
+        message: The program's explanation.
+        data: The results recovered from the failed run.
+        kind: The `qcdata.ErrorKind` of the failure. A codec classifies the failures
+            it knows (`Codec` ``errors``); anything else stays ``internal``.
+        code: A code refining the kind (``scf_not_converged``, ``max_iter``,
+            ``unknown_key``), if one applies.
+        details: Structured facts about the failure, as plain JSON
+            (`qcdata.ErrorInfo.details`): ``required_gib`` and ``available_gib`` for
+            ``host_memory`` and ``device_memory``.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        data: StructuredData | None = None,
+        *,
+        kind: str = "internal",
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Keep the explanation, recovered data, kind, code and details."""
+        super().__init__(message, data)
+        self.kind: str = kind
+        self.code: str | None = code
+        self.details: dict[str, Any] = dict(details or {})
 
 
 class DependencyNotFoundError(BaseError):
     """A codec explicitly reports an unavailable execution dependency."""
+
+
+class StoppedError(BaseError):
+    """A program killed because its caller asked its calculation to stop.
+
+    Its calculation fails with kind ``stopped``, keeping what the codec recovers from
+    the program's output so far.
+    """

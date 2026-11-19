@@ -8,8 +8,10 @@ inside the function so encoding and decoding work, and are testable, without the
 
 from __future__ import annotations
 
+import functools
 import json
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Sequence
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from qcdata import CalcType, ProgramInput, Provenance, SinglePointData, Structure
@@ -24,15 +26,18 @@ class SinglePoint(TypedDict, total=False):
     """What an in-process single point returns, in atomic units.
 
     ``energy`` and ``version`` are always present; the rest only when computed.
+    ``device`` is where a GPU-capable library ran (``cuda``, ``cpu``): the adapter
+    warns ``backend_fallback`` when a calculation granted a GPU ran on the CPU.
     """
 
     energy: float
     gradient: list[list[float]]
     hessian: list[list[float]]
     atomic_charges: list[float]
-    scf_dipole_moment: list[float]
+    dipole_moment: list[float]
     extras: dict[str, Any]
     version: str | None
+    device: str
 
 
 def positions_angstrom(structure: Structure) -> list[list[float]]:
@@ -71,8 +76,13 @@ def from_ev(
     return result
 
 
+@functools.cache
 def package_version(distribution: str) -> str | None:
-    """Return an installed distribution's version, or None if it is not installed."""
+    """Return an installed distribution's version, or None if it is not installed.
+
+    Read once per process: every output names it, and a distribution does not change
+    under a running process without a restart to load it.
+    """
     from importlib.metadata import PackageNotFoundError, version
 
     try:
@@ -106,13 +116,58 @@ def gpu_count(device: str | None) -> int:
     return 0
 
 
-def resolve_device(device: str | None) -> str:
-    """Return ``device``, or CUDA when PyTorch sees a GPU and CPU otherwise."""
+#: The keyword into which the adapter hands a library the device qccompute granted.
+GRANTED = "granted"
+
+
+def resolve_device(device: str | None, granted: str | None = None) -> str:
+    """Return the device a library runs on.
+
+    Args:
+        device: The ``device`` keyword (``"cpu"``, ``"cuda"``, ``"cuda:1"``), or None
+            to leave it to the codec.
+        granted: The device qccompute granted the calculation (``cuda:N``, its GPU
+            as this process's CUDA device, or ``cpu`` when it granted none), injected
+            through ``PythonInput.device_keyword``; None when called directly.
+
+    Returns:
+        ``device`` as given, except that ``cuda`` runs on the granted GPU. Left to
+        the codec, the granted device, or the CPU when PyTorch cannot use the
+        granted GPU (the adapter warns ``backend_fallback``); called directly, CUDA
+        when PyTorch sees a GPU and the CPU otherwise.
+    """
+    if device == "cuda" and granted is not None and granted != "cpu":
+        return granted
     if device:
         return device
+    if granted == "cpu":
+        return granted
     import torch
 
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    if not torch.cuda.is_available():
+        return "cpu"
+    return granted or "cuda"
+
+
+def model_file(spec: Any) -> Path | None:
+    """The model file a spec's ``model.method`` names, when it is a path to one.
+
+    For the numerics identity of ML potentials that load a model from a path
+    (`qccodec.CodecProgram` ``weights``): the file's digest tells a retrained
+    checkpoint from the one before it.
+
+    Args:
+        spec: A `qcdata.ProgramInput` or `qcdata.ProgramSpec`.
+
+    Returns:
+        The file's absolute path, or None when the method names no existing file.
+    """
+    model = getattr(spec, "model", None)
+    method = getattr(model, "method", None)
+    if not method:
+        return None
+    path = Path(method).expanduser()
+    return path.resolve() if path.is_file() else None
 
 
 def require_model(inp: ProgramInput, example: str) -> str:
@@ -130,21 +185,6 @@ def require_model(inp: ProgramInput, example: str) -> str:
             f"{inp.program} models have no basis set; remove basis {inp.model.basis!r}."
         )
     return inp.model.method
-
-
-def reject_unknown(
-    program: str, keywords: Mapping[str, Any], known: set[str] | frozenset[str]
-) -> None:
-    """Reject keywords the codec does not know, so typos fail instead of being ignored.
-
-    Raises:
-        EncoderError: Some keyword names are not in ``known``.
-    """
-    unknown = sorted(set(keywords) - known)
-    if unknown:
-        raise EncoderError(
-            f"Unknown {program} keywords {unknown}; supported: {sorted(known)}."
-        )
 
 
 def single_point_decoder(
@@ -175,7 +215,7 @@ def single_point_decoder(
         fields: dict[str, Any] = {
             "energy": snapshot["energy"],
             "atomic_charges": snapshot.get("atomic_charges"),
-            "scf_dipole_moment": snapshot.get("scf_dipole_moment"),
+            "dipole_moment": snapshot.get("dipole_moment"),
             "extras": snapshot.get("extras", {}),
         }
         if inp.calctype in (CalcType.gradient, CalcType.hessian):

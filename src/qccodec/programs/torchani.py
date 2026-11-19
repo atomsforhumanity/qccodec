@@ -18,6 +18,11 @@ Inputs map to TorchANI as follows:
   its average). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy``, ``gradient``, and ``hessian`` (by automatic
@@ -44,7 +49,10 @@ from qcref import constants as c
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -52,7 +60,6 @@ from ._python import (
     package_version,
     pop_device,
     positions_angstrom,
-    reject_unknown,
     require_model,
     resolve_device,
     single_point_decoder,
@@ -77,6 +84,10 @@ def model_name(method: str) -> str:
     return lookup[key]
 
 
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "dtype", "model_index"})
+
+
 def encode(inp: ProgramInput) -> PythonInput:
     """Collect the model, device, precision, and molecule in angstrom.
 
@@ -93,11 +104,12 @@ def encode(inp: ProgramInput) -> PythonInput:
     if inp.require_structure().charge != 0 or inp.require_structure().multiplicity != 1:
         raise EncoderError(
             "ANI models describe neutral closed-shell molecules only; got charge "
-            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}."
+            f"{inp.require_structure().charge} and multiplicity {inp.require_structure().multiplicity}.",
+            code="not_modeled",
         )
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("torchani", keywords, frozenset({"dtype", "model_index"}))
+    reject_unknown("torchani", keywords, KEYWORDS)
     dtype = keywords.get("dtype", "float64")
     if dtype not in DTYPES:
         raise EncoderError(f"dtype must be one of {list(DTYPES)}, not {dtype!r}.")
@@ -106,6 +118,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError(f"model_index must be an integer, not {model_index!r}.")
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_torchani,
         kwargs={
             "model": model,
@@ -130,12 +143,13 @@ def invoke_torchani(
     positions: list[list[float]],
     forces: bool,
     hessian: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one TorchANI single point with a cached model."""
     import torch
     import torchani
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     torch_dtype = getattr(torch, dtype)
     network = cached_model(
         ("torchani", model, model_index, device, dtype),
@@ -163,6 +177,7 @@ def invoke_torchani(
     if "atomic_charges" in out:
         result["atomic_charges"] = out["atomic_charges"][0].detach().cpu().tolist()
     result["version"] = package_version("torchani")
+    result["device"] = device
     return result
 
 
@@ -176,6 +191,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_torchani_batch,
         kwargs={
             **{k: first[k] for k in ("model", "model_index", "device", "dtype")},
@@ -193,6 +209,7 @@ def invoke_torchani_batch(
     dtype: str,
     forces: bool,
     molecules: list[tuple[list[int], list[list[float]]]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate several molecules in one TorchANI pass, padded to the largest.
 
@@ -201,7 +218,7 @@ def invoke_torchani_batch(
     import torch
     import torchani
 
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
     torch_dtype = getattr(torch, dtype)
     network = cached_model(
         ("torchani", model, model_index, device, dtype),
@@ -226,7 +243,11 @@ def invoke_torchani_batch(
     results: list[SinglePoint] = []
     for i, (numbers, _) in enumerate(molecules):
         n = len(numbers)
-        result: SinglePoint = {"energy": out["energies"][i].item(), "version": version}
+        result: SinglePoint = {
+            "energy": out["energies"][i].item(),
+            "version": version,
+            "device": device,
+        }
         if forces:
             gradient = (
                 -out["forces"][i, :n].detach().cpu().double() / c.ANGSTROM_TO_BOHR
@@ -247,4 +268,8 @@ codec = Codec(
     decode=single_point_decoder("torchani"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'torchani').
+program = CodecProgram(codec, in_process=False, library="torchani", keywords=KEYWORDS)

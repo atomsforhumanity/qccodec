@@ -10,6 +10,7 @@
     "extras": {},
     "program": "dftbplus",
     "program_version": "dev-a23bfb2",
+    "program_commit": "a23bfb2",
     "qcdata_version": "0.20.1"
   },
   "energy": -4.07771472723037,
@@ -17,10 +18,7 @@
   "hessian": null,
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "freqs_wavenumber": [],
-  "normal_modes_cartesian": null,
-  "gibbs_free_energy": null,
-  "scf_dipole_moment": [
+  "dipole_moment": [
     0.490608944923102,
     0.363336386893196,
     -0.256800577296359

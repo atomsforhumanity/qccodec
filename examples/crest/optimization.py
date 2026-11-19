@@ -1,6 +1,6 @@
 """CREST geometry optimization with its built-in ANCopt optimizer.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and CREST 3 on PATH, the
+Requires: ``pip install qccompute[qccodec]`` and CREST 3 on PATH, the
 official static build from https://github.com/crest-lab/crest/releases (conda-forge's
 CREST 3.0.2 crashes in its optimizer). No separate xtb is needed.
 
@@ -33,7 +33,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="gfn2"),  # or "gfn1", "gfnff"
     keywords={
-        "threads": 1,  # default: number of CPUs, at most 16
+        "threads": 1,  # default: the calculation's thread count
         "calculation": {
             # ANCopt settings:
             "optlev": "tight",  # convergence level
@@ -52,12 +52,10 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before CREST is killed
-    # collect_files=True,  # keep every output file (crestopt.xyz, ...) in results.files
-    # executables={"crest": "/path/to/crest"},  # or QCCOMPUTE_CREST_EXECUTABLE
 )
 
 results = output.results
-print("Steps:", len(results.frames))
+print("Frames (structures evaluated):", len(results.frames))
 print("Energies (Hartree):", results.energies)
 print("Final gradient (Hartree/bohr):\n", results.frames[-1].results.gradient)
 print("Final structure (bohr):\n", results.final_structure.geometry)

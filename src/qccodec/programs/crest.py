@@ -12,17 +12,31 @@ Inputs map to CREST 3's TOML input as follows:
 - ``runtype`` defaults from the calculation type (``singlepoint``, ``numhess``,
   ``optimize``, ``imtd-gc``); a given ``runtype`` must match it, e.g. ``nci`` or
   ``entropy`` for conformer searches.
-- ``threads`` defaults to the number of CPUs, at most 16. CREST itself always runs
-  with ``OMP_NUM_THREADS=1`` and parallelizes over its own threads.
+- ``threads``: without it, CREST runs on the calculation's thread count (the shared
+  ``threads`` keyword sets it, as for every program); called directly, with CREST's
+  own default. CREST itself always runs with ``OMP_NUM_THREADS=1`` and parallelizes
+  over its own threads.
 
 Calculation types: ``energy``, ``gradient``, ``hessian`` (numerical: also frequencies
 and normal modes), ``optimization``, and ``conformer_search``. CREST writes the normal
 modes to ``g98.out`` as mass-weighted vectors (two decimals) in a reoriented frame; the
 codec converts them to unit-length Cartesian displacements and rotates them back onto
 the input structure, as qcdata defines them. The Hessian is in the input's frame. Rotamers are parsed only
-with the decode option ``{"collect_rotamers": True}``; there can be thousands. CREST
+when the keywords ask for them, ``{"output": {"rotamers": True}}`` (the ``output`` group
+is the codec's, not written to CREST's input), or with the decode option
+``{"collect_rotamers": True}``; there can be thousands. CREST
 optimizes with the center of mass at the origin; the codec shifts optimization
 trajectories back into the input's frame. No input field carries atom indices.
+
+CREST refuses keys it does not know inside the tables it reads, before calculating
+(kind ``input``, code ``unknown_key``), but ignores whole tables it does not know, so
+the codec refuses those itself, naming the closest table (CREST 3.0.2 reads
+``calculation`` with ``level``, ``mecp``, ``scans`` and ``constraints``, ``dynamics``
+with ``meta``, ``cregen``, ``confsolv``, ``thermo``, ``protonation`` and ``lwoniom``). A
+value CREST does not accept is ``input``; anything else CREST reports as FAILED is
+``internal``, and so is a single point whose calculation "exited with error", since
+CREST 3.0.2 does not say why (it prints a zero energy and exits 0): an SCF that does
+not converge cannot be told from other errors, so it is not ``scf_not_converged``.
 
 CREST computes GFN-xTB and GFN-FF with its built-in tblite and gfnff libraries, so it
 needs no separate xtb. Use the official static build: conda-forge's CREST 3.0.2 crashes
@@ -33,7 +47,8 @@ from __future__ import annotations
 
 import copy
 import math
-import os
+import re
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -51,8 +66,9 @@ from qcdata import (
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
 from ..utils import re_finditer, re_search
-from ._common import invocation, parse_g98_freqs, parse_g98_normal_modes
+from ._common import invocation, parse_g98_vibrations, reject_unknown
 
 codec = Codec(
     "crest",
@@ -65,7 +81,25 @@ codec = Codec(
     },
     # Rotamer sets can be very large, so they are not collected unless requested.
     options={"collect_rotamers": False},
+    # Matched against the failure hook's messages below.
+    errors=[
+        (r"CREST does not know", "input", "unknown_key"),
+        (r"CREST does not accept", "input", None),
+    ],
 )
+
+# The tables of CREST 3.0.2's input file, and the tables inside them; CREST ignores a
+# table it does not know without a word. "output" is the codec's own group.
+TABLES: dict[str, frozenset[str]] = {
+    "calculation": frozenset({"level", "mecp", "scans", "constraint", "constraints"}),
+    "dynamics": frozenset({"meta"}),
+    "cregen": frozenset(),
+    "confsolv": frozenset(),
+    "thermo": frozenset(),
+    "protonation": frozenset(),
+    "lwoniom": frozenset(),
+    "output": frozenset(),
+}
 
 
 # ------------------------------------------------------------------ encoding
@@ -85,7 +119,7 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         },
         "input.toml",
         environment={"OMP_NUM_THREADS": "1"},
-        threads=int(toml_dict["threads"]),
+        threads=int(toml_dict["threads"]) if "threads" in toml_dict else None,
     )
 
 
@@ -105,6 +139,32 @@ def validate_input(inp: ProgramInput) -> None:
             )
     if "runtype" in inp.keywords:
         _validate_runtype_calctype(inp.keywords["runtype"], inp.calctype)
+    _check_tables(inp.keywords)
+
+
+def _is_table(value: Any) -> bool:
+    """Whether a TOML value is a table or an array of tables."""
+    return isinstance(value, dict) or (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(v, dict) for v in value)
+    )
+
+
+def _check_tables(keywords: dict[str, Any]) -> None:
+    """Refuse tables CREST would ignore; CREST checks the keys inside the ones it reads.
+
+    Raises:
+        EncoderError: Kind ``input``, code ``unknown_key``, with the closest table.
+    """
+    reject_unknown(
+        "CREST", [k for k, v in keywords.items() if _is_table(v)], TABLES, where="table"
+    )
+    for name, inner in TABLES.items():
+        section = keywords.get(name)
+        if isinstance(section, dict):
+            tables = [k for k, v in section.items() if _is_table(v)]
+            reject_unknown("CREST", tables, inner, where=f"table in [{name}]")
 
 
 _RUNTYPES: dict[CalcType, set[str]] = {
@@ -138,8 +198,12 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
     if inp.model is None:
         raise EncoderError("crest input requires a scientific model.")
     toml_dict = copy.deepcopy(inp.keywords)
-    # Logical cores were 10% faster than physical cores, so psutil is not used.
-    toml_dict.setdefault("threads", min(os.cpu_count() or 16, 16))
+    output = toml_dict.pop("output", {})  # what to return, not CREST's
+    unknown = sorted(set(output) - {"rotamers"}) if isinstance(output, dict) else None
+    if unknown or unknown is None:
+        raise EncoderError(
+            f"CREST's output group takes only 'rotamers', not {unknown}."
+        )
     toml_dict["input"] = struct_filename
     if "runtype" not in toml_dict:
         if inp.calctype not in _DEFAULT_RUNTYPE:
@@ -164,9 +228,28 @@ def _to_toml_dict(inp: ProgramInput, struct_filename: str) -> dict[str, Any]:
 
 @codec.failure
 def failure(ctx: Context) -> str | None:
-    """CREST prints FAILED on scientific failure even with a zero exit code."""
-    if ctx.stdout and "FAILED" in ctx.stdout:
+    """Explain why CREST stopped, from what it prints.
+
+    CREST refuses an input file with keys or values it does not know ("unrecognized
+    KEYWORD in <where> : <key>", "unrecognized ARGUMENT : <value>") before calculating,
+    and prints FAILED on a scientific failure even with a zero exit code.
+    """
+    stdout = ctx.stdout or ""
+    keys = re.findall(r"unrecognized KEYWORD in (.+?) : (\S+)", stdout)
+    if keys:
+        named = ", ".join(f"{key!r} ({where})" for where, key in keys)
+        return f"CREST does not know the setting(s) {named}."
+    values = re.findall(r"unrecognized ARGUMENT : (\S+)", stdout)
+    if values:
+        return f"CREST does not accept the value(s) {', '.join(map(repr, values))}."
+    if "FAILED" in stdout:
         return "CREST reported FAILED. See calculation logs."
+    if "Calculation exited with error!" in stdout:
+        # CREST 3.0.2 says no more, and still reports a zero energy and exits 0.
+        return (
+            "CREST's calculation exited with an error and CREST does not say why "
+            "(with GFN-xTB it is often an SCF that did not converge)."
+        )
     return None
 
 
@@ -174,6 +257,28 @@ def failure(ctx: Context) -> str | None:
 def parse_version(stdout: str) -> str:
     """Parse the version string from CREST stdout."""
     return re_search(r"Version (\d+\.\d+\.\d+),", stdout).group(1)
+
+
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse the build's commit from CREST's banner: ``commit (af7eb99)``."""
+    return re_search(r"commit \((\w+)\)", stdout).group(1)
+
+
+def _provenance(stdout: str | None) -> Provenance:
+    """CREST's provenance for the structures of an ensemble or trajectory."""
+
+    def found(parse: Callable[[str], str]) -> str | None:
+        try:
+            return parse(stdout) if stdout else None
+        except MatchNotFoundError:
+            return None
+
+    return Provenance(
+        program="crest",
+        program_version=found(parse_version),
+        program_commit=found(parse_commit),
+    )
 
 
 def _ensemble(ctx: Context, filename: str) -> list[Frame]:
@@ -190,11 +295,7 @@ def _ensemble(ctx: Context, filename: str) -> list[Frame]:
         ids = ctx.input_data.require_structure().identifiers.model_dump()
         for structure in structures:
             structure.add_identifiers(**ids)
-    try:
-        version = parse_version(ctx.stdout) if ctx.stdout else None
-    except MatchNotFoundError:
-        version = None
-    provenance = Provenance(program="crest", program_version=version)
+    provenance = _provenance(ctx.stdout)
     return [
         Frame(
             structure=structure,
@@ -217,9 +318,13 @@ def parse_conformers(ctx: Context) -> dict[str, Any]:
 def parse_rotamers(ctx: Context) -> dict[str, Any]:
     """Parse the rotamers, each a frame with its energy, from ``crest_rotamers.xyz``.
 
-    Runs only with ``options={"collect_rotamers": True}``.
+    Runs only when the input's keywords ask for them (``{"output": {"rotamers":
+    true}}``), or with the decode option ``{"collect_rotamers": True}``.
     """
-    if not ctx.options["collect_rotamers"]:
+    asked = ctx.input_data is not None and bool(
+        (ctx.input_data.keywords.get("output") or {}).get("rotamers")
+    )
+    if not (asked or ctx.options["collect_rotamers"]):
         return {}
     if ctx.input_data is None:
         raise ParserError("Rotamer parsing requires input_data.")
@@ -264,12 +369,9 @@ def parse_numhess1(contents: str) -> list[list[float]]:
     return [numbers[i * n : (i + 1) * n] for i in range(n)]
 
 
-codec.parser(file="g98.out", target="freqs_wavenumber", calctypes=[CalcType.hessian])(
-    parse_g98_freqs
-)
 codec.parser(
-    file="directory", target="normal_modes_cartesian", calctypes=[CalcType.hessian]
-)(parse_g98_normal_modes)
+    file="directory", target="vibrational_analysis", calctypes=[CalcType.hessian]
+)(parse_g98_vibrations)
 
 
 def _to_input_frame(structures: list[Structure], start: Structure) -> list[Structure]:
@@ -307,11 +409,7 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
     )
     energies = [float(s.extras[Structure._xyz_comment_key][1]) for s in structures]
     structures = _to_input_frame(structures, ctx.input_data.require_structure())
-    try:
-        version = parse_version(ctx.stdout) if ctx.stdout else None
-    except MatchNotFoundError:
-        version = None
-    provenance = Provenance(program="crest", program_version=version)
+    provenance = _provenance(ctx.stdout)
     trajectory: list[Frame] = [
         Frame(
             structure=structure,
@@ -338,3 +436,15 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         results = final.results.model_copy(update={"gradient": gradient})
         trajectory[-1] = Frame.model_validate({**dict(final), "results": results})
     return trajectory
+
+
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``threads`` lowered to ``threads``."""
+    return inp.model_copy(update={"keywords": {**inp.keywords, "threads": threads}})
+
+
+codec.cap_threads = cap_threads
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'crest').
+#: CREST runs on the calculation's thread count unless its input sets ``threads``.
+program = CodecProgram(codec)

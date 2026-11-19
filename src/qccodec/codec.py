@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,11 +12,15 @@ from typing import Any, Literal, TypeVar, overload
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 from qcdata import (
+    Accuracy,
     CalcType,
     Data,
+    ErrorKind,
     Inputs,
+    ProgramError,
     ProgramInput,
     ProgramOutput,
+    ProgramWarning,
     StructuredData,
     get_data_type,
 )
@@ -42,11 +47,21 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 Encoder = Callable[[Any], NativeInput]
 Decoder = Callable[[Any, NativeOutput], Data]
-Failure = Callable[["Context"], "str | None"]
+#: A failure hook: None (no failure), why the program failed, or that and the
+#: failure's structured facts (`qcdata.ErrorInfo.details`: ``required_gib``, ...).
+Failure = Callable[["Context"], "str | tuple[str, dict[str, Any]] | None"]
+#: A warning hook: what a run's output says the caller should know about results it
+#: delivered (`qcdata.ProgramWarning`), such as an SCF accepted unconverged.
+Warn = Callable[["Context"], "list[ProgramWarning]"]
 PropagateWfn = Callable[[ProgramOutput, ProgramInput], ProgramInput]
 VersionKey = Callable[[str], str]
 BatchEncoder = Callable[[Sequence[ProgramInput]], PythonInput]
 BatchKey = Callable[[ProgramInput], "Hashable | None"]
+CapThreads = Callable[[ProgramInput, int], ProgramInput]
+Converges = Callable[[ProgramInput], bool]
+#: ``(pattern, kind, code)``: a failure whose message matches the regular expression
+#: ``pattern`` (``re.search``) is of that `qcdata.ErrorKind`, refined by ``code``.
+ErrorRule = tuple[str, str, str | None]
 
 
 @dataclass(frozen=True)
@@ -192,6 +207,23 @@ class Codec:
         batch_key: Returns a key for an input: inputs with equal keys may share a
             batch; ``None`` means the input is computed alone.
         max_batch: The most inputs one batch may hold.
+        cap_threads: ``(input_data, threads) -> ProgramInput``: the input with its
+            thread request (ORCA ``pal``, Psi4 ``-n``) lowered to ``threads``, for a
+            runner that grants fewer threads than the input asks for.
+        errors: The program's known failures, as ``(pattern, kind, code)`` rules
+            matched in order against the message of a `CalculationError` (the
+            failure hook's explanation, or a decoder's): the first rule whose
+            regular expression is found gives the failure its `qcdata.ErrorKind` and
+            code (``scf_not_converged``, ``max_iter``, ``unknown_key``, ...). A
+            failure no rule matches is kind ``internal``. Kinds decide which stored
+            failures a store reuses, so map every failure the program reports.
+        converges: Whether a calculation has convergence settings an accuracy
+            target could set (an SCF): True, False (a force field, an ML
+            potential), or a function of the input (xtb: not for GFN-FF). It decides
+            what becomes of the shared keyword ``accuracy`` (`accuracy`): a
+            calculation without convergence settings meets any target as it is; one
+            with them refuses it, since no codec maps targets onto its program's
+            thresholds yet.
         parsers: Pre-built parser specifications.
     """
 
@@ -210,12 +242,16 @@ class Codec:
         encode_batch: BatchEncoder | None = None,
         batch_key: BatchKey | None = None,
         max_batch: int = 32,
+        cap_threads: CapThreads | None = None,
+        errors: Iterable[ErrorRule] = (),
+        converges: bool | Converges = True,
     ) -> None:
         """Create a codec; hooks may also be attached later with decorators.
 
         Raises:
-            RegistryError: Only one of ``encode_batch`` and ``batch_key`` is given, or
-                ``max_batch`` is not positive.
+            RegistryError: Only one of ``encode_batch`` and ``batch_key`` is given,
+                ``max_batch`` is not positive, or an error rule names no
+                `qcdata.ErrorKind` or holds an invalid regular expression.
         """
         self.program: str = program
         self.calctypes: frozenset[CalcType] = frozenset(CalcType(c) for c in calctypes)
@@ -226,6 +262,7 @@ class Codec:
         self._encode: Encoder | None = encode
         self._decode: Decoder | None = None
         self._failure: Failure | None = failure
+        self._warn: Warn | None = None
         if (encode_batch is None) != (batch_key is None):
             raise RegistryError(
                 f"Codec {program!r} needs both encode_batch and batch_key to batch."
@@ -235,6 +272,11 @@ class Codec:
         self._encode_batch: BatchEncoder | None = encode_batch
         self._batch_key: BatchKey | None = batch_key
         self.max_batch: int = max_batch
+        self.cap_threads: CapThreads | None = cap_threads
+        self.converges: bool | Converges = converges
+        self.errors: list[ErrorRule] = []
+        for rule in errors:
+            self.add_error(*rule)
         if decode is not None:
             self.decoder(decode)
 
@@ -272,13 +314,80 @@ class Codec:
         return func
 
     def failure(self, func: F) -> F:
-        """Register ``func(ctx) -> str | None`` returning a message if the program failed.
+        """Register ``func(ctx)`` returning a message if the program failed, else None.
 
         A message makes decoding recover partial data and then raise
-        ``CalculationError`` with that data attached.
+        ``CalculationError`` with that data attached. A failure with structured facts
+        returns ``(message, details)`` instead: ``details`` becomes the error's
+        `qcdata.ErrorInfo.details` (for ``host_memory`` and ``device_memory``,
+        ``required_gib`` and ``available_gib``, as qcdata's conventions name them).
         """
         self._failure = func
         return func
+
+    def warning(self, func: F) -> F:
+        """Register ``func(ctx)`` returning the warnings a run's output gives.
+
+        For results a program delivered but the caller should know about, such as an
+        SCF it accepted unconverged (code ``loosely_converged``). It runs on every
+        output, failed or not, and returns an empty list when there is nothing to say.
+        """
+        self._warn = func
+        return func
+
+    def warnings(
+        self,
+        input_data: ProgramInput,
+        *,
+        stdout: str | None = None,
+        directory: str | Path | None = None,
+    ) -> list[ProgramWarning]:
+        """The warnings the codec's warning hook finds in a run's output.
+
+        Args:
+            input_data: The input that produced the output.
+            stdout: The program's captured output.
+            directory: The calculation directory holding output files.
+        """
+        if self._warn is None:
+            return []
+        ctx = Context(
+            codec=self,
+            calctype=input_data.calctype,
+            stdout=stdout,
+            directory=Path(directory) if directory is not None else None,
+            input_data=input_data,
+            options=self._merge_options(None),
+        )
+        return self._warn(ctx)
+
+    def add_error(self, pattern: str, kind: str, code: str | None = None) -> None:
+        """Classify failures whose message matches ``pattern`` (see ``errors``).
+
+        Raises:
+            RegistryError: ``kind`` is not a `qcdata.ErrorKind` or ``pattern`` is not
+                a regular expression.
+        """
+        try:
+            ErrorKind(kind)
+            re.compile(pattern)
+        except (ValueError, re.error) as exc:
+            raise RegistryError(
+                f"Codec {self.program!r} error rule {pattern!r}: {exc}"
+            ) from exc
+        self.errors.append((pattern, kind, code))
+
+    def classify(self, message: str) -> tuple[str, str | None]:
+        """Return the kind and code of a failure from its message.
+
+        Returns:
+            The kind and code of the first ``errors`` rule whose pattern is found in
+            ``message``; ``("internal", None)`` when none is.
+        """
+        for pattern, kind, code in self.errors:
+            if re.search(pattern, message):
+                return kind, code
+        return "internal", None
 
     def parser(
         self,
@@ -367,10 +476,15 @@ class Codec:
     def encode(self, input_data: Inputs) -> NativeInput:
         """Translate an input into a native invocation without executing it.
 
+        The shared keyword ``accuracy`` is checked here for every codec
+        (`accuracy`) and left out before the codec's encoder sees the input: the
+        program never sees it.
+
         Raises:
             EncoderError: The codec has no encoder, the input's program or
-                calculation type is not supported, or the encoder returned
-                something other than a ``SubprocessInput`` or ``PythonInput``.
+                calculation type is not supported, the input sets an ``accuracy``
+                the calculation cannot honour, or the encoder returned something
+                other than a ``SubprocessInput`` or ``PythonInput``.
         """
         if self._encode is None:
             raise EncoderError(f"Codec {self.program!r} has no encoder.")
@@ -383,6 +497,9 @@ class Codec:
                 raise EncoderError(
                     f"{self.program} does not support {input_data.calctype.value}."
                 )
+            if "accuracy" in input_data.keywords:
+                self.accuracy(input_data)
+                input_data = _without_accuracy(input_data)
         native = self._encode(input_data)
         if not isinstance(native, (SubprocessInput, PythonInput)):
             raise EncoderError(
@@ -391,12 +508,52 @@ class Codec:
             )
         return native
 
+    def accuracy(self, inp: ProgramInput) -> Accuracy | None:
+        """Read the input's accuracy target, refusing one the calculation cannot honour.
+
+        The shared keyword ``accuracy`` is read with `qcdata.Accuracy.from_keywords`,
+        as every program reads it; ``null`` sets no target. A calculation without
+        convergence settings (``converges`` false: an ML potential, a GFN-FF or
+        non-SCC DFTB single point) meets any target as it is, so it accepts one and
+        records it as met (`accuracy_record`). One with convergence settings refuses
+        it, since no codec turns a target into its program's thresholds yet.
+
+        Returns:
+            The target the calculation accepts, or None when it sets none.
+
+        Raises:
+            EncoderError: Kind ``input`` for a value that is not a target (the
+                reader's code: ``unknown_key``, ``no_effect`` for an object with no
+                target); kind ``unsupported`` for a target of a calculation with
+                convergence settings.
+        """
+        try:
+            target = Accuracy.from_keywords(inp.keywords)
+        except ProgramError as e:
+            raise EncoderError(
+                e.error.message, kind=e.error.kind.value, code=e.error.code
+            ) from e
+        if target is None:
+            return None
+        converges = self.converges
+        if callable(converges):
+            converges = converges(inp)
+        if converges:
+            raise EncoderError(
+                f"{self.program} cannot turn an accuracy target into its own "
+                "convergence thresholds; remove accuracy and set the program's "
+                "thresholds instead.",
+                kind="unsupported",
+            )
+        return target
+
     def batch_key(self, input_data: Inputs) -> Hashable | None:
         """Return the key under which an input may share a batch, or None.
 
         None when the codec cannot batch, the input is not a ``ProgramInput`` this
         codec computes, or the codec computes this input alone (for example a
-        Hessian, where libraries take one structure at a time).
+        Hessian, where libraries take one structure at a time), or the input sets an
+        ``accuracy`` the codec refuses, so that its refusal names the input.
         """
         if (
             self._batch_key is None
@@ -405,6 +562,10 @@ class Codec:
             or input_data.calctype not in self.calctypes
         ):
             return None
+        try:
+            self.accuracy(input_data)
+        except EncoderError:
+            return None  # computed alone, so encode refuses it
         return self._batch_key(input_data)
 
     def encode_batch(self, inputs: Sequence[ProgramInput]) -> PythonInput:
@@ -429,7 +590,7 @@ class Codec:
             raise EncoderError(
                 f"{self.program} inputs in one batch must share a batch key."
             )
-        native = self._encode_batch(inputs)
+        native = self._encode_batch([_without_accuracy(inp) for inp in inputs])
         if not isinstance(native, PythonInput):
             raise EncoderError(
                 f"{self.program} batch encoder must return PythonInput, not "
@@ -455,13 +616,20 @@ class Codec:
             options: Overrides for this codec's declared ``options``.
 
         Raises:
-            CalculationError: The program failed and the failure hook says why.
+            CalculationError: The program failed and the failure hook (or the
+                decoder) says why; its kind and code come from the codec's
+                ``errors``.
             ParserError: A required output is missing or malformed in a run that
                 did not fail.
         """
         if self._decode is not None:
             self._merge_options(options)  # rejects unknown keys
-            return self._decode(input_data, native_output)
+            try:
+                return self._decode(input_data, native_output)
+            except CalculationError as exc:
+                if exc.kind == "internal" and exc.code is None:
+                    exc.kind, exc.code = self.classify(str(exc))
+                raise
         if not isinstance(input_data, ProgramInput):
             raise ParserError(f"Codec {self.program!r} has no decoder for file inputs.")
         return self.parse(
@@ -547,8 +715,9 @@ class Codec:
             ParserError: A required file is missing or a value is malformed.
             MatchNotFoundError: A required parser found no match.
             CalculationError: The failure hook explained a failure and
-                ``report_failure`` is true. Recovered data is attached to every
-                exception as ``.data``.
+                ``report_failure`` is true; its kind and code come from the codec's
+                ``errors``. Recovered data is attached to every exception as
+                ``.data``.
         """
         ctx = Context(
             codec=self,
@@ -560,9 +729,15 @@ class Codec:
             options=self._merge_options(options),
         )
         data_type = get_data_type(ctx.calctype)
-        message = (
+        reported = (
             self._failure(ctx) if self._failure is not None and check_failure else None
         )
+        message: str | None
+        details: dict[str, Any] = {}
+        if isinstance(reported, tuple):
+            message, details = reported
+        else:
+            message = reported
         if message:
             ctx.failed = True
         collected: dict[str, Any] = {"provenance": {"program": self.program}}
@@ -644,7 +819,10 @@ class Codec:
         if report_failure is None:
             report_failure = not failed
         if message and report_failure:
-            raise CalculationError(message, data=partial())
+            kind, code = self.classify(message)
+            raise CalculationError(
+                message, data=partial(), kind=kind, code=code, details=details
+            )
         return collected if as_dict else partial()
 
     def _version_matches(self, spec: ParserSpec, version: str | None) -> bool | None:
@@ -678,6 +856,41 @@ class Codec:
                 f"available: {sorted(self.options)}"
             )
         return {**self.options, **(options or {})}
+
+
+def accuracy_record(target: Accuracy) -> dict[str, Any]:
+    """The record of an accuracy target met by a calculation with nothing to converge.
+
+    Under the shared record key ``accuracy``, as qcdata's conventions give it: the
+    target as given, no thresholds, and a convergence error of exactly zero for each
+    target, so a reader checks every program alike (each estimate at or below its
+    target).
+
+    Args:
+        target: The input's target (`Codec.accuracy`).
+
+    Returns:
+        ``{"target": {...}, "thresholds": {}, "estimate": {...}}``: the target's
+        fields as given (Eh, Eh/bohr, Eh/bohr^2) and ``0.0`` for each.
+    """
+    given = {
+        name: value
+        for name in ("energy", "gradient", "hessian")
+        if (value := getattr(target, name)) is not None
+    }
+    return {
+        "target": given,
+        "thresholds": {},
+        "estimate": dict.fromkeys(given, 0.0),
+    }
+
+
+def _without_accuracy(inp: ProgramInput) -> ProgramInput:
+    """The input without its ``accuracy`` keyword, which programs never see."""
+    if "accuracy" not in inp.keywords:
+        return inp
+    keywords = {k: v for k, v in inp.keywords.items() if k != "accuracy"}
+    return inp.model_copy(update={"keywords": keywords})
 
 
 def _assign(data: dict[str, Any], target: Target, value: Any) -> None:

@@ -6,12 +6,13 @@ from qcdata import (
     CalcType,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
 )
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("terachem")]
 
@@ -79,6 +80,36 @@ def test_hessian(run: Run) -> None:
     _check_normal_modes(output.results, WATER_NEAR_MINIMUM)
 
 
+def test_hessian_is_not_projected(run: Run, water: Structure) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 3e-2.
+    """
+    inp = _input(
+        water,
+        CalcType.gradient,
+        Model(method="hf", basis="6-31g"),
+        mincheck="false",
+        convthre="1e-8",
+    )
+    finite_difference_check(run, inp, atol=5e-5, hessian=True)
+
+
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """An SCF out of iterations is scf_not_converged, with its last energy."""
+    inp = _input(
+        water, CalcType.gradient, Model(method="b3lyp", basis="6-31g"), maxit="3"
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="scf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    assert e.value.output is not None
+    assert -76.5 < e.value.output.results.energy < -76.0
+
+
 # sqrt(Hartree / (bohr^2 amu)) in cm^-1.
 WAVENUMBER_PER_ROOT_AU = 5140.4871
 
@@ -94,8 +125,10 @@ def _check_normal_modes(results: SinglePointData, structure: Structure) -> None:
     )
     weights = 1 / np.sqrt(masses)
     weighted = np.asarray(results.hessian) * np.outer(weights, weights)
-    freqs = np.asarray(results.freqs_wavenumber)
-    modes = np.asarray(results.normal_modes_cartesian)
+    analysis = results.vibrational_analysis
+    assert analysis is not None
+    freqs = np.asarray(analysis.frequencies)
+    modes = np.asarray(analysis.normal_modes_cartesian)
     assert freqs.shape == (3,) and modes.shape == (3, 3, 3)
     assert np.all(freqs > 1000)
     for freq, mode in zip(freqs, modes, strict=True):
@@ -145,3 +178,31 @@ REFERENCE_HESSIAN_ROW_0 = [
     0.04171577173879733,
     0.1956319703780435,
 ]
+
+
+def test_a_full_gpu_buffer_is_device_memory(run: Run) -> None:
+    """64 waters in a 1-megaword buffer: the details give the buffer and its need."""
+    oxygen = [
+        [3.0 * i, 3.0 * j, 3.0 * k]
+        for i in range(4)
+        for j in range(4)
+        for k in range(4)
+    ]
+    geometry = [
+        atom
+        for x, y, z in oxygen
+        for atom in ([x, y, z], [x, y + 0.757, z + 0.587], [x, y - 0.757, z + 0.587])
+    ]
+    waters = Structure(
+        symbols=["O", "H", "H"] * len(oxygen),
+        geometry=np.array(geometry) / 0.52917721092,  # angstrom to bohr
+    )
+    inp = _input(
+        waters, CalcType.energy, Model(method="b3lyp", basis="6-31gss"), gpumem="1"
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="gpu_buffer_out_of_memory")
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "device_memory")
+    details = e.value.error.details
+    assert details["available_gib"] == pytest.approx(8 / 1024)  # 1 MW of 8 bytes
+    assert details["required_gib"] > details["available_gib"]

@@ -5,11 +5,18 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from qcdata import CalcType, Model, OptimizationData, ProgramInput, Structure
+from qcdata import (
+    CalcType,
+    Model,
+    OptimizationData,
+    ProgramError,
+    ProgramInput,
+    Structure,
+)
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, required_programs
+from .conftest import Run, finite_difference_check, required_programs
 
 
 def _orca_installed() -> bool:
@@ -68,8 +75,25 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert np.isclose(results.energy, ENERGY, atol=1e-6)
     # Translations and rotations are left out; the distorted water is not a
     # minimum, but HF/STO-3G still gives three real modes here.
-    assert len(results.freqs_wavenumber) == 3
+    assert len(results.vibrational_analysis.frequencies) == 3
     check_normal_modes(results, list(water.symbols))
+
+
+@pytest.mark.parametrize(("numfreq", "atol"), [(False, 2e-5), (True, 5e-4)])
+def test_hessian_is_not_projected(
+    run: Run, water: Structure, numfreq: bool, atol: float
+) -> None:
+    """Analytic and numerical Hessians agree with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 3e-2.
+    """
+    keywords = {"verytightscf": True, "numfreq": numfreq or None}
+    finite_difference_check(
+        run,
+        _input(water, CalcType.gradient).model_copy(update={"keywords": keywords}),
+        atol=atol,
+        hessian=True,
+    )
 
 
 def test_hessian_modes_across_blocks(run: Run) -> None:
@@ -86,7 +110,7 @@ def test_hessian_modes_across_blocks(run: Run) -> None:
         ),
     )
     output = run(_input(ammonia, CalcType.hessian), case="ammonia_hessian")
-    assert len(output.results.freqs_wavenumber) == 6
+    assert len(output.results.vibrational_analysis.frequencies) == 6
     check_normal_modes(output.results, list(ammonia.symbols))
 
 
@@ -98,3 +122,127 @@ def test_optimization(run: Run, water: Structure) -> None:
     assert len(energies) > 1
     assert np.isclose(energies[-1], -74.965901192106, atol=1e-6)
     assert all(np.diff(energies) <= 1e-8)
+
+
+@pytest.mark.parametrize(
+    ("case", "model", "keywords", "code"),
+    [
+        ("unknown_keyword", None, {"tightscff": True}, "unknown_key"),
+        ("unknown_block", None, {"scff": {"maxiter": 100}}, "unknown_key"),
+        ("unknown_block_setting", None, {"scf": {"maxiterr": 100}}, "unknown_key"),
+        ("unknown_basis", Model(method="hf", basis="sto-3gg"), {}, None),
+    ],
+)
+def test_orca_refuses_unknown_input(
+    run: Run,
+    water: Structure,
+    case: str,
+    model: Model | None,
+    keywords: dict[str, object],
+    code: str | None,
+) -> None:
+    """ORCA refuses what it does not know before calculating; kind input."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"keywords": keywords, **({"model": model} if model else {})}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == ("input", code)
+
+
+def test_scf_failure_is_convergence(run: Run, water: Structure) -> None:
+    """ORCA exits 0 when the SCF fails; the codec reports convergence."""
+    inp = _input(water, CalcType.energy).model_copy(
+        update={"keywords": {"scf": {"maxiter": 2}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="scf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    # The last iterate's energy comes with the failure.
+    assert e.value.output is not None
+    assert np.isclose(e.value.output.results.energy, ENERGY, atol=0.1)
+
+
+def test_scf_carried_on_unconverged_warns(run: Run, water: Structure) -> None:
+    """With ConvIgnored ORCA carries on after an unconverged SCF: a warned success."""
+    inp = _input(water, CalcType.gradient).model_copy(
+        update={"keywords": {"scf": {"maxiter": 2, "convignored": True}}}
+    )
+    output = run(inp, case="scf_convignored_gradient")
+    assert [w.code for w in output.warnings] == ["loosely_converged"]
+    assert "ConvIgnored" in output.warnings[0].message
+    assert "Delta-E" in output.warnings[0].message
+
+
+def test_unconverged_cpscf_is_response_not_converged(
+    run: Run, water: Structure
+) -> None:
+    """ORCA goes on with CP-SCF equations it did not converge; the codec does not."""
+    inp = _input(water, CalcType.hessian).model_copy(
+        update={"keywords": {"method": {"z_maxiter": 1}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="cpscf_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == (
+        "convergence",
+        "response_not_converged",
+    )
+    assert e.value.output is not None
+    assert e.value.output.results.hessian is not None  # what ORCA computed with it
+
+
+def test_optimization_out_of_cycles_fails(run: Run, water: Structure) -> None:
+    """ORCA calls an optimization out of cycles a normal termination; it is not."""
+    inp = _input(water, CalcType.optimization).model_copy(
+        update={"keywords": {"geom": {"maxiter": 2}}}
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case="optimization_not_converged")
+    assert (e.value.error.kind, e.value.error.code) == ("convergence", "max_iter")
+    assert e.value.output is not None
+    assert len(e.value.output.results.frames) == 2
+
+
+def test_impossible_multiplicity(run: Run, water: Structure) -> None:
+    """A multiplicity the electron count cannot have is kind input."""
+    doublet = water.model_copy(update={"multiplicity": 2})
+    with pytest.raises(ProgramError) as e:
+        run(_input(doublet, CalcType.energy), case="impossible_multiplicity")
+    assert e.value.error.kind == "input"
+
+
+@pytest.mark.parametrize(
+    ("case", "method", "maxcore", "figures"),
+    [
+        # The SCF estimates its need before it starts.
+        ("scf_out_of_memory", "RI-MP2 def2-TZVP def2-TZVP/C", 1, True),
+        # DLPNO prints its minimum against %maxcore.
+        ("dlpno_out_of_memory", "DLPNO-CCSD(T) def2-TZVP def2-TZVP/C", 5, True),
+        # Batching runs out with no figure to report.
+        ("mdci_out_of_memory", "CCSD(T) def2-TZVP", 5, False),
+    ],
+)
+def test_out_of_memory_is_host_memory(
+    run: Run, water: Structure, case: str, method: str, maxcore: int, figures: bool
+) -> None:
+    """With what it needed against %maxcore where ORCA prints both, in GiB."""
+    inp = ProgramInput(
+        program="orca",
+        structure=water,
+        calctype=CalcType.energy,
+        model=Model(method=method),
+        keywords={"maxcore": maxcore},
+    )
+    with pytest.raises(ProgramError) as e:
+        run(inp, case=case)
+    assert (e.value.error.kind, e.value.error.code) == ("resource", "host_memory")
+    details = e.value.error.details
+    if figures:
+        assert details.keys() == {"required_gib", "available_gib"}
+        assert details["available_gib"] == pytest.approx(maxcore / 1024, rel=1e-3)
+        assert details["required_gib"] > details["available_gib"]
+    else:
+        assert details == {}

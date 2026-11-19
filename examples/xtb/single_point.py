@@ -1,6 +1,6 @@
 """xtb single point: energy, gradient, or Hessian with GFN-xTB, GFN-FF, or g-xTB.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and xtb on PATH, e.g.
+Requires: ``pip install qccompute[qccodec]`` and xtb on PATH, e.g.
 ``conda install -c conda-forge xtb``. For g-xTB (``method="gxtb"``) use the xtb build
 from https://github.com/grimme-lab/g-xtb instead; it also runs every other method.
 GFN0-xTB reads its parameter file from the directory named by ``XTBPATH``.
@@ -79,8 +79,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before xtb is killed
-    # collect_files=True,  # keep every output file in output.results.files
-    # executables={"xtb": "/path/to/g-xtb/bin/xtb"},  # or QCCOMPUTE_XTB_EXECUTABLE
 )
 
 results = output.results
@@ -88,8 +86,11 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)
-    print("Normal modes (modes, atoms, xyz):", results.normal_modes_cartesian.shape)
+    print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
+    print(
+        "Normal modes (modes, atoms, xyz):",
+        results.vibrational_analysis.vibrational_analysis.normal_modes_cartesian.shape,
+    )
 print("Partial charges:", results.atomic_charges)
 if results.point_charge_gradient is not None:
     print("Gradient on point charges:\n", results.point_charge_gradient)

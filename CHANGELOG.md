@@ -6,6 +6,164 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [unreleased]
 
+## [0.22.0] - 2026-11-19
+
+The final release of the 0.22.0 alphas and release candidate: their entries below make up its changes since 0.21. Since 0.22.0rc1:
+
+### Changed
+
+- Requires qcdata 0.24.0 and qccompute 0.23.0 or later; the README and docs install the final releases and link to the stable docs.
+
+## [0.22.0rc1] - 2026-11-18
+
+The release candidate: these are the final interfaces; only bug fixes follow before 0.22.0.
+
+### Changed
+
+- **Breaking:** a program runs on the calculation's thread count unless its input asks for fewer (qccompute's [Threads](https://qccompute.docs.afh.org/threads/) page). `CodecProgram(threads=)` is now the program's own cap (default none): xtb caps at 1 (it nests OpenMP), ORCA at 1 unless `pal` is set (parallel ORCA needs MPI).
+- **Breaking:** `CodecProgram.plan` states GPUs only; geomeTRIC and Sella plan their child's GPUs only.
+- A batch input rerun alone gets its `threads` keyword, else its share of the batch's threads.
+- Requires qccompute 0.23.0rc1.
+
+### Added
+
+- xtb Hessians carry the energy and gradient from the same run (`--hess --grad`); the Hessian is unchanged.
+- ORCA Hessians carry the gradient when asked (`keywords={"engrad": True}`). It is not the default because it tightens ORCA's SCF and moves the Hessian slightly.
+
+## [0.22.0a7] - 2026-11-18
+
+### Fixed
+
+- A Python program that runs subprograms (Sella in a worker) holds its own BLAS, OpenMP and PyTorch thread pools at one thread. They were at the call's threads, the whole grant for a Psi4 or CREST child, and idle OpenBLAS threads spinning after each call oversubscribed the CPUs beside the child.
+
+## [0.22.0a6] - 2026-11-17
+
+### Added
+
+- `run_subprocess(..., interrupt=)`: a check made about once a second while the program runs; an exception it returns kills the program and every process it started. One watcher thread makes this check and kills the program at its deadline, replacing the timer.
+
+### Fixed
+
+- A cancelled or stopped calculation ends its external program within about a second instead of waiting for it to finish. A stop fails with kind `stopped` (`qccodec.exceptions.StoppedError`) and keeps what the codec recovers from the output so far; a cancel fails with kind `timeout`. Through a runner, a submitted 31 s program ended 0.45 s after a cancel or a stop.
+
+## [0.22.0a5] - 2026-11-17
+
+### Changed
+
+- **Breaking:** Hessians are never projected. xtb's (GFN1, GFN2, g-xTB, GFN-FF) are read from `hessian.out`, which xtb writes before it projects: against finite differences of the gradient, 1.6e-3–1.9e-2 Eh/bohr² before, 1.6e-5–1.2e-4 after. Psi4 refuses `fd_project true` for Hessians. Every other codec was checked unprojected at a displaced geometry.
+- **Breaking:** Psi4's `vibrational_analysis.projection` and `external` follow what Psi4 actually projected (it keeps rotations when the gradient rms is ≥ 1e-2).
+- **Breaking:** ORCA and Psi4 Hessians whose response (CP-SCF/CPHF) equations did not converge fail with `convergence`/`response_not_converged`; both programs carry on silently otherwise.
+- **Breaking:** a TeraChem SCF that does not converge is `convergence`/`scf_not_converged` (was `internal`), with its last energy. ORCA and Psi4 SCF failures keep the last iterate's energy (Psi4 also its orbitals).
+- **Breaking:** Psi4's in-core density-fitting `required_gib` is the `--memory` at which it fits.
+- Requires qcdata 0.24.0a8 and qccompute 0.23.0a6.
+
+### Added
+
+- `loosely_converged` warnings: ORCA `ConvIgnored true`, Psi4 `fail_on_maxiter false`, DFTB+ `ConvergentSCCOnly No`. Codecs warn from successful outputs through `@codec.warning` and `Codec.warnings()`.
+- CREST names "Calculation exited with error" (still kind `internal`; CREST exits 0 with a zero energy).
+- Integration checks of Hessians against finite differences for xtb, ORCA, Psi4, TeraChem and CREST.
+
+
+## [0.22.0a4] - 2026-11-17
+
+### Changed
+
+- **Breaking:** `CodecProgram(gpu=)` and the `gpu` capability are removed (qccompute 0.23.0a4). ML potentials run on the GPU that `ctx.device_ordinals()` names, or the CPU when none was granted; `resolved.settings` records `cuda`. A granted GPU the process can't see fails with kind `environment`.
+- **Breaking:** calculations with no convergence settings (ML potentials, GFN-FF, non-SCC DFTB single points) accept an `accuracy` target, as keyword or session request, and record it as met (`{"target": ..., "thresholds": {}, "estimate": {...: 0.0}}`); the program never sees the keyword. Codecs with convergence settings still refuse it as `unsupported` (#41).
+- **Breaking:** out-of-memory failures in ORCA, Psi4 and TeraChem are kind `resource` (`host_memory` or `device_memory`), with `required_gib` and `available_gib` in `ErrorInfo.details` where the output gives them (#45). Psi4's `--memory` below its minimum was `internal`; TeraChem's CUDA out-of-memory was `backend`.
+- `backend_fallback` is warned only when a GPU was granted and the program still ran on the CPU, not on machines without GPUs.
+- Python libraries in a worker apply each call's threads (`torch.set_num_threads`, and `threadpoolctl` for BLAS and OpenMP), since workers are now shared by calls with different threads. New dependency: `threadpoolctl`.
+- Batch outputs leave `execution.threads` to the runner, which fills in each input's share (#52).
+- Requires qcdata 0.24.0a5 and qccompute 0.23.0a4.
+
+### Added
+
+- `Codec.accuracy`, `qccodec.codec.accuracy_record`, `PythonInput.device_keyword`, `run_python(device=, threads=)`, `call_python(device=)`, `qccodec.run.thread_limits`, `CalculationError.details`; failure hooks may return `(message, details)`, and fixture `case.json` takes `details`.
+
+
+## [0.22.0a3] - 2026-11-17
+
+### Changed
+
+- **Breaking:** `scf_dipole_moment` and `scf_quadrupole_moment` are `dipole_moment` and `quadrupole_moment` (qcdata 0.24.0a4). Psi4 fills `dipole_moment` only for HF and DFT: after MP2, Psi4's SCF dipole is still the Hartree-Fock one.
+- **Breaking:** every codec refuses the shared `accuracy` keyword before running: `unsupported` where the program has convergence settings that don't take targets yet, `input`/`no_effect` where it has none (ML potentials, GFN-FF and non-SCC DFTB single points). `Codec(converges=)` declares which.
+- **Breaking:** tblite's accuracy factor is the keyword `acc` (it was `accuracy`, now the shared target), matching xtb's `--acc`.
+- **Breaking:** AIMNet2, MACE and FAIR-Chem numerics include the weights file's sha256 when it is on disk; a container program's numerics is `<version> image sha256:<image id>`; a FileInput's is the sha256 of its command's executable. `executable_digest` is now `file_digest`.
+- Numerics inputs are read once per process: identities cost 3-10 µs per output (were 26-84 µs).
+- In `compute_batch`, an input that can't be batched runs with its own threads, capped at the batch's grant.
+
+### Added
+
+- `provenance.program_commit` for xtb (it tells the g-xTB build from upstream 6.7.1), CREST, ORCA 6.1 and later, TeraChem and DFTB+ development builds.
+- ML potentials record the device they ran on, and warn `backend_fallback` when a planned GPU wasn't there.
+- `CodecProgram(image=, weights=, keywords=)` and `QCCODEC_<PROGRAM>_IMAGE`; `settings_schema` lists the keys a codec knows (xtb, tblite, geomeTRIC, Sella, ML potentials), plus `threads`.
+
+
+## [0.22.0a2] - 2026-11-17
+
+### Changed
+
+- **Breaking:** failures are classified. Each codec maps its programs' known failures to a kind and code: SCF non-convergence is `convergence`/`scf_not_converged`; an optimizer out of iterations is `convergence`/`max_iter`; overlapping atoms, an impossible multiplicity, or an unknown method, basis or solvent is `input`; an unknown keyword is `input`/`unknown_key`; an IRC started away from a saddle is `input`/`not_first_order_saddle`. `internal` is left for failures nobody anticipated. `EncoderError` and `CalculationError` take `kind` and `code`; `Codec` gains `errors=`, `add_error` and `classify`.
+- **Breaking:** unknown keywords fail at once, with a did-you-mean: xtb flags, tblite, geomeTRIC parameters, Sella, CREST tables and the ML codecs are checked by the codec; Psi4 names each option it refuses; ORCA and DFTB+ refusals are reported as `unknown_key`. TeraChem keywords stay unchecked.
+- **Breaking:** an adapter's `version()` is the program's version (`<exe> --version`, or the library's), not qccodec's. Its `numerics` is the bare version for a library and `<version> sha256:<hex>` for an executable, so runs stored with 0.22.0a1 identities don't match.
+- **Breaking:** every adapter takes the shared `threads` keyword and writes it in the program's own spelling (`pal`, `-n`, `parallel`, `threads`, or `OMP_NUM_THREADS`). Plans state each program's default: Psi4 and CREST ask for the whole runner; ORCA (parallel needs MPI), TeraChem (its work is on GPUs), xtb, tblite and the ML potentials plan 1.
+- **Breaking:** geomeTRIC runs in process and is thread-safe (no working-directory or stream changes), so a program registered in the caller's process works as its subprogram. Subprograms are sized from their own plans. tblite, Sella and the ML potentials still run in workers.
+- **Breaking:** ORCA optimizations that run out of cycles fail (they returned a success), and ORCA SCF failures are reported as such.
+- Psi4 records whether alpha and beta orbitals are shared, which decides `Orbitals.spin`.
+- Examples print optimization frames as frames (structures evaluated), not steps.
+
+### Added
+
+- `PythonInput.directory_keyword` and `qccodec.run.call_python`: run a Python-library codec in process without changing the working directory.
+- `qccodec.reject_unknown`, for codec writers; a guide to writing a codec.
+
+### Fixed
+
+- geomeTRIC no longer warns `copy_scratch not implemented` for every gradient.
+
+
+## [0.22.0a1] - 2026-11-17
+
+The first alpha of qccodec as the add-on that brings external programs into qccompute
+(`pip install qccompute[qccodec]`, or `pip install qccodec`). Every codec is a program
+that qccompute runs like any other. Breaking changes come without compatibility shims.
+
+### Added
+
+- `qccodec.program.CodecProgram`: each codec as a program registered under the `qccompute.programs` entry points. It handles input files, subprocesses with output capture and timeouts, file collection and parsing (`qccodec.run`, moved from qccompute). Codecs of Python libraries say `in_process=False` and run in qccompute's worker processes. geomeTRIC and Sella run their subprograms through the run context, and hand themselves to `qccompute.compute` when called directly.
+- `numerics(spec)`: an adapter's numerics identity is its executable's sha256, or the library's version.
+- `Codec.cap_threads`: an explicit thread request (ORCA `pal`, Psi4 `-n`, xtb `parallel`, CREST `threads`) larger than the calculation's grant is capped to the grant, with a `resource_capped` warning; `execution.threads` records what ran.
+
+### Changed
+
+- **Breaking:** qccodec depends on qccompute.
+- **Breaking:** executables are overridden with `QCCODEC_<PROGRAM>_EXECUTABLE` (was `QCCOMPUTE_*`), or `CodecProgram(executable=, environment=)`. A native `threads` of None means no request: the program runs with its grant.
+- **Breaking:** parsers write frequencies and modes to `vibrational_analysis` and Psi4's orbitals to `Orbitals` (qcdata 0.24). CREST rotamers are requested with keywords (`{"output": {"rotamers": true}}`).
+- `ProgramCalculator` accepts a `ProgramError` raised by its compute function.
+
+### Removed
+
+- **Breaking:** wavefunction propagation and file collection on `ProgramInput`s.
+
+
+### Fixed (since 0.21.0)
+
+- Installed codecs are found from package metadata once per process instead of on every lookup. The scan cost about 1.3 ms per `compute` call, most of the per-step overhead of fast in-process programs: a g-xTB gradient through `qccompute.compute` drops from 1.7 to 0.5 ms. A codec package installed after the first lookup needs a new process.
+
+### Added (since 0.21.0)
+
+- `geometric` codec: `CalcType.irc`. geomeTRIC's IRC (forward, then backward, each finished by minimizing) returns a `PathData` of the points it accepted, from the backward end through the transition state (`ts_index`, with geomeTRIC's finite-difference Hessian attached) to the forward end; rejected trial steps are left out. New example `examples/geometric/irc.py`; HCN ⇌ HNC with CREST's GFN2-xTB gives the same 53.2 and 73.2 kcal/mol barriers as the Sella IRC.
+- `PythonInput.children_callback` and the `ComputeChildren` protocol (`qccodec.native`): a driver that needs many independent child calculations per step (a path optimization's images) names a keyword into which the runner injects `compute_children(inputs) -> outputs`, so the runner can batch machine-learned potentials and run programs side by side. Runners that do not support it leave the keyword out; drivers fall back to `child_callback`.
+
+### Changed (since 0.21.0)
+
+- IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_common.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
+- Moved documentation from `qccodec.docs.atomsforhumanity.org` to `qccodec.docs.afh.org`.
+
+### Fixed (since 0.21.0)
+
+- geomeTRIC received its working directory as a `Path`, which its IRC edits as text between branches (`TypeError: Path.replace()`); it now gets a string.
+
 ## [0.21.1] - 2026-11-17
 
 ### Added
@@ -485,7 +643,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Can return either `AtomicResult` or `FailedOperation` objects depending on whether calculation succeeded or failed.
 - Tests for all parsers and the main `parse` function.
 
-[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.21.0...HEAD
+[unreleased]: https://github.com/atomsforhumanity/qccodec/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.22.0
 [0.21.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.21.0
 [0.20.1]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.1
 [0.20.0]: https://github.com/atomsforhumanity/qccodec/releases/tag/0.20.0

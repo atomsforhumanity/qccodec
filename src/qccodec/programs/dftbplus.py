@@ -3,7 +3,7 @@
 The codec writes ``dftb_in.hsd`` and ``geometry.xyz`` and runs ``dftb+`` in the
 calculation directory; results come from DFTB+'s machine-readable ``results.tag``.
 Install DFTB+ with ``conda install -c conda-forge dftbplus``; qccompute finds ``dftb+``
-on ``PATH`` (or set ``QCCOMPUTE_DFTBPLUS_EXECUTABLE``). Tested with DFTB+ 25.1, and the
+on ``PATH`` (or set ``QCCODEC_DFTBPLUS_EXECUTABLE``). Tested with DFTB+ 25.1, and the
 input pins HSD parser version 14.
 
 Inputs map to DFTB+ as follows:
@@ -44,13 +44,19 @@ the result has the Hessian but no energy or gradient at the input geometry; run 
 ``gradient`` for those. The codec tightens ``SCCTolerance`` to 1e-8 for these runs,
 since DFTB+'s default 1e-5 leaves noise of about 1e-4 in the Hessian), and ``optimization`` (``Driver = GeometryOptimisation`` with
 LBFGS on all atoms; override any part through ``keywords["Driver"]``). Energies and
-gradients also fill ``atomic_charges`` (Mulliken) and ``scf_dipole_moment``. The
+gradients also fill ``atomic_charges`` (Mulliken) and ``dipole_moment``. The
 optimization trajectory holds each step's structure and energy; the last step also
 carries the gradient.
 
 DFTB+ never moves or reorients the molecule, so results are in the input's frame.
-DFTB+ stops on any keyword it does not recognize, and the codec reports its error
-message.
+DFTB+ stops on any keyword it does not recognize, before calculating, and the codec
+reports its message naming the input it ignored (kind ``input``, code
+``unknown_key``). An SCC that does not converge is ``convergence``
+(``scf_not_converged``), an optimization that runs out of steps ``convergence``
+(``max_iter``); other errors DFTB+ reports are ``internal``. With ``ConvergentSCCOnly =
+No`` DFTB+ carries on after an SCC that did not converge; the result then comes with
+the warning ``loosely_converged``, giving the last SCC error against ``SCCTolerance``. DFTB+ plans one thread
+unless ``threads`` asks for more (it reaches DFTB+ as ``OMP_NUM_THREADS``).
 """
 
 from __future__ import annotations
@@ -66,6 +72,7 @@ from qcdata import (
     ExecutionInfo,
     Frame,
     ProgramInput,
+    ProgramWarning,
     Provenance,
     SinglePointData,
     Structure,
@@ -75,6 +82,8 @@ from qcref import dftb_parameter_sets
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
+from ..program import CodecProgram
+from ..utils import re_search
 
 INPUT_FILE = "dftb_in.hsd"
 STRUCTURE_FILE = "geometry.xyz"
@@ -90,6 +99,19 @@ codec = Codec(
         CalcType.hessian,
         CalcType.optimization,
     },
+    # Matched against the failure hook's message, which quotes DFTB+'s error lines.
+    errors=[
+        (r"Unrecognized input:", "input", "unknown_key"),
+        (r"SCC is NOT converged", "convergence", "scf_not_converged"),
+        (r"geometry optimization did not converge", "convergence", "max_iter"),
+    ],
+    # Non-self-consistent DFTB has no SCC: a single point has nothing to converge
+    # (an optimization still has the optimizer's convergence).
+    converges=lambda inp: (
+        inp.calctype == CalcType.optimization
+        or inp.model is None
+        or inp.model.method.lower().replace("_", "-") != "dftb"
+    ),
 )
 
 DFTB_METHODS = {"dftb3": "DFTB3", "scc-dftb": "SCC-DFTB", "dftb": "DFTB"}
@@ -378,6 +400,41 @@ def failure(ctx: Context) -> str | None:
     return None
 
 
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    """Warn ``loosely_converged`` when DFTB+ carried on with an unconverged SCC.
+
+    DFTB+ stops at an SCC that does not converge unless ``ConvergentSCCOnly = No``;
+    the message gives the last SCC error against ``SCCTolerance``.
+    """
+    stdout = ctx.stdout or ""
+    accepted = stdout.count("SCC is NOT converged")
+    if not accepted or "ERROR!" in stdout:
+        return []
+    number = r"-?\d\.\d+E[-+]\d+"
+    errors = re.findall(
+        rf"^\s+\d+\s+{number}\s+{number}\s+({number})\s*$", stdout, flags=re.M
+    )
+    tolerance = re.search(r"SCC-tolerance:\s+(\S+)", stdout)
+    reached = ""
+    if errors and tolerance:
+        error, limit = float(errors[-1]), float(tolerance.group(1))
+        reached = (
+            f"; the last SCC error was {error:.3g} for an SCCTolerance of {limit:g}"
+        )
+    count = f"{accepted} SCCs" if accepted > 1 else "the SCC"
+    return [
+        ProgramWarning(
+            code="loosely_converged",
+            message=(
+                f"DFTB+ did not converge {count} and carried on because "
+                f"ConvergentSCCOnly is No{reached}."
+            ),
+            path="Hamiltonian.SCCTolerance",
+        )
+    ]
+
+
 @codec.parser(target=("provenance", "program_version"), required=False)
 def parse_version(stdout: str) -> str:
     """Parse ``release 25.1``, or ``dev-<commit>`` for development builds."""
@@ -387,6 +444,12 @@ def parse_version(stdout: str) -> str:
     if match is None:
         raise MatchNotFoundError("DFTB+ version", stdout)
     return match.group(1) or f"dev-{match.group(2)}"
+
+
+@codec.parser(target=("provenance", "program_commit"), required=False)
+def parse_commit(stdout: str) -> str:
+    """Parse a development build's commit: ``development version (commit: a23bfb2)``."""
+    return re_search(r"DFTB\+ development version \(commit: (\w+)\)", stdout).group(1)
 
 
 @codec.parser(
@@ -416,7 +479,7 @@ def parse_charges(contents: str) -> list[float]:
 
 @codec.parser(
     file="results.tag",
-    target="scf_dipole_moment",
+    target="dipole_moment",
     calctypes=[CalcType.energy, CalcType.gradient],
     required=False,
 )
@@ -468,12 +531,15 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
         gradient = parse_gradient(ctx.read("results.tag"))
     except (FileNotFoundError, MatchNotFoundError):
         gradient = None
-    version = None
+    version = commit = None
     try:
         version = parse_version(ctx.stdout or "")
+        commit = parse_commit(ctx.stdout or "")
     except MatchNotFoundError:
         pass
-    provenance = Provenance(program="dftbplus", program_version=version)
+    provenance = Provenance(
+        program="dftbplus", program_version=version, program_commit=commit
+    )
     trajectory = []
     for i, structure in enumerate(structures):
         last = i == len(structures) - 1
@@ -513,3 +579,7 @@ def _xyz_frames(text: str, reference: Structure) -> list[Structure]:
         )
         i += 2 + natoms
     return structures
+
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'dftbplus').
+program = CodecProgram(codec, command="dftb+")

@@ -6,7 +6,10 @@ fairchem-core) are exercised by the integration tests; here they are absent or f
 
 from __future__ import annotations
 
+import importlib
 import sys
+from collections.abc import Iterator
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
@@ -153,6 +156,64 @@ def test_decoder_reports_library_errors() -> None:
     assert e.value.data.provenance.program == "tblite"
 
 
+@pytest.mark.parametrize(
+    ("message", "kind", "code"),
+    [
+        ("SCF not converged in 1 cycles", "convergence", "scf_not_converged"),
+        ("Too close interatomic distances found", "input", None),
+        (
+            "Total number of electrons (8) and number unpaired electrons (1) is not "
+            "compatible",
+            "input",
+            None,
+        ),
+        (
+            "String value for epsilon was not found among database of solvents",
+            "input",
+            None,
+        ),
+        ("No support for elements with Z >86.", "unsupported", None),
+        ("something else", "internal", None),
+    ],
+)
+def test_tblite_failures_have_kinds(message: str, kind: str, code: str | None) -> None:
+    """tblite 0.7's messages (TBLiteRuntimeError) map to error kinds."""
+    out = PythonOutput(error=RuntimeError(message))
+    with pytest.raises(CalculationError) as e:
+        get_codec("tblite").decode(_input("tblite"), out)
+    assert (e.value.kind, e.value.code) == (kind, code)
+
+
+@pytest.mark.parametrize(
+    ("program", "message"),
+    [
+        (
+            "aimnet2",
+            "AIMNet2 model 'aimnet2' is closed-shell; use 'aimnet2-nse' for "
+            "multiplicity 2.",
+        ),
+        (
+            "orb",
+            "Orb model 'orb-v3-direct-20-omat' describes neutral closed-shell systems "
+            "only; use an OMol25 model such as 'orb-v3-conservative-omol'.",
+        ),
+    ],
+)
+def test_models_refusing_a_spin_are_not_modeled(program: str, message: str) -> None:
+    """A model that cannot describe the structure's charge or spin: not_modeled."""
+    out = PythonOutput(error=ValueError(message))
+    with pytest.raises(CalculationError) as e:
+        get_codec(program).decode(_input(program), out)
+    assert (e.value.kind, e.value.code) == ("input", "not_modeled")
+
+
+def test_tblite_unknown_keyword_names_the_closest() -> None:
+    """A misspelled tblite setting is refused with code unknown_key."""
+    with pytest.raises(EncoderError, match="did you mean 'max-iter'") as e:
+        _encode(_input("tblite", keywords={"max_iter": 5}))
+    assert (e.value.kind, e.value.code) == ("input", "unknown_key")
+
+
 def test_cached_model_loads_once() -> None:
     """A model is built on first use and shared afterwards."""
     calls: list[int] = []
@@ -215,7 +276,7 @@ def test_tblite_settings_and_interactions() -> None:
             "tblite",
             structure=HYDROXIDE,
             keywords={
-                "accuracy": 0.1,
+                "acc": 0.1,
                 "max-iter": 500,
                 "alpb-solvation": ["water", "bar1mol"],
                 "electric-field": [0.0, 0.0, 0.01],
@@ -261,9 +322,7 @@ def test_tblite_invoke_with_a_fake_library(monkeypatch: pytest.MonkeyPatch) -> N
     module.Calculator = Calculator  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "tblite", ModuleType("tblite"))
     monkeypatch.setitem(sys.modules, "tblite.interface", module)
-    native = _encode(
-        _input("tblite", keywords={"accuracy": 0.1, "alpb-solvation": "water"})
-    )
+    native = _encode(_input("tblite", keywords={"acc": 0.1, "alpb-solvation": "water"}))
     result = native.function(**native.kwargs)
     assert calls == [
         ("init", ("GFN2-xTB", [8, 1, 1], 0.0, 0)),
@@ -274,7 +333,7 @@ def test_tblite_invoke_with_a_fake_library(monkeypatch: pytest.MonkeyPatch) -> N
     assert isinstance(data, SinglePointData)
     assert data.energy == -5.07
     assert np.allclose(np.asarray(data.gradient), 0.01)
-    assert np.allclose(np.asarray(data.scf_dipole_moment), [0.1, 0.2, 0.3])
+    assert np.allclose(np.asarray(data.dipole_moment), [0.1, 0.2, 0.3])
 
 
 # ------------------------------------------------------------------ MLIPs
@@ -301,8 +360,9 @@ def test_torchani_models(method: str, name: str) -> None:
 
 def test_torchani_rejects_what_ani_cannot_describe() -> None:
     """ANI models are neutral closed-shell only; dtype and model names are checked."""
-    with pytest.raises(EncoderError, match="neutral closed-shell"):
+    with pytest.raises(EncoderError, match="neutral closed-shell") as e:
         _encode(_input("torchani", structure=HYDROXIDE))
+    assert e.value.code == "not_modeled"
     with pytest.raises(EncoderError, match="Unknown TorchANI model"):
         _encode(_input("torchani", method="ANI3"))
     with pytest.raises(EncoderError, match="dtype"):
@@ -327,8 +387,9 @@ def test_mace_models(method: str, loader: str | None, model: str | None) -> None
 
 def test_mace_charge_and_spin() -> None:
     """Only MACE-OMOL reads charge and spin; the other families refuse ions."""
-    with pytest.raises(EncoderError, match="neutral closed-shell"):
+    with pytest.raises(EncoderError, match="neutral closed-shell") as e:
         _encode(_input("mace", structure=HYDROXIDE))
+    assert e.value.code == "not_modeled"
     kwargs = _encode(_input("mace", method="mace-omol", structure=HYDROXIDE)).kwargs
     assert kwargs["charge_and_spin"] == (-1, 1)
     with pytest.raises(EncoderError, match="Unknown MACE model"):
@@ -418,3 +479,70 @@ def test_ml_encode_batch(program: str) -> None:
         codec.encode_batch([])
     with pytest.raises(EncoderError, match="1 to"):
         codec.encode_batch([_input(program)] * (codec.max_batch + 1))
+
+
+# ------------------------------------------------------------------ numerics
+
+
+@pytest.fixture
+def aimnet_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    """A stand-in aimnet package holding only its model registry; returns its cache."""
+    from qccodec.programs import aimnet2
+
+    package = tmp_path / "site" / "aimnet"
+    (package / "calculators").mkdir(parents=True)
+    (package / "__init__.py").write_text("raise ImportError('never imported')\n")
+    (package / "calculators" / "model_registry.yaml").write_text(
+        "models:\n"
+        "  aimnet2-wb97m-d3_0:\n"
+        "    file: aimnet2_wb97m_d3_0.pt\n"
+        "    url: https://example.org/aimnet2_wb97m_d3_0.pt\n"
+        "aliases:\n"
+        "  aimnet2: aimnet2-wb97m-d3_0\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path / "site"))
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setenv("AIMNET_CACHE_DIR", str(cache))
+    aimnet2._registry.cache_clear()
+    yield cache
+    aimnet2._registry.cache_clear()
+
+
+def test_aimnet2_weights_are_the_registry_file_in_the_cache(
+    aimnet_registry: Path, tmp_path: Path
+) -> None:
+    """Read from aimnet's registry without importing aimnet; None until downloaded."""
+    from qccodec.programs.aimnet2 import weights
+
+    spec = _input("aimnet2", method="aimnet2")  # an alias
+    assert weights(spec) is None  # not downloaded yet
+    (aimnet_registry / "aimnet2_wb97m_d3_0.pt").write_bytes(b"weights")
+    assert weights(spec) == aimnet_registry / "aimnet2_wb97m_d3_0.pt"
+    member = _input("aimnet2", method="aimnet2-wb97m-d3_0")
+    assert weights(member) == weights(spec)
+    own = tmp_path / "mine.pt"
+    own.write_bytes(b"retrained")
+    assert weights(_input("aimnet2", method=str(own))) == own
+    assert weights(_input("aimnet2", method="aimnet2-unknown")) is None
+
+
+@pytest.mark.parametrize("program", ["mace", "fairchem"])
+def test_ml_potentials_given_a_model_file_are_identified_by_it(
+    program: str, tmp_path: Path
+) -> None:
+    from qccodec.program import file_digest
+    from qccodec.programs._python import model_file
+
+    own = tmp_path / "model.pt"
+    own.write_bytes(b"checkpoint")
+    spec = _input(program, method=str(own))
+    assert model_file(spec) == own
+    assert model_file(_input(program)) is None  # a name, not a file
+    adapter = importlib.import_module(f"qccodec.programs.{program}").program
+    assert adapter.weights is model_file
+    version = adapter.version()
+    expected = (
+        version if version == "not installed" else f"{version} {file_digest(own)}"
+    )
+    assert adapter.numerics(spec) == expected

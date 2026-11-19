@@ -1,8 +1,11 @@
 xtb
 structure.xyz
 --hess
+--grad
 --chrg
 0
 --uhf
 0
 --gxtb
+--input
+xcontrol

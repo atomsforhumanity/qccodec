@@ -10,6 +10,7 @@
     "extras": {},
     "program": "dftbplus",
     "program_version": "dev-a23bfb2",
+    "program_commit": "a23bfb2",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -77,6 +78,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0706729102,
@@ -84,10 +86,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -160,6 +159,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0711590982,
@@ -167,10 +167,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -243,6 +240,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0713112039,
@@ -250,10 +248,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -326,6 +321,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0714768603,
@@ -333,10 +329,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -409,6 +402,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0715771105,
@@ -416,10 +410,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -492,6 +483,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0715911265,
@@ -499,10 +491,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -575,6 +564,7 @@
           "extras": {},
           "program": "dftbplus",
           "program_version": "dev-a23bfb2",
+          "program_commit": "a23bfb2",
           "qcdata_version": "0.23.0"
         },
         "energy": -4.0715923387,
@@ -598,10 +588,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"

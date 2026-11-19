@@ -10,6 +10,7 @@
     "extras": {},
     "program": "terachem",
     "program_version": "v1.9-2024.09-dev [f1fcff06c2602a03b0ee732a5d56e04ed7892b90]",
+    "program_commit": "f1fcff06c2602a03b0ee732a5d56e04ed7892b90",
     "qcdata_version": "0.23.0"
   },
   "frames": [
@@ -92,6 +93,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2024.09-dev [f1fcff06c2602a03b0ee732a5d56e04ed7892b90]",
+          "program_commit": "f1fcff06c2602a03b0ee732a5d56e04ed7892b90",
           "qcdata_version": "0.23.0"
         },
         "energy": -39.21615534533545,
@@ -120,10 +122,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -211,6 +210,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2024.09-dev [f1fcff06c2602a03b0ee732a5d56e04ed7892b90]",
+          "program_commit": "f1fcff06c2602a03b0ee732a5d56e04ed7892b90",
           "qcdata_version": "0.23.0"
         },
         "energy": -39.21621080771634,
@@ -239,10 +239,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"
@@ -330,6 +327,7 @@
           "extras": {},
           "program": "terachem",
           "program_version": "v1.9-2024.09-dev [f1fcff06c2602a03b0ee732a5d56e04ed7892b90]",
+          "program_commit": "f1fcff06c2602a03b0ee732a5d56e04ed7892b90",
           "qcdata_version": "0.23.0"
         },
         "energy": -39.21621110647656,
@@ -358,10 +356,7 @@
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
         "point_charge_gradient": null,
         "qcdata_version": "0.23.0"

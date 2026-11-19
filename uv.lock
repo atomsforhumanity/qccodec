@@ -2610,12 +2610,14 @@ wheels = [
 
 [[package]]
 name = "qccodec"
-version = "0.21.1"
+version = "0.22.0"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
+    { name = "qccompute" },
     { name = "qcdata" },
     { name = "qcref" },
+    { name = "threadpoolctl" },
     { name = "tomli-w" },
 ]
 
@@ -2650,7 +2652,6 @@ docs = [
     { name = "pymdown-extensions" },
 ]
 integration = [
-    { name = "qccompute" },
     { name = "tblite", marker = "python_full_version < '3.15'" },
 ]
 
@@ -2658,10 +2659,12 @@ integration = [
 requires-dist = [
     { name = "geometric", marker = "extra == 'geometric'", specifier = ">=1.0.1,<2" },
     { name = "packaging", specifier = ">=23.0" },
-    { name = "qcdata", specifier = ">=0.23.1,<0.24" },
+    { name = "qccompute", specifier = ">=0.23.0" },
+    { name = "qcdata", specifier = ">=0.24.0" },
     { name = "qcref", specifier = ">=0.4.0" },
     { name = "sella", marker = "extra == 'sella'", specifier = ">=2.6" },
     { name = "tcpb", marker = "extra == 'tcpb'", specifier = ">=0.16.0" },
+    { name = "threadpoolctl", specifier = ">=3.1" },
     { name = "tomli-w", specifier = ">=1.0.0" },
 ]
 provides-extras = ["geometric", "tcpb", "sella"]
@@ -2685,22 +2688,19 @@ docs = [
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.25.2,<0.26" },
     { name = "pymdown-extensions", specifier = "~=10.9" },
 ]
-integration = [
-    { name = "qccompute", specifier = ">=0.21.0" },
-    { name = "tblite", marker = "python_full_version < '3.15'", specifier = ">=0.4" },
-]
+integration = [{ name = "tblite", marker = "python_full_version < '3.15'", specifier = ">=0.4" }]
 
 [[package]]
 name = "qccompute"
-version = "0.21.0"
+version = "0.23.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "qccodec" },
     { name = "qcdata" },
+    { name = "threadpoolctl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/f0/b28e292d56ea83a9d2a942503aa788d2b606d6e7e42502a9830c3320ccf6/qccompute-0.21.0.tar.gz", hash = "sha256:9169c7decd1c7869a67fc9c75a8d89d8f8f89d6161e5f6a628aea26639c12642", size = 571671, upload-time = "2026-10-23T16:54:08.899Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/b2/cd1756049afa5a65c237e76c078c4af0e2d5402f1c18af593b01d8089600/qccompute-0.23.0.tar.gz", hash = "sha256:dae9140cedcb26a7b8b50d7d890fa49e2814a76082726ead73750df211c6d300", size = 676135, upload-time = "2026-11-19T21:15:06.006Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/cc/7ffeb9228bdf33ef97175bcbd8c18886c2e2a6967fa84d6d96f2bccddf0b/qccompute-0.21.0-py3-none-any.whl", hash = "sha256:3e12d6046ef6b03a84e6b44f4962ab6a6e25f6f51c3699268fb1030ea0268031", size = 36760, upload-time = "2026-10-23T16:54:07.446Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/b9/f5d722ffe20f89623bcce24068f91720853cc2d2f646f49a6def15e5a318/qccompute-0.23.0-py3-none-any.whl", hash = "sha256:0352281696a2b2bb909e4d86392b6f46182a835a20be1d4574dfb47aae16eeac", size = 93546, upload-time = "2026-11-19T21:15:04.669Z" },
 ]
 
 [[package]]
@@ -2714,7 +2714,7 @@ wheels = [
 
 [[package]]
 name = "qcdata"
-version = "0.23.1"
+version = "0.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport" },
@@ -2728,9 +2728,9 @@ dependencies = [
     { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "typing-extensions", version = "4.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/d0/947388015ae757f33aff116e2511edef22934400db6e032ee1dd27026afc/qcdata-0.23.1.tar.gz", hash = "sha256:d61dac914f165101de742a1893ba674f4efd3d531de26aed7955097edc02e45b", size = 1459708, upload-time = "2026-10-23T23:22:46.245Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/a3/d49d6d25d5234dca908469ded6c4b552f26746bd85363346e8b3fa5b3048/qcdata-0.24.0.tar.gz", hash = "sha256:bce39cfc1eafb82f5795bacdea4c7b50fd8ba97ce5f1eb31228da8c6fba8a458", size = 1470029, upload-time = "2026-11-19T21:06:09.787Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/f5/2a03f0fd2cb18ecd92b007b4ff4eacc978ba66e130e4b3646ea4a414a9cc/qcdata-0.23.1-py3-none-any.whl", hash = "sha256:c7cefc0129e28289bc17e9373835aca52dd273ec3b1bc05b2518fc918384f3bc", size = 42719, upload-time = "2026-10-23T23:22:44.646Z" },
+    { url = "https://files.pythonhosted.org/packages/78/d2/daca7dc0b83310ce12ad838f63de7a6d9825a3799575994a638c2575f43c/qcdata-0.24.0-py3-none-any.whl", hash = "sha256:58cde1221fa1e845503cec0b6a0a9e4264a758d3d234ed1354a3fecb74303743", size = 80211, upload-time = "2026-11-19T21:06:08.2Z" },
 ]
 
 [[package]]
@@ -3030,6 +3030,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/71/44/e3b83d6c71b7476e312a1813a87429848e6dd082b54ff1294849c6e208f9/tcpb-0.16.0.tar.gz", hash = "sha256:0883566a465f0f1511383dfabdcbcadf895e906b248a68a541486451c82e7ab0", size = 141091, upload-time = "2026-03-26T22:31:10.362Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6c/aa/edba4c35b63fbf2da3a2d807babde6031dca5e601e9bd77d3e6958657cd0/tcpb-0.16.0-py3-none-any.whl", hash = "sha256:3fe1bbb72606750696eeae127a4e96cd3bcb0a73a3fc2e752eab976a3830134a", size = 29572, upload-time = "2026-03-26T22:31:08.949Z" },
+]
+
+[[package]]
+name = "threadpoolctl"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/97/b4748951a683e369513691c8eea33d100298d556308dcb0ab66b132a67f0/threadpoolctl-3.8.0.tar.gz", hash = "sha256:01080674ad7ac6182429c918a79de92da789bb448acc02fc0b620b1abd6b6137", size = 39424, upload-time = "2026-11-05T11:08:51.112Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/1b/831f2de4840a25db1dd7b1afea433ccafe6bb10aca07e13264f2079462d0/threadpoolctl-3.8.0-py3-none-any.whl", hash = "sha256:f1b49c82704d50f13ffae019c727b0fa4f6791a58f48f06a09c45face1be66da", size = 32091, upload-time = "2026-11-05T11:08:49.773Z" },
 ]
 
 [[package]]

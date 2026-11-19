@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from qcdata import CalcType, FileInput, Model, ProgramInput, SinglePointData
@@ -119,9 +120,16 @@ def test_pipeline_collects_values_and_tolerates_optional(tmp_path: Path) -> None
         raise MatchNotFoundError("gradient", contents)
 
     @codec.parser(target="wavefunction")
-    def orbitals(contents: str) -> dict[str, list[float]]:
+    def orbitals(contents: str) -> dict[str, Any]:
         """Return a dictionary assigned at an explicit target, not merged."""
-        return {"scf_eigenvalues_a": [-1]}
+        return {
+            "orbitals": {
+                "spin": "restricted",
+                "energies_a": [-1],
+                "occupations_a": [1],
+                "occupations_b": [1],
+            }
+        }
 
     @codec.parser(file="directory")
     def extras(ctx: Context) -> dict[str, object]:
@@ -133,8 +141,8 @@ def test_pipeline_collects_values_and_tolerates_optional(tmp_path: Path) -> None
     assert isinstance(data, SinglePointData)
     assert data.energy == -1 and data.gradient is None
     assert data.wavefunction is not None
-    assert data.wavefunction.scf_eigenvalues_a is not None
-    assert data.wavefunction.scf_eigenvalues_a.tolist() == [-1]
+    assert data.wavefunction.orbitals.energies_a is not None
+    assert data.wavefunction.orbitals.energies_a.tolist() == [-1]
     assert data.calcinfo_natoms == 3
     assert data.provenance.program == "local"
     as_dict = codec.parse("energy", stdout="-1", directory=tmp_path, as_dict=True)
@@ -230,6 +238,70 @@ def test_failure_hook_recovers_then_raises(tmp_path: Path) -> None:
         )
 
 
+def test_error_rules_classify_reported_failures() -> None:
+    """The first rule whose pattern is found gives a failure its kind and code."""
+    codec = Codec(
+        "local",
+        {CalcType.energy},
+        errors=[
+            (r"SCF .* not converge", "convergence", "scf_not_converged"),
+            (r"(?i)unknown option", "input", "unknown_key"),
+            (r"not converge", "convergence", None),
+        ],
+    )
+    assert codec.classify("the SCF did not converge") == (
+        "convergence",
+        "scf_not_converged",
+    )
+    assert codec.classify("Unknown option --x") == ("input", "unknown_key")
+    assert codec.classify("geometry did not converge") == ("convergence", None)
+    assert codec.classify("segmentation fault") == ("internal", None)
+    codec.parser(target="energy")(lambda contents: -1.0)
+    codec.failure(lambda ctx: ctx.stdout if "FAIL" in (ctx.stdout or "") else None)
+    with pytest.raises(CalculationError) as raised:
+        codec.parse("energy", stdout="FAIL: the SCF did not converge")
+    assert (raised.value.kind, raised.value.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    with pytest.raises(CalculationError) as raised:
+        codec.parse("energy", stdout="FAIL: core dumped")
+    assert (raised.value.kind, raised.value.code) == ("internal", None)
+    with pytest.raises(RegistryError, match="kind"):
+        codec.add_error("x", "kind of bad")
+    with pytest.raises(RegistryError):
+        codec.add_error("(", "input")
+
+
+def test_decoder_failures_are_classified_unless_the_decoder_did(
+    prog_input_factory: Callable[..., ProgramInput],
+) -> None:
+    """A decoder's CalculationError gets the codec's kind unless it chose one."""
+    from qccodec import PythonOutput
+
+    def decode(inp: object, out: NativeOutput) -> SinglePointData:
+        assert isinstance(out, PythonOutput)
+        raise CalculationError(str(out.error), kind=out.value or "internal")
+
+    codec = Codec(
+        "local",
+        {CalcType.energy},
+        decode=decode,
+        errors=[(r"SCF not converged", "convergence", "scf_not_converged")],
+    )
+    inp = prog_input_factory(CalcType.energy, "local")
+    failure = RuntimeError("SCF not converged in 1 cycles")
+    with pytest.raises(CalculationError) as raised:
+        codec.decode(inp, PythonOutput(error=failure))
+    assert (raised.value.kind, raised.value.code) == (
+        "convergence",
+        "scf_not_converged",
+    )
+    with pytest.raises(CalculationError) as raised:
+        codec.decode(inp, PythonOutput(value="input", error=failure))
+    assert (raised.value.kind, raised.value.code) == ("input", None)
+
+
 def test_duplicate_assignment_is_rejected() -> None:
     """Two directory parsers may not fill the same key."""
     codec = Codec("local", {CalcType.energy})
@@ -315,7 +387,9 @@ def test_file_input_resolves_to_file_codec() -> None:
     assert data.provenance.program == "/bin/echo"
 
 
-def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_entry_point_codecs_are_discovered(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
     """Codecs published under the qccodec.codecs entry point group resolve by name."""
     from types import SimpleNamespace
 
@@ -330,6 +404,10 @@ def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> N
         ]
 
     monkeypatch.setattr("qccodec.registry.entry_points", fake_entry_points)
+    qccodec.registry._plugin_entry_points.cache_clear()
+    request.addfinalizer(
+        qccodec.registry._plugin_entry_points.cache_clear
+    )  # forget fakes
     assert get_codec("plugprog") is plugin
     assert "plugprog" in qccodec.supported_programs()
     with pytest.raises(CodecNotFoundError, match="not a qccodec.Codec"):
@@ -339,6 +417,33 @@ def test_entry_point_codecs_are_discovered(monkeypatch: pytest.MonkeyPatch) -> N
         assert get_codec("plugprog") is override  # registered beats installed
     finally:
         qccodec.unregister("plugprog")
+
+
+def test_installed_codecs_are_read_once_per_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Package metadata is scanned once, not on every lookup: the scan (about 1.3 ms)
+    dominated the cost of fast in-process programs computed step by step."""
+    from types import SimpleNamespace
+
+    plugin = Codec("plugprog", {CalcType.energy})
+    scans: list[str] = []
+
+    def fake_entry_points(*, group: str) -> list[SimpleNamespace]:
+        scans.append(group)
+        return [
+            SimpleNamespace(name="plugprog", value="plug:codec", load=lambda: plugin)
+        ]
+
+    monkeypatch.setattr("qccodec.registry.entry_points", fake_entry_points)
+    qccodec.registry._plugin_entry_points.cache_clear()
+    try:
+        for _ in range(5):
+            assert get_codec("plugprog") is plugin
+        assert "plugprog" in qccodec.supported_programs()
+        assert len(scans) == 1
+    finally:
+        qccodec.registry._plugin_entry_points.cache_clear()
 
 
 def versioned_codec() -> Codec:

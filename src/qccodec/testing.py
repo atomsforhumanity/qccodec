@@ -8,7 +8,9 @@ A *case* is a directory holding one program run and what a codec must make of it
         stdout          captured program output (optional)
         <files>         output files at their real relative paths, e.g. scr.geom/optim.xyz
         case.json       optional settings: {"options": {...}, "failed": true,
-                        "raises": "MatchNotFoundError", "directory": true}
+                        "raises": "CalculationError", "kind": "convergence",
+                        "code": "scf_not_converged", "details": {...},
+                        "warnings": ["loosely_converged"], "directory": true}
         encoded/        optional: command.txt (one argument per line) and the native
                         input files codec.encode(input) must generate
 
@@ -71,6 +73,13 @@ class Case:
         options: Decode options passed to the codec.
         failed: Decode in recovery mode.
         raises: Name of the exception class the decode must raise, if any.
+        kind: The error kind the raised exception must carry (``CalculationError``
+            and ``EncoderError`` have one), if any.
+        code: The error code it must carry, if ``kind`` is given.
+        details: The details a raised ``CalculationError`` must carry
+            (``required_gib``, ...), if given.
+        warnings: The codes of the warnings the codec's warning hook must give, in
+            order; none unless given.
         encoded: The ``encoded/`` directory with expected native inputs, if present.
     """
 
@@ -83,6 +92,10 @@ class Case:
     options: dict[str, Any] = field(default_factory=dict)
     failed: bool = False
     raises: str | None = None
+    kind: str | None = None
+    code: str | None = None
+    details: dict[str, Any] | None = None
+    warnings: list[str] = field(default_factory=list)
     encoded: Path | None = None
 
     def __str__(self) -> str:
@@ -115,6 +128,10 @@ def load_case(path: str | Path) -> Case:
         options=dict(settings.get("options", {})),
         failed=bool(settings.get("failed", False)),
         raises=settings.get("raises"),
+        kind=settings.get("kind"),
+        code=settings.get("code"),
+        details=settings.get("details"),
+        warnings=list(settings.get("warnings", [])),
         encoded=encoded if encoded.is_dir() else None,
     )
 
@@ -293,21 +310,18 @@ def check_parsers(
             continue
         if spec.target is None:
             for key, item in value.items():
+                found = expected.get(key)
+                if isinstance(item, dict) and isinstance(found, dict):
+                    found = {k: found.get(k) for k in item}
                 assert_data_equal(
-                    item,
-                    expected.get(key),
-                    rtol=rtol,
-                    atol=atol,
-                    where=f"{where}.{key}",
+                    item, found, rtol=rtol, atol=atol, where=f"{where}.{key}"
                 )
         else:
-            assert_data_equal(
-                value,
-                _expected_slice(expected, spec.target),
-                rtol=rtol,
-                atol=atol,
-                where=where,
-            )
+            found = _expected_slice(expected, spec.target)
+            if isinstance(value, dict) and isinstance(found, dict):
+                # A parser filling a model returns its own fields; the rest default.
+                found = {key: found.get(key) for key in value}
+            assert_data_equal(value, found, rtol=rtol, atol=atol, where=where)
 
 
 def run_case(
@@ -315,9 +329,11 @@ def run_case(
 ) -> None:
     """Check a codec against one fixture case.
 
-    Verifies, in order: the encoded native inputs when ``encoded/`` exists; the full
-    decode, which must produce ``expected.json`` or raise the exception named in
-    ``case.json`` with ``expected.json`` attached as partial data; and each registered
+    Verifies, in order: the encoded native inputs when ``encoded/`` exists; the
+    warnings the codec gives, which must have the codes ``case.json`` lists (none by
+    default); the full decode, which must produce ``expected.json`` or raise the
+    exception named in ``case.json`` (with its ``kind``, ``code`` and ``details``,
+    when given) with ``expected.json`` attached as partial data; and each registered
     parser applied directly to its own file.
 
     Raises:
@@ -325,6 +341,11 @@ def run_case(
     """
     if case.encoded is not None:
         check_encoding(codec, case, rtol=rtol)
+    warnings = codec.warnings(
+        case.input_data, stdout=case.stdout, directory=case.directory
+    )
+    codes = [w.code for w in warnings]
+    assert codes == case.warnings, f"{case}: warnings are {codes}, not {case.warnings}"
     kwargs: dict[str, Any] = dict(
         stdout=case.stdout,
         directory=case.directory,
@@ -337,6 +358,16 @@ def run_case(
         try:
             codec.parse(case.input_data.calctype, **kwargs)
         except exc_type as exc:
+            if case.kind is not None:
+                found = (getattr(exc, "kind", None), getattr(exc, "code", None))
+                assert found == (case.kind, case.code), (
+                    f"{case}: {case.raises} is {found}, not {(case.kind, case.code)}"
+                )
+            if case.details is not None:
+                details = getattr(exc, "details", None)
+                assert details == case.details, (
+                    f"{case}: {case.raises} details are {details}, not {case.details}"
+                )
             if case.expected is not None:
                 assert_data_equal(
                     getattr(exc, "data", None),
@@ -514,7 +545,7 @@ def check_normal_modes(
     atom order, or a mass-weighted convention.
 
     Args:
-        data: A ``SinglePointData`` with ``normal_modes_cartesian``.
+        data: A ``SinglePointData`` with a ``vibrational_analysis``.
         symbols: The input structure's element symbols.
         min_overlap: Smallest acceptable overlap with the Hessian's eigenvector;
             below 1 for programs that print modes with few digits.
@@ -523,8 +554,11 @@ def check_normal_modes(
     Raises:
         AssertionError: Listing every problem found.
     """
-    modes = np.asarray(data.normal_modes_cartesian, dtype=float)
-    freqs = np.asarray(data.freqs_wavenumber, dtype=float)
+    analysis = data.vibrational_analysis
+    if analysis is None:
+        raise AssertionError("no vibrational_analysis")
+    modes = np.asarray(analysis.normal_modes_cartesian, dtype=float)
+    freqs = np.asarray(analysis.frequencies, dtype=float)
     problems: list[str] = []
     if len(modes) != len(freqs):
         problems.append(f"{len(modes)} modes for {len(freqs)} frequencies")

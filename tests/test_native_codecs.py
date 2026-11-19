@@ -19,6 +19,7 @@ from qcdata import (
 
 from qccodec import (
     Codec,
+    PythonInput,
     PythonOutput,
     SubprocessInput,
     SubprocessOutput,
@@ -365,3 +366,82 @@ def test_geometric_irc_path_is_the_accepted_points_in_order() -> None:
     path, ts_index = _irc_path(optimizer, trajectory, ts.structure)
     assert [f.results.energy for f in path] == [-0.1, 0.0, -0.1, -0.2]
     assert ts_index == 1
+
+
+def _geometric_input(
+    calctype: str = "optimization", **keywords: object
+) -> ProgramInput:
+    from qcdata import CalcType, Model, ProgramSpec
+    from qcdata.utils import water
+
+    spec = ProgramSpec(
+        program="xtb", calctype=CalcType.gradient, model=Model(method="gfn2")
+    )
+    return ProgramInput(
+        program="geometric",
+        calctype=CalcType(calctype),
+        structure=water,
+        keywords=keywords,
+        subprograms=[spec],
+    )
+
+
+@pytest.mark.parametrize(
+    ("keywords", "calctype", "code", "match"),
+    [
+        ({"maxiterr": 5}, "optimization", "unknown_key", "did you mean 'maxiter'"),
+        ({"transition": True}, "optimization", "unknown_key", "calctype sets it"),
+        ({"qdata": True}, "optimization", "unknown_key", "does not return"),
+        ({"irc_direction": "forward"}, "optimization", "not_applicable", "irc only"),
+        ({"irc_direction": "sideways"}, "irc", None, "irc_direction is one of"),
+        ({"coordsys": "zmat"}, "optimization", None, "coordsys is one of"),
+    ],
+)
+def test_geometric_keywords_are_checked(
+    keywords: dict[str, object], calctype: str, code: str | None, match: str
+) -> None:
+    """geomeTRIC ignores unknown OptParams; the codec refuses them first."""
+    with pytest.raises(EncoderError, match=match) as raised:
+        get_codec("geometric").encode(_geometric_input(calctype, **keywords))
+    assert (raised.value.kind, raised.value.code) == ("input", code)
+    native = get_codec("geometric").encode(
+        _geometric_input(
+            "irc", irc_direction="forward", maxiter=50, converge=["maxiter"]
+        )
+    )
+    assert isinstance(native, PythonInput)
+    assert native.directory_keyword == "directory"  # runs in the caller's process
+
+
+@pytest.mark.parametrize(
+    ("error", "kind", "code"),
+    [
+        (
+            "GeomOptNotConvergedError: Optimizer.optimizeGeometry() failed to converge.",
+            "convergence",
+            "max_iter",
+        ),
+        (
+            "IRCError: No imaginary mode detected. Please optimize the structure and "
+            "try again.",
+            "input",
+            "not_first_order_saddle",
+        ),
+        ("ParamError: Max trust radius must be larger than min", "input", None),
+        ("RuntimeError: Gradient contains nan - check output", "numerical", None),
+        (
+            "RuntimeError: geomeTRIC requires both an energy and a gradient.",
+            "internal",
+            None,
+        ),
+    ],
+)
+def test_geometric_failures_have_kinds(error: str, kind: str, code: str | None) -> None:
+    """geomeTRIC's exceptions map to error kinds; its traceback is kept as a note."""
+    inp = _geometric_input()
+    value = {"trajectory": [], "version": "1.1", "error": error, "traceback": "TB"}
+    with pytest.raises(CalculationError) as raised:
+        get_codec("geometric").decode(inp, PythonOutput(value=value))
+    assert (raised.value.kind, raised.value.code) == (kind, code)
+    assert str(raised.value) == error
+    assert raised.value.__notes__ == ["geomeTRIC's traceback:\nTB"]

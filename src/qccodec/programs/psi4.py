@@ -26,7 +26,24 @@ Inputs map to Psi4 as follows:
     off. By default Psi4 detects whatever symmetry the input frame already has.
 
 - ``cmdline_args`` are appended to the ``psi4`` command, e.g. ``["-n", "4"]`` for
-  four threads or ``["--memory", "8GB"]``.
+  four threads or ``["--memory", "8GB"]``. Without ``-n`` (or ``threads``), Psi4 runs
+  on the calculation's thread count (``-n <count>``); called directly, with Psi4's
+  default of one.
+
+Psi4's options are too many to list in the codec, but Psi4 checks every one itself:
+the driver sets them one at a time before calculating and reports each one Psi4 does
+not know (kind ``input``, code ``unknown_key``, with the closest option Psi4 has) and
+each value it does not take (kind ``input``).
+
+Hessians are the full Cartesian second derivative: analytic, or from finite
+differences of gradients (or energies) in which Psi4 projects out only translations,
+as the codec leaves its ``fd_project`` unset. Setting ``fd_project`` true, which
+projects rotations out too, is refused for Hessians (kind ``unsupported``). Psi4's
+harmonic analysis projects out rotations only where it judges the geometry
+stationary (gradient rms below 1e-2 Eh/bohr; ``project_rot`` overrides that);
+elsewhere it keeps the rotations among the modes, and the codec records
+``projection`` as ``translations`` and flags them in ``external``: the modes with
+the largest share in the mass-weighted rotational space.
 
 The molecule keeps the input's frame (``no_com``, ``no_reorient``): Psi4 never moves
 or rotates it, so gradients, Hessians, normal modes, and trajectories are in the
@@ -38,9 +55,36 @@ frequencies, normal modes, and the gradient), ``optimization`` and
 ``transition_state`` (``psi4.optimize`` with optking; every step carries its energy
 and gradient). A transition-state search sets ``opt_type ts`` and, unless given,
 ``full_hess_every 0`` (an exact Hessian at the first step). Every single point also
-records Mulliken charges in ``atomic_charges`` when the method supports them, the
-gradient on external point charges in ``point_charge_gradient``, and all scalar Psi4
-variables in ``extras["psi4_variables"]``.
+records the dipole moment in ``dipole_moment`` for HF and DFT (after a correlated
+method such as MP2, Psi4 holds only the reference's dipole, so the codec leaves it
+out), Mulliken charges in ``atomic_charges`` when the method supports them, the
+gradient on external point charges in ``point_charge_gradient``, all scalar Psi4
+variables in ``extras["psi4_variables"]``, and the orbital levels in
+``wavefunction.orbitals``: ``restricted`` when Psi4's wavefunction has one set of
+spatial orbitals for both spins (RHF, RKS, ROHF), ``unrestricted`` otherwise (UHF,
+UKS, CUHF), even when a UHF lands on the closed-shell solution.
+
+Failures and their kinds: an SCF that does not converge is ``convergence`` (code
+``scf_not_converged``), with its last iterate's energy and orbital levels; coupled-
+perturbed (CPHF/CPKS) equations that end above their tolerance are ``convergence``
+(``response_not_converged``), with the results Psi4 computed from them, since Psi4 1.11
+goes on with them without a word when its solver runs out of iterations
+(``solver_maxiter``); optking out of iterations ``convergence`` (``max_iter``),
+another iterative procedure ``convergence``; an unknown option, method or basis set,
+an invalid value and a multiplicity the electrons cannot have are ``input``; a method
+Psi4 has but not for this calculation is ``unsupported``; an addon this Psi4 lacks
+(``ddx`` for ddCOSMO) is ``environment``; a calculation out of memory is ``resource``
+(``host_memory``), including a ``--memory`` below Psi4's minimum of 250 MiB. Its
+``details`` give ``required_gib`` and ``available_gib`` where Psi4 prints them, in the
+terms of Psi4's memory setting (``--memory``): the memory with which the calculation
+fits, and the memory it ran with. For the minimum that is the minimum; for density
+fitting's in-core tensors (``DFHelper Memory: AOs need 1.142 GiB; user supplied 0.189
+GiB``), which get a fixed share of Psi4's memory (``scf_mem_safety_factor``, 0.75 by
+default), it is that memory scaled by what the tensors need over what they got.
+
+With ``fail_on_maxiter`` false Psi4 carries on after an SCF that did not converge;
+the result then comes with the warning ``loosely_converged``, giving the last
+iteration's energy change and orbital gradient against Psi4's thresholds.
 
 Psi4 1.11 handles point charges correctly only for energies and gradients. Its
 Hessians with ``external_potentials`` either fail or come back wrong (they disagree
@@ -53,24 +97,43 @@ optimizations, run geomeTRIC with Psi4 gradients as its child.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from qcdata import (
     CalcType,
     ExecutionInfo,
     Frame,
+    Orbitals,
+    OrbitalSpin,
     ProgramInput,
+    ProgramWarning,
     Provenance,
     SinglePointData,
     Structure,
     Wavefunction,
 )
+from qcref import periodic_table
 
 from ..codec import Codec, Context
 from ..exceptions import EncoderError, MatchNotFoundError, ParserError
 from ..native import SubprocessInput
-from ._common import invocation, unit_modes
+from ..program import CodecProgram
+from ._common import invocation, unit_modes, vibrations
+
+#: Psi4's failures for want of memory, in its own words.
+_OUT_OF_MEMORY = (
+    r"(?i)not enough memory|insufficient memory|out of memory|more memory"
+    r"|too little memory|memory error|MemoryError|requires at least .*memory"
+    r"|set_memory\(\): Requested"
+)
+#: set_memory's refusal of less than Psi4's minimum.
+_MINIMUM = (
+    r"set_memory\(\): Requested (?P<asked>[\d.]+(?:e[+-]?\d+)?) MiB [^;]*; "
+    r"minimum (?P<least>[\d.]+) MiB \([^)]*\)"
+)
 
 codec = Codec(
     "psi4",
@@ -81,6 +144,27 @@ codec = Codec(
         CalcType.optimization,
         CalcType.transition_state,
     },
+    # The exception the driver recorded: "psi4: <name>: <message>".
+    errors=[
+        # First: set_memory's minimum is a ValidationError.
+        (_OUT_OF_MEMORY, "resource", "host_memory"),
+        (r"OptionError: Unknown Psi4 option", "input", "unknown_key"),
+        (r"OptionError", "input", None),
+        (r"SCFConvergenceError", "convergence", "scf_not_converged"),
+        (
+            r"CPHF did not converge|CPKS did not converge|coupled-perturbed .* did "
+            r"not converge",
+            "convergence",
+            "response_not_converged",
+        ),
+        (r"OptimizationConvergenceError", "convergence", "max_iter"),
+        (r"ConvergenceError", "convergence", None),
+        (r"BasisSetNotFound|BasisSetNotDefined", "input", None),
+        (r"not available for any derivative level", "input", None),  # unknown method
+        (r"ManagedMethodError|MissingMethodError", "unsupported", None),
+        (r"ValidationError|UpgradeHelper", "input", None),
+        (r"ModuleNotFoundError|ImportError", "environment", None),  # an addon missing
+    ],
 )
 
 DRIVER_FILE = "input.py"
@@ -128,6 +212,13 @@ def encode(inp: ProgramInput) -> SubprocessInput:
         else:
             options[key] = value
     _optimizer_options(inp.calctype, options)
+    if inp.calctype == CalcType.hessian and _projects_hessian(options):
+        raise EncoderError(
+            "fd_project makes Psi4 project translations and rotations out of a "
+            "finite-difference Hessian; results.hessian is the full second "
+            "derivative, so leave fd_project unset (or false).",
+            kind="unsupported",
+        )
     if "external_potentials" in kwargs and inp.calctype not in (
         CalcType.energy,
         CalcType.gradient,
@@ -136,7 +227,8 @@ def encode(inp: ProgramInput) -> SubprocessInput:
             "Psi4 1.11 supports external_potentials only for energies and gradients: "
             "its Hessians fail or are wrong, and its optimizations never leave the "
             "starting geometry. For QM/MM optimizations, run geomeTRIC with Psi4 "
-            "gradients as its child."
+            "gradients as its child.",
+            kind="unsupported",
         )
     job = {
         "calctype": inp.calctype.value,
@@ -162,15 +254,24 @@ def encode(inp: ProgramInput) -> SubprocessInput:
     )
 
 
-def _threads(cmdline_args: list[str]) -> int:
-    """Return the thread count given with ``-n``/``--nthread``, 1 by default."""
+def _threads(cmdline_args: list[str]) -> int | None:
+    """Return the thread count given with ``-n``/``--nthread``, None without one."""
     args = list(cmdline_args)
     for i, arg in enumerate(args):
         if arg in ("-n", "--nthread") and i + 1 < len(args):
             return int(args[i + 1])
         if arg.startswith("--nthread="):
             return int(arg.split("=", 1)[1])
-    return 1
+    return None
+
+
+def _projects_hessian(options: dict[str, Any]) -> bool:
+    """Whether ``fd_project`` (or ``findif__fd_project``) is set true."""
+    return any(
+        key.lower().split("__")[-1] == "fd_project"
+        and str(value).lower() in {"true", "1", "on", "yes"}
+        for key, value in options.items()
+    )
 
 
 def _optimizer_options(calctype: CalcType, options: dict[str, Any]) -> None:
@@ -201,17 +302,146 @@ def _results(ctx: Context) -> dict[str, Any]:
 
 
 @codec.failure
-def failure(ctx: Context) -> str | None:
-    """Report the exception the driver recorded, or a Psi4 crash before it wrote one."""
+def failure(ctx: Context) -> str | tuple[str, dict[str, Any]] | None:
+    """Report the exception the driver recorded, or a Psi4 crash before it wrote one.
+
+    A failure out of memory comes with what was needed, where Psi4 prints it
+    (`memory_details`).
+    """
+    stdout = ctx.stdout or ""
     try:
         results = _results(ctx)
     except (FileNotFoundError, ValueError):
         # No results: Psi4 died before the driver could record anything.
-        if ctx.stdout and "Psi4 encountered an error" in ctx.stdout:
+        minimum = re.search(_MINIMUM, stdout)
+        if minimum:  # --memory below Psi4's minimum: it stops at startup
+            asked, least = float(minimum["asked"]), float(minimum["least"])
+            return (
+                f"psi4: {minimum.group(0)}",
+                {
+                    "required_gib": round(least / 1024, 9),
+                    "available_gib": round(asked / 1024, 9),
+                },
+            )
+        if "Psi4 encountered an error" in stdout:
             return "psi4 encountered an error before writing results. See logs."
         return None
     error = results.get("error")
-    return f"psi4: {error}" if error else None
+    if not error:
+        # Only a Hessian is made of the response; an optimization's starting
+        # Hessian (full_hess_every) is a guess the search does not depend on.
+        return (
+            unconverged_response(stdout) if ctx.calctype == CalcType.hessian else None
+        )
+    message = f"psi4: {error}"
+    if re.search(_OUT_OF_MEMORY, message):
+        return message, memory_details(stdout)
+    return message
+
+
+_UNITS = {"": 1 / 1024**3, "Ki": 1 / 1024**2, "Mi": 1 / 1024, "Gi": 1.0, "Ti": 1024.0}
+
+
+def memory_details(stdout: str) -> dict[str, Any]:
+    """What a calculation out of memory needed, from Psi4's output, in GiB.
+
+    Density fitting prints its in-core tensors' need against the share of Psi4's
+    memory they were given (``DFHelper Memory: AOs need 1.142 GiB; user supplied
+    0.189 GiB``, ``DFTensor Memory: Qso construction needs ...``). The calculation's
+    budget is Psi4's memory (its header's ``Memory:``), and it needs at least that
+    budget plus what the tensors lacked.
+
+    Returns:
+        ``required_gib`` and ``available_gib``, or nothing when Psi4 printed no need.
+    """
+    needs = re.findall(r"needs? ([\d.]+) GiB; user supplied ([\d.]+) GiB", stdout)
+    budget = re.search(r"^\s*Memory:\s+([\d.]+) ([KMGT]i|)B\s*$", stdout, re.M)
+    if not needs or budget is None:
+        return {}
+    need, supplied = (float(v) for v in needs[-1])
+    total = float(budget.group(1)) * _UNITS[budget.group(2)]
+    # The tensors get a fixed share of Psi4's memory, so the memory with which they
+    # fit scales with need / supplied: bounded for the three decimals Psi4 prints.
+    required = total * (need + 5e-4) / max(supplied - 5e-4, 1e-9)
+    return {
+        "required_gib": round(required, 9),
+        "available_gib": round(total, 9),
+    }
+
+
+#: Psi4's coupled-perturbed solvers print a row per iteration, the last column but
+#: one the equations not yet converged: ``9  3.175e-07  1.349e-07  0  0``.
+_RESPONSE_ROW = re.compile(
+    r"^\s+(\d+)\s+(\S+e[-+]\d+)\s+(\S+e[-+]\d+)\s+(\d+)\s+\d+\s*$"
+)
+
+
+def unconverged_response(stdout: str) -> str | None:
+    """Read coupled-perturbed equations that ended above their tolerance.
+
+    Psi4 1.11's CPHF solver for analytic Hessians stops at ``solver_maxiter`` and goes
+    on with what it has. Each solve's last row counts the equations that remain;
+    a solve that printed no row stopped before finishing one iteration.
+
+    Returns:
+        The failure's message, or None when every solve converged.
+    """
+    for block in re.split(r"==> Coupled-Perturbed \w+ Solver <==", stdout)[1:]:
+        rows = []
+        for line in block.split("##")[0].splitlines():
+            row = _RESPONSE_ROW.match(line)
+            if row:
+                rows.append(row)
+        total = re.search(r"Number of equations\s*=\s*(\d+)", block)
+        tolerance = re.search(r"Convergence\s*=\s*(\S+)", block)
+        remain = int(rows[-1].group(4)) if rows else int(total.group(1)) if total else 1
+        if remain:
+            reached = f", max RMS {rows[-1].group(3)}" if rows else ""
+            return (
+                f"Psi4's coupled-perturbed equations did not converge: {remain} "
+                f"equations remained above the tolerance "
+                f"{tolerance.group(1) if tolerance else ''} after {len(rows)} "
+                f"iterations{reached}."
+            )
+    return None
+
+
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    """Warn ``loosely_converged`` when Psi4 carried on with an unconverged SCF.
+
+    Psi4 does that only with ``fail_on_maxiter`` false; the message gives the last
+    iteration's energy change and orbital gradient against Psi4's thresholds.
+    """
+    stdout = ctx.stdout or ""
+    accepted = re.findall(
+        r"Could not converge SCF iterations in (\d+) iterations\.\s*\n.*proceeding "
+        r"anyway",
+        stdout,
+    )
+    if not accepted:
+        return []
+    iteration = re.findall(r"@\S+ iter\s+\d+:\s+\S+\s+(\S+)\s+(\S+)", stdout)
+    e_tol = re.findall(r"Energy threshold\s*=\s*(\S+)", stdout)
+    d_tol = re.findall(r"Density threshold\s*=\s*(\S+)", stdout)
+    reached = ""
+    if iteration and e_tol and d_tol:
+        delta, gradient = iteration[-1]
+        reached = (
+            f": its last iteration changed the energy by {delta} Eh (threshold "
+            f"{e_tol[-1]}) with an orbital gradient of {gradient} (threshold "
+            f"{d_tol[-1]})"
+        )
+    count = f"{len(accepted)} SCFs" if len(accepted) > 1 else "the SCF"
+    return [
+        ProgramWarning(
+            code="loosely_converged",
+            message=(
+                f"Psi4 did not converge {count} in {accepted[-1]} iterations and "
+                f"carried on because fail_on_maxiter is false{reached}."
+            ),
+        )
+    ]
 
 
 @codec.parser(
@@ -231,7 +461,70 @@ def parse_single_point(ctx: Context) -> dict[str, Any]:
     results = _results(ctx)
     if "energy" not in results:
         raise MatchNotFoundError("energy", RESULTS_FILE)
-    return _single_point_fields(results)
+    fields = _single_point_fields(results)
+    if results.get("frequencies") and results.get("normal_modes"):
+        if ctx.input_data is None:
+            raise ParserError("Vibrational analysis parsing requires input_data.")
+        structure = ctx.input_data.require_structure()
+        modes = unit_modes(results["normal_modes"])
+        fields["vibrational_analysis"] = vibrations(
+            results["frequencies"],
+            modes,
+            structure,
+            *_projection(np.asarray(modes), structure),
+        )
+    return fields
+
+
+def _projection(modes: np.ndarray, structure: Structure) -> tuple[str, list[bool]]:
+    """What Psi4's harmonic analysis projected out, and which modes are external.
+
+    Psi4 projects rotations out only at what it calls a stationary point (gradient
+    rms below 1e-2 Eh/bohr, unless ``project_rot`` says otherwise) and translations
+    unless something breaks translational invariance, and it returns every mode it
+    did not project. So the number of modes tells the projection. Modes it left in
+    that are rotations (or translations) are flagged: those with the largest share
+    in the mass-weighted rigid-body space, as many as that space has dimensions.
+
+    Args:
+        modes: Unit-length Cartesian displacements, n_modes x n_atoms x 3.
+        structure: The input structure.
+
+    Raises:
+        ParserError: The number of modes fits no projection.
+    """
+    masses = np.array([float(periodic_table[s].mass) for s in structure.symbols])
+    weights = np.repeat(np.sqrt(masses), 3)
+    geometry = np.asarray(structure.geometry, dtype=float)
+    center = masses @ geometry / masses.sum()
+    translations = [np.tile(e, len(masses)) for e in np.eye(3)]
+    rotations = [np.cross(e, geometry - center).ravel() for e in np.eye(3)]
+    rotation_space = _basis(np.array(rotations).T * weights[:, None])
+    rigid = 3 + rotation_space.shape[1]  # 3 for an atom, 5 for a linear molecule
+    projected = 3 * len(masses) - len(modes)
+    if projected >= rigid:
+        return "translations_rotations", []
+    if projected == 3:
+        projection, space = "translations", rotation_space
+    elif projected == 0:
+        projection = "none"
+        space = _basis(np.array(translations + rotations).T * weights[:, None])
+    else:
+        raise ParserError(
+            f"Psi4 returned {len(modes)} modes for {len(masses)} atoms, which no "
+            "projection of translations and rotations leaves."
+        )
+    weighted = modes.reshape(len(modes), -1) * weights
+    weighted /= np.linalg.norm(weighted, axis=1)[:, None]
+    share = np.linalg.norm(weighted @ space, axis=1)
+    external = set(np.argsort(-share)[: space.shape[1]].tolist())
+    return projection, [i in external for i in range(len(modes))]
+
+
+def _basis(vectors: np.ndarray) -> np.ndarray:
+    """An orthonormal basis (columns) of the space the columns of ``vectors`` span."""
+    u, s, _ = np.linalg.svd(vectors, full_matrices=False)
+    return u[:, s > 1e-8 * s.max()]
 
 
 def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
@@ -245,26 +538,42 @@ def _single_point_fields(results: dict[str, Any]) -> dict[str, Any]:
         "calcinfo_nmo": results.get("nmo"),
         "calcinfo_nalpha": results.get("nalpha"),
         "calcinfo_nbeta": results.get("nbeta"),
-        "scf_dipole_moment": results.get("dipole"),
+        "dipole_moment": results.get("dipole"),
         "atomic_charges": results.get("mulliken_charges"),
         "point_charge_gradient": results.get("point_charge_gradient"),
-        "normal_modes_cartesian": (
-            unit_modes(results["normal_modes"]) if results.get("normal_modes") else None
-        ),
     }
-    if results.get("frequencies") is not None:
-        fields["freqs_wavenumber"] = results["frequencies"]
-    wavefunction = {
-        "scf_eigenvalues_a": results.get("eigenvalues_a"),
-        "scf_eigenvalues_b": results.get("eigenvalues_b"),
-        "scf_occupations_a": results.get("occupations_a"),
-        "scf_occupations_b": results.get("occupations_b"),
-    }
-    if any(v is not None for v in wavefunction.values()):
-        fields["wavefunction"] = Wavefunction.model_validate(wavefunction)
+    orbitals = _orbitals(results)
+    if orbitals is not None:
+        fields["wavefunction"] = Wavefunction(orbitals=orbitals)
     if results.get("variables"):
         fields["extras"] = {"psi4_variables": results["variables"]}
     return {k: v for k, v in fields.items() if v is not None}
+
+
+def _orbitals(results: dict[str, Any]) -> Orbitals | None:
+    """The orbital levels of the final wavefunction, from the driver's results.
+
+    The driver writes Psi4's ``epsilon`` and ``occupation`` vectors per spin and
+    whether the wavefunction's alpha and beta electrons share spatial orbitals
+    (``same_a_b_orbs``: RHF, RKS and ROHF do; UHF, UKS and CUHF do not), so a UHF
+    that lands on a closed-shell solution is still unrestricted. None when the driver
+    wrote no levels.
+    """
+    energies_a = results.get("eigenvalues_a")
+    occupations_a = results.get("occupations_a")
+    same_orbitals = results.get("same_orbitals")
+    if energies_a is None or occupations_a is None or same_orbitals is None:
+        return None
+    energies_b = results.get("eigenvalues_b")
+    occupations_b = results.get("occupations_b", occupations_a)
+    restricted = bool(same_orbitals)
+    return Orbitals(
+        spin=OrbitalSpin.restricted if restricted else OrbitalSpin.unrestricted,
+        energies_a=energies_a,
+        energies_b=None if restricted else energies_b,
+        occupations_a=occupations_a,
+        occupations_b=occupations_b,
+    )
 
 
 @codec.parser(file="directory", target="frames", calctypes=OPTIMIZATIONS)
@@ -310,3 +619,26 @@ def parse_trajectory(ctx: Context) -> list[Frame]:
             )
         )
     return trajectory
+
+
+def cap_threads(inp: ProgramInput, threads: int) -> ProgramInput:
+    """The input with ``-n``/``--nthread`` lowered to ``threads``."""
+    args = list(inp.cmdline_args)
+    kept: list[str] = []
+    i = 0
+    while i < len(args):
+        if args[i] in ("-n", "--nthread"):
+            i += 2
+            continue
+        if not args[i].startswith("--nthread="):
+            kept.append(args[i])
+        i += 1
+    return inp.model_copy(update={"cmdline_args": [*kept, "-n", str(threads)]})
+
+
+codec.cap_threads = cap_threads
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'psi4').
+#: Psi4 scales with threads: without ``-n`` it plans all the runner has and runs with
+#: the grant.
+program = CodecProgram(codec)

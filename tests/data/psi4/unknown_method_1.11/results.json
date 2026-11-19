@@ -1,0 +1,1 @@
+{"psi4_version": "1.11", "error": "MissingMethodError: Method=hff is not available for any derivative level. Did you mean? hf scf efp hf+d hf3c"}

@@ -95,7 +95,7 @@
    C. Plett, P. Pracht, F. Pultar, J. Seibert, P. Shushkov, S. Spicher,
    M. Stahn, M. Steiner, T. Strunk, J. Stückrath, T. Rose, and J. Unsleber
    
- * started run on 2026/10/15 at 11:19:08.628     
+ * started run on 2026/11/18 at 01:20:33.283     
    ID    Z sym.   atoms
     1    8 O      1
     2    1 H      2, 3
@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gxtb
+          program call               : xtb structure.xyz --hess --grad --chrg 0 --uhf 0 --gxtb --input xcontrol
           coordinate file            : structure.xyz
           omp threads                :                     1
 
@@ -128,7 +128,7 @@ density convergence            4.0000000000000E-06 e
       5     -76.43738546667  -2.0463633E-04   7.3037618E-03
       6     -76.43742403253  -3.8565859E-05   1.8744610E-03
       7     -76.43742419410  -1.6156949E-07   1.0043605E-04
-      8     -76.43742419796  -3.8658134E-09   3.0788988E-05
+      8     -76.43742419796  -3.8658108E-09   3.0788988E-05
       9     -76.43742419796  -1.2878587E-13   2.7737975E-07
 ------------------------------------------------------------
 
@@ -139,30 +139,30 @@ Post processing:
  | Mayer-Wiberg bond orders
  | Molecular Multipole Moments
 
- total:                                   0.002 sec
+ total:                                   0.001 sec
  - increment                              0.000 sec (  0%)
  - repulsion                              0.000 sec (  0%)
  - dispersion                             0.000 sec (  2%)
- - coulomb                                0.000 sec (  1%)
- - exchange                               0.000 sec (  0%)
- - hamiltonian                            0.000 sec ( 14%)
+ - coulomb                                0.000 sec (  2%)
+ - exchange                               0.000 sec (  1%)
+ - hamiltonian                            0.000 sec ( 15%)
  - acp                                    0.000 sec (  5%)
  - post processing                        0.000 sec (  1%)
- - scc                                    0.001 sec ( 38%)
- - coulomb gradient                       0.000 sec (  1%)
+ - scc                                    0.000 sec ( 32%)
+ - coulomb gradient                       0.000 sec (  2%)
  - dispersion gradient                    0.000 sec (  0%)
- - exchange gradient                      0.000 sec (  0%)
+ - exchange gradient                      0.000 sec (  1%)
  - repulsion gradient                     0.000 sec (  0%)
  - acp gradient                           0.000 sec ( 15%)
- - hamiltonian gradient                   0.000 sec ( 13%)
- - gradient                               0.001 sec ( 32%)
+ - hamiltonian gradient                   0.000 sec ( 14%)
+ - gradient                               0.000 sec ( 35%)
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                     SUMMARY                     ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          :: total energy             -76.437424197961 Eh    ::
          :: gradient norm              0.015282155929 Eh/a0 ::
-         :: HOMO-LUMO gap             19.649612694795 eV    ::
+         :: HOMO-LUMO gap             19.649612694796 eV    ::
          ::.................................................::
          :: add. restraining           0.000000000000 Eh    ::
          :: total charge              -0.000000000000 e     ::
@@ -178,6 +178,7 @@ frozen atoms in %    :   0.00000    0
 RMS gradient         :   0.01528 !! INCOMPLETELY OPTIMIZED GEOMETRY !!
 estimated CPU  time      0.00 min
 estimated wall time      0.00 min
+DFTB+ style hessian.out written
 
 writing file <hessian>, containing the non-mass-weighted Hessian matrix in atomic units (Eₕ/Bohr²).
 
@@ -263,10 +264,10 @@ Atomic dipole moments (in atomic units):
 eigval :       -0.00    -0.00    -0.00     0.00     0.00     0.00
 eigval :     1638.67  3553.33  3592.22
  reduced masses (amu)
-    1:      1.33    2:      8.12    3:      3.25    4:      4.04    5:      1.05    6:      1.05
+    1:      1.13    2:      1.39    3:      1.92    4:      6.35    5:      4.00    6:      1.25
     7:      1.08    8:      1.05    9:      1.08
  IR intensities (km·mol⁻¹)
-    1:    127.70    2:     12.35    3:     17.34    4:      3.66    5:    168.14    6:    130.57
+    1:    165.32    2:     17.27    3:     23.88    4:     75.05    5:     23.52    6:    154.72
     7:     98.01    8:     18.78    9:     28.10
  Raman intensities (Ä⁴*amu⁻¹)
     1:      0.00    2:      0.00    3:      0.00    4:      0.00    5:      0.00    6:      0.00
@@ -336,19 +337,19 @@ c2v symmetry found (for desy threshold:  0.10E+00) used in thermo
 ########################################################################
 
 ------------------------------------------------------------------------
- * finished run on 2026/10/15 at 11:19:08.654     
+ * finished run on 2026/11/18 at 01:20:33.301     
 ------------------------------------------------------------------------
  total:
- * wall-time:     0 d,  0 h,  0 min,  0.026 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.025 sec
- * ratio c/w:     0.957 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.017 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.017 sec
+ * ratio c/w:     0.965 speedup
  SCF:
- * wall-time:     0 d,  0 h,  0 min,  0.002 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
- * ratio c/w:     0.997 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.001 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.001 sec
+ * ratio c/w:     1.000 speedup
  analytical hessian:
- * wall-time:     0 d,  0 h,  0 min,  0.021 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.021 sec
- * ratio c/w:     0.997 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.013 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.013 sec
+ * ratio c/w:     0.996 speedup
 
 normal termination of xtb

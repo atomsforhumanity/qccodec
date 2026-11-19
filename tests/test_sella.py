@@ -212,6 +212,7 @@ def test_running_out_of_steps_fails_with_the_trajectory() -> None:
     pytest.importorskip("sella")
     with pytest.raises(CalculationError, match="did not converge") as raised:
         _run(_input(fmax=1e-6, steps=1), Child())
+    assert (raised.value.kind, raised.value.code) == ("convergence", "max_iter")
     assert isinstance(raised.value.data, OptimizationData)
     assert len(raised.value.data.frames) >= 1
 
@@ -313,16 +314,15 @@ def test_calculator_checks_its_spec_and_structure() -> None:
         atoms.get_potential_energy()
 
 
-def test_declares_the_resources_of_its_gradient_child() -> None:
-    """Lists of Sella runs share the machine by what the child declares."""
+def test_declares_the_gpus_of_its_gradient_child() -> None:
+    """Sella needs its child's GPUs; its threads are its count, which its child gets."""
     child = ProgramSpec(
-        program="orca",
+        program="terachem",
         calctype=CalcType.gradient,
         model=Model(method="hf", basis="sto-3g"),
-        keywords={"pal": 4},
     )
     native = get_codec("sella").encode(_input(subprograms=[child]))
-    assert native.threads == 4
+    assert native.threads is None and native.gpus == 1
 
 
 def _irc(**keywords: Any) -> ProgramInput:
@@ -409,3 +409,22 @@ def test_irc_branches_lose_their_rigid_drift() -> None:
         assert np.allclose(end.results.hessian, hessian, atol=1e-10)
         assert end.results.energy == -1.0
     assert np.array_equal(path[1].structure.geometry, g)  # the transition state stays
+
+
+@pytest.mark.parametrize(
+    ("inp", "code", "match"),
+    [
+        (_input(eta_=1e-4), "unknown_key", "did you mean 'eta'"),
+        (_input(dx=0.1), "not_applicable", "do not apply to calctype optimization"),
+        (_irc(diag_every_n=3), "not_applicable", "do not apply to calctype irc"),
+        (_input(order=0), "unknown_key", "sets these keywords itself"),
+    ],
+)
+def test_keywords_are_checked_per_calctype(
+    inp: ProgramInput, code: str, match: str
+) -> None:
+    """Sella would raise a TypeError deep in its PES; the codec refuses first."""
+    with pytest.raises(EncoderError, match=match) as raised:
+        get_codec("sella").encode(inp)
+    assert (raised.value.kind, raised.value.code) == ("input", code)
+    get_codec("sella").encode(_irc(dx=0.1, fmax_inner=0.01, keep_going=True))

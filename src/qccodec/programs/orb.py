@@ -21,6 +21,11 @@ Inputs map to Orb as follows:
   ``"float64"``). Nothing else is accepted. A model on a GPU declares one for
   qccompute, which gives each calculation of a list its own; an explicit index such
   as ``"cuda:1"`` opts out of that.
+  Unset (or ``"cuda"``), it runs on the GPU qccompute granted, as this
+  process's CUDA device, and on the CPU when it granted none; called
+  directly, on a GPU when one is visible. A granted GPU PyTorch cannot use (a
+  CPU-only build) leaves an unset device on the CPU, with a
+  ``backend_fallback`` warning. ``resolved.settings`` names the device used.
 - ``cmdline_args`` and ``files`` are not accepted.
 
 Calculation types: ``energy`` and ``gradient``. Orb provides no Hessian; use
@@ -46,7 +51,10 @@ from qcdata import CalcType, ProgramInput
 from ..codec import Codec
 from ..exceptions import EncoderError
 from ..native import PythonInput
+from ..program import CodecProgram
+from ._common import reject_unknown
 from ._python import (
+    GRANTED,
     SinglePoint,
     batch_signature,
     cached_model,
@@ -55,7 +63,6 @@ from ._python import (
     package_version,
     pop_device,
     positions_angstrom,
-    reject_unknown,
     require_model,
     resolve_device,
     single_point_decoder,
@@ -63,6 +70,10 @@ from ._python import (
 )
 
 PRECISIONS = ("float32-high", "float32-highest", "float64")
+
+
+#: The keywords the codec takes; nothing else is accepted.
+KEYWORDS = frozenset({"device", "precision"})
 
 
 def encode(inp: ProgramInput) -> PythonInput:
@@ -77,7 +88,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         raise EncoderError("Orb runs in Python; cmdline_args and files are unused.")
     keywords = dict(inp.keywords)
     device = pop_device(keywords)
-    reject_unknown("orb", keywords, frozenset({"precision"}))
+    reject_unknown("orb", keywords, KEYWORDS)
     precision = keywords.get("precision", "float32-high")
     if precision not in PRECISIONS:
         raise EncoderError(
@@ -85,6 +96,7 @@ def encode(inp: ProgramInput) -> PythonInput:
         )
     return PythonInput(
         gpus=gpu_count(device),
+        device_keyword=GRANTED,
         function=invoke_orb,
         kwargs={
             "model": model,
@@ -109,6 +121,7 @@ def invoke_orb(
     charge: int,
     multiplicity: int,
     forces: bool,
+    granted: str | None = None,
 ) -> SinglePoint:
     """Run one Orb single point on the cached model and its graph adapter."""
     return invoke_orb_batch(
@@ -117,6 +130,7 @@ def invoke_orb(
         precision=precision,
         forces=forces,
         molecules=[(symbols, positions, charge, multiplicity)],
+        granted=granted,
     )[0]
 
 
@@ -130,6 +144,7 @@ def encode_batch(inputs: Sequence[ProgramInput]) -> PythonInput:
     first = singles[0]
     return PythonInput(
         gpus=gpu_count(first["device"]),
+        device_keyword=GRANTED,
         function=invoke_orb_batch,
         kwargs={
             **{k: first[k] for k in ("model", "device", "precision", "forces")},
@@ -148,6 +163,7 @@ def invoke_orb_batch(
     precision: str,
     forces: bool,
     molecules: list[tuple[list[str], list[list[float]], int, int]],
+    granted: str | None = None,
 ) -> list[SinglePoint]:
     """Evaluate molecules in one Orb pass, as one batched graph."""
     from ase import Atoms
@@ -159,7 +175,7 @@ def invoke_orb_batch(
             f"Unknown Orb model {model!r}; use one of "
             f"{sorted(pretrained.ORB_PRETRAINED_MODELS)}."
         )
-    device = resolve_device(device)
+    device = resolve_device(device, granted)
 
     def load() -> Any:
         return pretrained.ORB_PRETRAINED_MODELS[model](
@@ -203,6 +219,7 @@ def invoke_orb_batch(
     for energy, f in zip(energies, per_forces, strict=True):
         result = from_ev(float(energy), f)
         result["version"] = version
+        result["device"] = device
         results.append(result)
     return results
 
@@ -214,4 +231,10 @@ codec = Codec(
     decode=single_point_decoder("orb"),
     encode_batch=encode_batch,
     batch_key=batch_signature,
+    converges=False,  # a model has no convergence settings
+    # The model cannot describe the structure's charge or spin.
+    errors=[(r"describes neutral closed-shell systems only", "input", "not_modeled")],
 )
+
+#: The program qccompute runs (the ``qccompute.programs`` entry point 'orb').
+program = CodecProgram(codec, in_process=False, library="orb-models", keywords=KEYWORDS)

@@ -48,7 +48,7 @@
    GNU Lesser General Public License (LGPL) for more details.
 
  Command line input:
- $ /home/user/.local/bin/crest input.toml
+ $ /usr/local/bin/crest input.toml
 
  reading input.toml
 ********************************************************************************

@@ -1,8 +1,8 @@
 """tblite single point: GFN2-xTB, GFN1-xTB, or IPEA1-xTB energy or gradient.
 
-Requires: ``pip install qccompute tblite`` (or ``conda install -c conda-forge
+Requires: ``pip install qccompute[qccodec] tblite`` (or ``conda install -c conda-forge
 tblite-python``). tblite is a Python library, so nothing has to be on PATH: the
-calculation runs inside this Python process.
+calculation runs in a qccompute worker process of this Python environment.
 
 How the codec talks to tblite (https://tblite.readthedocs.io/):
 
@@ -40,7 +40,7 @@ prog_input = ProgramInput(
     model=Model(method="gfn2"),  # or "gfn1", "ipea1"
     keywords={
         # Calculator settings:
-        "accuracy": 1.0,  # SCC accuracy; lower is tighter
+        "acc": 1.0,  # SCC accuracy factor; lower is tighter
         "max-iter": 250,  # maximum SCC iterations
         # "temperature": 300 * 3.166808578545117e-6,  # electronic temperature (Hartree)
         # "verbosity": 0,  # silence the SCC printout
@@ -63,5 +63,5 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 print("Partial charges:", results.atomic_charges)
-print("Dipole (e*bohr):", results.scf_dipole_moment)
+print("Dipole (e*bohr):", results.dipole_moment)
 print("tblite version:", results.provenance.program_version)

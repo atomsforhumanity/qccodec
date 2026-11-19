@@ -161,3 +161,90 @@ def test_point_charges_only_for_single_points(calctype: CalcType) -> None:
     charges = [[-0.8, [0.0, 0.0, 5.0]]]
     with pytest.raises(EncoderError, match="geomeTRIC"):
         _encode(calctype=calctype, keywords={"external_potentials": charges})
+
+
+@pytest.mark.parametrize("key", ["fd_project", "FINDIF__FD_PROJECT"])
+def test_projected_hessians_are_refused(key: str) -> None:
+    """fd_project would project rotations out of a finite-difference Hessian."""
+    with pytest.raises(EncoderError, match="fd_project") as e:
+        _encode(calctype=CalcType.hessian, keywords={key: True, "dertype": 1})
+    assert e.value.kind == "unsupported"
+    _encode(calctype=CalcType.hessian, keywords={key: False})
+    _encode(calctype=CalcType.transition_state, keywords={key: True})
+
+
+def test_driver_names_each_option_psi4_refuses() -> None:
+    """Options are set one at a time; unknown ones come with Psi4's closest option."""
+    from types import SimpleNamespace
+
+    accepted: dict[str, object] = {}
+
+    def set_options(options: dict[str, object]) -> None:
+        ((key, value),) = options.items()
+        if key.split("__")[-1] not in ("maxiter", "reference"):
+            raise RuntimeError(f"\nFatal Error: {key.upper()} is not a valid option.\n")
+        if value == "rhff":
+            raise RuntimeError("\nFatal Error: RHFF is not a valid choice\nmore")
+        accepted[key] = value
+
+    psi4 = SimpleNamespace(
+        set_options=set_options,
+        core=SimpleNamespace(get_global_option_list=lambda: ["MAXITER", "REFERENCE"]),
+    )
+    driver.set_options(psi4, {"maxiter": 5, "scf__maxiter": 6})
+    assert accepted == {"maxiter": 5, "scf__maxiter": 6}
+    with pytest.raises(driver.OptionError, match="'scf__maxiterr' \\(did you mean"):
+        driver.set_options(psi4, {"scf__maxiterr": 5, "reference": "rhf"})
+    with pytest.raises(driver.OptionError, match="RHFF is not a valid choice\\)"):
+        driver.set_options(psi4, {"reference": "rhff"})
+
+
+@pytest.mark.parametrize(
+    ("same", "spin"), [(True, "restricted"), (False, "unrestricted")]
+)
+def test_orbital_spin_is_psi4s_record(same: bool, spin: str) -> None:
+    """Psi4's same_a_b_orbs decides the spin, not whether the energies agree."""
+    from qccodec.programs.psi4 import _orbitals
+
+    levels = {
+        "eigenvalues_a": [-1.0, 0.5],
+        "eigenvalues_b": [-1.0, 0.5],
+        "occupations_a": [1.0, 0.0],
+        "occupations_b": [1.0, 0.0],
+        "same_orbitals": same,
+    }
+    orbitals = _orbitals(levels)
+    assert orbitals is not None and orbitals.spin == spin
+    assert (orbitals.energies_b is None) == same
+
+
+@pytest.mark.parametrize(
+    ("error", "kind", "code"),
+    [
+        ("OptionError: Unknown Psi4 option(s): 'maxiterr'.", "input", "unknown_key"),
+        (
+            "SCFConvergenceError: Could not converge SCF",
+            "convergence",
+            "scf_not_converged",
+        ),
+        (
+            "OptimizationConvergenceError: Could not converge geometry",
+            "convergence",
+            "max_iter",
+        ),
+        (
+            "MissingMethodError: Method=hff is not available for any derivative level.",
+            "input",
+            None,
+        ),
+        (
+            "ModuleNotFoundError: Python module ddx not found. Solve by installing it",
+            "environment",
+            None,
+        ),
+        ("RuntimeError: something else", "internal", None),
+    ],
+)
+def test_psi4_failures_have_kinds(error: str, kind: str, code: str | None) -> None:
+    """The exception the driver recorded maps to an error kind."""
+    assert get_codec("psi4").classify(f"psi4: {error}") == (kind, code)

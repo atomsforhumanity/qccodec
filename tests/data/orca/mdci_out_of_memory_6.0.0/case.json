@@ -1,0 +1,5 @@
+{
+  "raises": "CalculationError",
+  "kind": "resource",
+  "code": "host_memory"
+}

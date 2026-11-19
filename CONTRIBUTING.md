@@ -53,8 +53,8 @@ Parsers are tested through recorded program runs in `tests/data/<program>/<case>
 ## Integration tests
 
 Tests in `tests/integration/test_<program>.py` run real programs through
-[qccompute](https://github.com/atomsforhumanity/qccompute), which is a test-only
-dependency in the `integration` group. They are marked `integration` and deselected by
+[qccompute](https://github.com/atomsforhumanity/qccompute), which finds them under the
+`qccompute.programs` entry points. They are marked `integration` and deselected by
 default, and each test skips when its program is not on `PATH`.
 
 ```sh
@@ -182,9 +182,12 @@ Raise `EncoderError` for anything the program cannot run. Never execute here.
 
 Declare what the calculation uses: `invocation(..., threads=4)` when the input asks
 the program for several CPU threads (ORCA `pal`, Psi4 `-n`, CREST `threads`), and
-`gpus=1` (or more) for GPU programs. qccompute uses these to run lists of
-calculations side by side without oversubscribing cores or sharing a GPU. The
-defaults, one thread and no GPU, fit most single-threaded programs.
+`gpus=1` (or more) for GPU programs. qccompute packs lists of calculations by these
+without oversubscribing cores or sharing a GPU. Without a request (`threads=None`, the
+default) the program runs with the runner's grant through `OMP_NUM_THREADS` and is packed
+as one thread. A subprocess sees its granted GPUs in `CUDA_VISIBLE_DEVICES`; a Python
+library names a keyword with `PythonInput(..., device_keyword="granted")` and is handed
+its GPU there as this process's CUDA device (`cuda:N`, or `cpu` when none was granted).
 
 Keep the input's frame. Many programs move the molecule to its center of mass, rotate
 it to a standard orientation, or symmetrize it, which leaves gradients, Hessians, and
@@ -306,18 +309,17 @@ machine-learned potentials) share `programs/_python.py`: `invoke` returns a
 the decoder. Set `PythonInput.environment` for settings the library reads at
 import time, and `loggers` for Python loggers whose output should be captured.
 
-### 6. Options, wavefunction propagation, registration
+### 6. Options and registration
 
 - Declare decode options with defaults on the codec, `Codec(..., options={"collect_rotamers": False})`,
-  and read them in parsers as `ctx.options["collect_rotamers"]`. Callers override them
-  with `qccompute.compute(inp, options={...})` or `qccodec.decode(..., options={...})`;
-  unknown names are rejected.
-- Set `codec.propagate_wfn = fn` if the program can reuse a previous wavefunction.
-  `fn(output, input_data)` returns a new `ProgramInput` with the wavefunction files from
-  `output.results.files` attached and the guess keyword set. The encoder's
-  `wavefunction_files` glob patterns tell qccompute which files to keep.
+  and read them in parsers as `ctx.options["collect_rotamers"]`. Callers of
+  `qccodec.decode(..., options={...})` override them; unknown names are rejected. A
+  choice made per calculation belongs in the keywords instead (CREST's
+  `{"output": {"rotamers": True}}`), which parsers read from `ctx.input_data`.
 - Add the program to `_BUILTIN` in `src/qccodec/registry.py` so `get_codec("myprog")`
-  finds it. Users can also do this at runtime with `qccodec.register(codec)`.
+  finds it, and make it a program qccompute runs: `program = CodecProgram(codec)` at the
+  end of the module (`in_process=False` for a codec that calls a Python library) and an
+  entry under `[project.entry-points."qccompute.programs"]` in `pyproject.toml`.
 
 ### 7. Tests
 
@@ -336,8 +338,10 @@ tests/data/<program>/<case>/
 
 `case.json` keys: `options` (decode options for the codec), `failed` (decode in recovery
 mode), `raises` (exception class name the decode must raise; `expected.json` then holds
-the partial data attached to it), `directory` (force passing the case directory to
-parsers; by default it is passed only when the case holds output files).
+the partial data attached to it) with its `kind`, `code` and `details`, `warnings` (the
+codes the codec's warning hook must give, in order; none by default), `directory`
+(force passing the case directory to parsers; by default it is passed only when the
+case holds output files).
 
 `tests/test_cases.py` runs every case under `tests/data` through
 `qccodec.testing.run_case`, which checks the encoded files, the full decode, and each
@@ -390,6 +394,6 @@ script is on a docs page; `tests/integration/test_examples.py` runs every script
 4. If the failure hook fired, raises `CalculationError` with the data attached.
 5. Otherwise validates and returns the qcdata model for the calculation type.
 
-`Codec.decode(input_data, native_output)` is what qccompute calls; it uses the custom
+`Codec.decode(input_data, native_output)` is what the adapter (`CodecProgram`) calls; it uses the custom
 `decode` function if there is one, otherwise the pipeline above with
 `failed=native_output.failed`.

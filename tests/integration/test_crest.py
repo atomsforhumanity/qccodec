@@ -7,6 +7,7 @@ from qcdata import (
     ConformerSearchData,
     Model,
     OptimizationData,
+    ProgramError,
     ProgramInput,
     SinglePointData,
     Structure,
@@ -14,7 +15,7 @@ from qcdata import (
 
 from qccodec.testing import check_normal_modes
 
-from .conftest import Run, requires
+from .conftest import Run, finite_difference_check, requires
 
 pytestmark = [pytest.mark.integration, requires("crest")]
 
@@ -61,10 +62,22 @@ def test_hessian(run: Run, water: Structure) -> None:
     assert np.allclose(hessian, hessian.T, atol=1e-5)
     assert np.isclose(output.results.energy, ENERGY, atol=1e-6)
     assert np.allclose(
-        output.results.freqs_wavenumber, [1588.38, 3520.98, 3527.24], atol=1.0
+        output.results.vibrational_analysis.frequencies,
+        [1588.38, 3520.98, 3527.24],
+        atol=1.0,
     )
     # CREST writes its modes in a reoriented frame; the codec rotates them back.
     check_normal_modes(output.results, list(water.symbols))
+
+
+def test_hessian_is_not_projected(run: Run, water: Structure) -> None:
+    """Away from a minimum the Hessian agrees with differences of gradients.
+
+    Projecting out rotations would differ here by about the gradient, 1e-2.
+    """
+    finite_difference_check(
+        run, _input(water, CalcType.gradient), atol=5e-4, hessian=True
+    )
 
 
 def test_optimization(run: Run, water: Structure) -> None:
@@ -95,3 +108,11 @@ def test_conformer_search_with_solvent(run: Run, water: Structure) -> None:
     assert np.isclose(output.results.conformer_energies[0], -0.33568982, atol=1e-5)
     assert output.logs is not None
     assert "alpb" in output.logs and "acetonitrile" in output.logs
+
+
+def test_a_failed_single_point_says_so(run: Run, water: Structure) -> None:
+    """CREST exits 0 with a zero energy after a failed calculation; the codec fails."""
+    inp = _input(water, CalcType.gradient, calculation={"level": [{"maxscc": 2}]})
+    with pytest.raises(ProgramError) as e:
+        run(inp)
+    assert "exited with an error" in e.value.error.message

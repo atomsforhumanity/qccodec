@@ -17,20 +17,61 @@ inside ``main``, so the helpers can be tested without Psi4.
                   "symmetry": None}}           # point group, or None for Psi4's choice
 
 ``results.json`` holds plain numbers and lists (atomic units, bohr), plus ``error``
-when the calculation raised. The script exits 0 even then: ``results.json`` is the
-record of success, so the codec's failure hook reports Psi4's own message instead of
-a bare exit status. A nonzero exit therefore means Psi4 itself crashed.
+(``"<exception name>: <message>"``) when the calculation raised; an SCF that did not
+converge also leaves its last iterate's energy and wavefunction results. The script exits 0
+even then: ``results.json`` is the record of success, so the codec's failure hook
+reports Psi4's own message instead of a bare exit status. A nonzero exit therefore
+means Psi4 itself crashed. Options Psi4 does not know are reported as an
+``OptionError`` naming each one and the closest option Psi4 has.
 """
 
 from __future__ import annotations
 
+import difflib
 import json
+import re
 import sys
 import traceback
 from typing import Any
 
 JOB_FILE = "job.json"
 RESULTS_FILE = "results.json"
+
+
+class OptionError(Exception):
+    """Options Psi4 refused: unknown names, or values it does not take."""
+
+
+def set_options(psi4: Any, options: dict[str, Any]) -> None:
+    """Set Psi4 options one at a time, naming every one Psi4 refuses.
+
+    Raises:
+        OptionError: Psi4 has no such option (with the closest one Psi4 has), or
+            does not take the value given.
+    """
+    unknown: list[str] = []
+    invalid: list[str] = []
+    for key, value in options.items():
+        try:
+            psi4.set_options({key: value})
+        except Exception as exc:
+            text = str(exc)
+            if "is not a valid option" in text:
+                unknown.append(key)
+            else:
+                fatal = re.search(r"Fatal Error: ([^\n]*)", text)
+                invalid.append(f"{key}={value!r} ({fatal.group(1) if fatal else text})")
+    if unknown:
+        known = [name.lower() for name in psi4.core.get_global_option_list()]
+        named = []
+        for key in unknown:
+            close = difflib.get_close_matches(key.split("__")[-1].lower(), known, n=1)
+            named.append(
+                f"{key!r} (did you mean {close[0]!r}?)" if close else repr(key)
+            )
+        raise OptionError(f"Unknown Psi4 option(s): {', '.join(named)}.")
+    if invalid:
+        raise OptionError(f"Invalid Psi4 option value(s): {'; '.join(invalid)}.")
 
 
 def molecule_string(molecule: dict[str, Any]) -> str:
@@ -98,6 +139,9 @@ def _wavefunction_results(psi4: Any, wfn: Any, molecule: Any) -> dict[str, Any]:
     _try(results, "nuclear_repulsion_energy", molecule.nuclear_repulsion_energy)
     _try(results, "nbasis", wfn.nso)
     _try(results, "nmo", wfn.nmo)
+    # Whether alpha and beta share spatial orbitals (RHF, RKS, ROHF) or not (UHF,
+    # UKS, CUHF).
+    _try(results, "same_orbitals", wfn.same_a_b_orbs)
     _try(results, "nalpha", wfn.nalpha)
     _try(results, "nbeta", wfn.nbeta)
     for spin in ("a", "b"):
@@ -110,7 +154,10 @@ def _wavefunction_results(psi4: Any, wfn: Any, molecule: Any) -> dict[str, Any]:
             continue
         results[f"eigenvalues_{spin}"] = energies
         results[f"occupations_{spin}"] = occupations
-    _try(results, "dipole", lambda: psi4.variable("SCF DIPOLE"))
+    if isinstance(wfn, psi4.core.HF):
+        # The method's own dipole only for HF and DFT: after a correlated method
+        # Psi4's SCF DIPOLE and CURRENT DIPOLE both still hold the reference's.
+        _try(results, "dipole", lambda: psi4.variable("SCF DIPOLE"))
     try:
         psi4.oeprop(wfn, "MULLIKEN_CHARGES")
         _try(results, "mulliken_charges", wfn.atomic_point_charges)
@@ -134,7 +181,7 @@ def run(psi4: Any, job: dict[str, Any], results: dict[str, Any]) -> None:
     """Run the calculation described by ``job``, filling ``results`` as it goes."""
     results["psi4_version"] = psi4.__version__
     molecule = psi4.geometry(molecule_string(job["molecule"]))
-    psi4.set_options(job["options"])
+    set_options(psi4, job["options"])
     calctype = job["calctype"]
     kwargs = {**job["kwargs"], "return_wfn": True}
 
@@ -188,6 +235,15 @@ def main() -> None:
     except Exception as exc:
         traceback.print_exc(file=sys.stdout)
         results["error"] = f"{type(exc).__name__}: {exc}"
+        wfn = getattr(exc, "wfn", None)
+        if type(exc).__name__ == "SCFConvergenceError" and wfn is not None:
+            # The last iterate: its energy and what its wavefunction provides.
+            # wfn.energy() is set only on convergence; each iteration sets these.
+            _try(results, "energy", lambda: wfn.get_energies("Total Energy"))
+            try:
+                results.update(_wavefunction_results(psi4, wfn, wfn.molecule()))
+            except Exception:
+                pass
     with open(RESULTS_FILE, "w") as f:
         json.dump(results, f)
 

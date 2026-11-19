@@ -24,23 +24,69 @@ def parse_energy(stdout: str) -> float:
     return float(re_search(r"Total energy:\s+(-?\d+\.\d+)", stdout).group(1))
 ```
 
-If the program uses several CPU threads or a GPU, say so in the native input:
-`SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute runs
-lists of calculations side by side and uses these to keep within the machine's cores
-and give each GPU calculation its own device.
+If the input asks for several CPU threads or a GPU, say so in the native input:
+`SubprocessInput(..., threads=4)` or `SubprocessInput(..., gpus=1)`. qccompute packs
+lists of calculations by these and gives each GPU calculation its own device: a
+subprocess sees it in `CUDA_VISIBLE_DEVICES`, and a Python library is handed it as this
+process's CUDA device (`cuda:N`) in the keyword `PythonInput(device_keyword=...)` names
+(`cpu` when the runner granted none; left out when called directly). Leave
+`threads` out when the input asks for none: the program then plans one thread, or
+all the runner has with `CodecProgram(codec, threads=None)` for a program that scales
+with threads, and runs with the runner's grant, through `OMP_NUM_THREADS` or, when the
+codec has `cap_threads`, written into the input. The shared `threads` keyword is taken
+by the adapter before your encoder sees the input.
 
-Then run it with qccompute, either explicitly or by name after registering it:
+Refuse what the program would ignore. Every setting given must take effect, so an
+encoder checks keyword names against the program's settings where they can be listed,
+with `qccodec.reject_unknown(program, keywords, known)`, which raises
+`EncoderError(..., code="unknown_key")` naming the closest known name. `EncoderError`
+takes `kind` (`input`, or `unsupported` for a valid request the program does not
+implement) and `code` (`unknown_key`, `not_applicable`, `no_effect`, `not_modeled`).
+Give the same names to the program, `CodecProgram(codec, keywords=known)` (or a
+function of the calctype), and its `settings_schema` lists them; without them it
+lists only the shared `threads` and allows any other key, for a program that checks
+its own keywords.
+
+The shared keyword `accuracy` (an accuracy target, `{"energy": ..., "gradient": ...,
+"hessian": ...}`) never reaches your encoder: `Codec.encode` reads it with qcdata's
+`Accuracy.from_keywords`. A calculation with nothing to converge (a force field, an ML
+potential) meets any target as it is: the adapter accepts it and records it in the
+output's `record` as met, `{"accuracy": {"target": {...}, "thresholds": {}, "estimate":
+{...}}}` with an estimate of `0.0` for each target, and its
+`settings_schema` lists `accuracy`. A calculation with convergence settings refuses it
+with kind `unsupported`, since no codec maps targets onto its program's thresholds yet.
+Say which with `Codec(..., converges=False)`, or a function of the input
+(`converges=lambda inp: inp.model.method != "gfnff"`); the default is `True`.
+
+Then make it a program and run it with qccompute:
 
 ```python
 import qccodec, qccompute
 
-output = qccompute.compute(input_data, codec=codec)
-
-qccodec.register(codec)              # now resolvable as program="myprog",
-output = qccompute.compute(input_data)   # including as a geomeTRIC gradient child
+qccompute.register_program(qccodec.CodecProgram(codec))  # program="myprog"
+output = qccompute.compute(input_data)   # also as a geomeTRIC gradient subprogram
 ```
 
-`register()` also lets you override a built-in codec by name for the current process.
+A codec that calls a Python library (one that returns a `PythonInput`) takes over its
+process's output streams and working directory while it runs: make it
+`CodecProgram(codec, in_process=False)` and qccompute runs it in a worker process. A
+library that writes only where it is told and reports through Python loggers can run
+in the caller's process instead: name `PythonInput(directory_keyword="directory",
+loggers=(...))`, write every file under the directory the function is given, and the
+adapter calls it without changing the working directory, environment or output
+streams (geomeTRIC does this). A registered program reaches a worker only
+when it is defined at the top level of an importable module; publish it as an entry
+point (below) to be found everywhere. `CodecProgram(codec, executable=...,
+environment=...)` configures where the program is and what it runs with;
+`QCCODEC_<PROGRAM>_EXECUTABLE` does the first without code.
+
+A store reuses a result only while the program's numerics identity is unchanged
+(`CodecProgram.numerics`): the executable's version and sha256, or, for a launcher
+of a container, the image's digest (`CodecProgram(codec, image=...)` or
+`QCCODEC_<PROGRAM>_IMAGE`). A codec that calls a library gives the library's version
+and, for an ML potential, the digest of its model's weights file:
+`CodecProgram(codec, library=..., weights=...)` takes a function of the input that
+returns the file, or None when it is not on disk yet.
 
 ## Parsers
 
@@ -87,6 +133,51 @@ success). When the hook returns a message, decoding recovers what it can and rai
 exits with an error, so the hook's explanation reaches the user rather than just an
 exit status. `parse(..., failed=True)` stays quiet and returns the recovered data;
 pass `report_failure=True` to raise the explanation there too.
+
+Give each failure the program is known to report a kind. A store reuses a stored
+failure only when its kind says the input determines it, so an SCF that does not
+converge must not look like a crash:
+
+```python
+codec = Codec(
+    "myprog",
+    calctypes={CalcType.energy},
+    errors=[
+        (r"SCF not converged", "convergence", "scf_not_converged"),
+        (r"unknown keyword", "input", "unknown_key"),
+        (r"atoms too close", "input", None),
+    ],
+)
+```
+
+The first rule whose regular expression is found in the `CalculationError`'s message
+(the failure hook's explanation, or a decoder's) gives the failure its kind and code;
+anything else is `internal`, which means a bug. A failure that knows a number returns
+`(message, details)` from the hook instead of the message alone, and `details` becomes
+the error's `ErrorInfo.details`: a program out of memory (kind `resource`, code
+`host_memory` or `device_memory`) gives `required_gib` and `available_gib` there when
+its output says what it needed, in the terms of the memory setting that would make it
+fit: the setting with which it fits and the one it ran with (ORCA's per-process
+`%maxcore` figures times its processes). Record a fixture case of each failure with
+`"raises": "CalculationError", "kind": ..., "code": ...` (and `"details"`) in its
+`case.json`. The shared codes come first: an SCF that does not converge is
+`scf_not_converged` (attach the last iteration's energy where the output gives it),
+response equations (CPHF/CPKS) that do not are `response_not_converged`.
+
+A result the program delivered but the caller should know about gets a warning from a
+second hook, which runs on every output:
+
+```python
+@codec.warning
+def warnings(ctx: Context) -> list[ProgramWarning]:
+    if "SCF not converged, continuing" not in (ctx.stdout or ""):
+        return []
+    return [ProgramWarning(code="loosely_converged", message="... residual and rule ...")]
+```
+
+An SCF the program accepted without meeting its thresholds is the shared
+`loosely_converged`, its message giving the residual reached and the rule that
+accepted it. List the codes in the case's `case.json` as `"warnings": [...]`.
 Programs driven through a Python API skip parsers entirely:
 
 ```python
@@ -122,10 +213,12 @@ keywords, calculation type) and nothing about the structure; return `None` for i
 the library computes one at a time, such as Hessians. The built-in machine-learned
 potentials use `batch_signature` from `qccodec.programs._python` as their key.
 
-## Options and wavefunction propagation
+## Decode options
 
-A codec declares the decode options it accepts, with defaults. Callers override them
-per calculation and parsers read them from the context:
+A codec declares the decode options it accepts, with defaults. Callers of `decode` and
+`parse` override them, and parsers read them from the context. A choice that should be
+made per calculation belongs in the input's keywords instead (CREST's
+`{"output": {"rotamers": True}}`), which parsers read from `ctx.input_data`:
 
 ```python
 codec = Codec("crest", calctypes={...}, options={"collect_rotamers": False})
@@ -137,13 +230,9 @@ def parse_rotamers(ctx: Context) -> dict:
     ...
 
 decode("crest", "conformer_search", directory=d, input_data=inp, options={"collect_rotamers": True})
-qccompute.compute(inp, options={"collect_rotamers": True})
 ```
 
-Unknown option names raise `EncoderError`. For optimizers that chain calculations, a
-codec may set `codec.propagate_wfn = fn` where `fn(output, input_data)` returns a new
-input carrying the previous output's wavefunction as the initial guess; TeraChem copies
-`c0`/`ca0`/`cb0` and sets `guess`. qccompute calls it when `propagate_wfn=True`.
+Unknown option names raise `EncoderError`.
 
 ## Program versions
 
@@ -167,12 +256,16 @@ are tried in registration order and the first match wins. Pass `version=` to
 
 ## Codecs from other packages
 
-A package can ship a codec by publishing it as an entry point; `get_codec` and
-`qccompute.compute` then find it by program name with no registration call:
+A package can ship a codec by publishing it as entry points: the codec for
+`get_codec` and `decode`, and its program for `qccompute.compute`, which then finds it
+by name in every process with no registration call:
 
 ```toml
 [project.entry-points."qccodec.codecs"]
 myprog = "mypackage.codec:codec"
+
+[project.entry-points."qccompute.programs"]
+myprog = "mypackage.codec:program"   # program = qccodec.CodecProgram(codec)
 ```
 
 ## Testing a codec

@@ -1,10 +1,11 @@
 """FAIR-Chem single point: energy, gradient, or Hessian from UMA or eSEN.
 
-Requires: ``pip install qccompute fairchem-core``, and access to the gated weights:
+Requires: ``pip install qccompute[qccodec] fairchem-core``, and access to the gated weights:
 request it at https://huggingface.co/facebook/UMA (or facebook/OMol25 for eSEN), then
 run ``hf auth login``. FAIR-Chem is a Python library, so nothing has to be on PATH: the
-model runs inside this Python process, on the GPU when PyTorch sees one. Later
-calculations in the same process reuse the loaded model.
+model runs in a qccompute worker process of this Python environment, on the GPU the
+runner grants (the CPU when it grants none). The worker keeps the loaded model for later
+calculations.
 
 How the codec talks to FAIR-Chem (https://fair-chem.github.io/):
 
@@ -43,7 +44,7 @@ prog_input = ProgramInput(
     model=Model(method="uma-s-1p2p1"),  # or "uma-m-1p1", "esen-sm-conserving-all-omol"
     keywords={
         "task": "omol",
-        "device": "cpu",  # or "cuda"; leave out to use a GPU when present
+        "device": "cpu",  # or "cuda"; leave out for the GPU the runner grants
         # A fairchem preset by name, or InferenceSettings fields:
         # "inference_settings": "turbo",
         # "inference_settings": {"compile": False, "base_precision_dtype": "float64"},

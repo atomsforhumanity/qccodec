@@ -1,6 +1,6 @@
 """CREST single point: GFN-xTB or GFN-FF energy, gradient, or Hessian.
 
-Requires: ``pip install qccompute`` (it installs qccodec) and CREST 3 on PATH, the
+Requires: ``pip install qccompute[qccodec]`` and CREST 3 on PATH, the
 official static build from https://github.com/crest-lab/crest/releases (conda-forge's
 CREST 3.0.2 crashes in its optimizer). CREST computes GFN-xTB and GFN-FF with its
 built-in tblite and gfnff libraries, so no separate xtb is needed.
@@ -39,7 +39,7 @@ prog_input = ProgramInput(
     model=Model(method="gfn2"),  # or "gfn1", "gfn0", "gfnff"
     keywords={
         # Top-level CREST settings:
-        "threads": 1,  # default: number of CPUs, at most 16
+        "threads": 1,  # default: all the threads the runner grants
         # Settings for the method itself, one [[calculation.level]] table:
         "calculation": {
             "level": [
@@ -57,8 +57,6 @@ prog_input = ProgramInput(
 output = compute(
     prog_input,
     # timeout=600,  # seconds before CREST is killed
-    # collect_files=True,  # keep every output file in output.results.files
-    # executables={"crest": "/path/to/crest"},  # or QCCOMPUTE_CREST_EXECUTABLE
 )
 
 results = output.results
@@ -66,5 +64,5 @@ print("Energy (Hartree):", results.energy)
 if results.gradient is not None:
     print("Gradient (Hartree/bohr):\n", results.gradient)
 if results.hessian is not None:
-    print("Frequencies (cm^-1):", results.freqs_wavenumber)
+    print("Frequencies (cm^-1):", results.vibrational_analysis.frequencies)
 print("CREST version:", results.provenance.program_version)

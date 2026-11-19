@@ -10,7 +10,8 @@
     "extras": {},
     "program": "psi4",
     "program_version": "1.11",
-    "qcdata_version": "0.23.0"
+    "program_commit": null,
+    "qcdata_version": "0.24.0a2"
   },
   "frames": [
     {
@@ -58,10 +59,10 @@
           "pubchem_cid": null,
           "pubchem_sid": null,
           "pubchem_conformerid": null,
-          "qcdata_version": "0.23.0"
+          "qcdata_version": "0.24.0a2"
         },
         "connectivity": [],
-        "qcdata_version": "0.23.0"
+        "qcdata_version": "0.24.0a2"
       },
       "results": {
         "calcinfo_natoms": null,
@@ -75,38 +76,56 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.23.0"
+          "program_commit": null,
+          "qcdata_version": "0.24.0a2"
         },
-        "energy": -74.9644140112243,
+        "energy": -74.96441401122435,
         "gradient": [
           [
-            0.03207511155644652,
-            0.023483904177169848,
-            -0.016946146139257948
+            0.03207511155740003,
+            0.02348390417793817,
+            -0.016946146139720952
           ],
           [
-            -0.01321558969525497,
-            -0.02106855178244004,
-            0.0003665175711553663
+            -0.01321558969570523,
+            -0.02106855178299852,
+            0.0003665175712603778
           ],
           [
-            -0.018859521861191546,
-            -0.002415352394729807,
-            0.01657962856810258
+            -0.018859521861694803,
+            -0.0024153523949396486,
+            0.016579628568460576
           ]
         ],
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
+        "atomic_charges_kind": null,
+        "atomic_spin_populations": null,
+        "atomic_spin_populations_kind": null,
+        "atomic_dipoles": null,
+        "atomic_quadrupoles": null,
+        "shell_populations": null,
+        "shell_atoms": null,
+        "shell_angular_momenta": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.23.0"
+        "energy_components": {},
+        "scf_iterations": null,
+        "scf_s_squared": null,
+        "quadrupole_moment": null,
+        "polarizability": null,
+        "bond_orders": null,
+        "bond_orders_kind": null,
+        "vibrational_analysis": null,
+        "thermochemistry": [],
+        "qcdata_version": "0.24.0a2"
       },
-      "qcdata_version": "0.23.0",
+      "qcdata_version": "0.24.0a2",
+      "warnings": [],
+      "error": null,
+      "record": {},
       "logs": null,
       "traceback": null
     },
@@ -122,19 +141,19 @@
         ],
         "geometry": [
           [
-            -0.04992937377142008,
-            -0.03676269162728448,
-            0.026258989621592257
+            -0.04992937377318431,
+            -0.03676269162864395,
+            0.026258989622484984
           ],
           [
-            0.5548049587839029,
-            1.6850194759303843,
-            0.44947797995093774
+            0.5548049587851789,
+            1.6850194759297816,
+            0.4494779799493713
           ],
           [
-            1.1651244149875168,
-            -0.4112567843030997,
-            -1.34973696957253
+            1.1651244149880053,
+            -0.41125678430113766,
+            -1.3497369695718564
           ]
         ],
         "charge": 0,
@@ -155,10 +174,10 @@
           "pubchem_cid": null,
           "pubchem_sid": null,
           "pubchem_conformerid": null,
-          "qcdata_version": "0.23.0"
+          "qcdata_version": "0.24.0a2"
         },
         "connectivity": [],
-        "qcdata_version": "0.23.0"
+        "qcdata_version": "0.24.0a2"
       },
       "results": {
         "calcinfo_natoms": null,
@@ -172,38 +191,56 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.23.0"
+          "program_commit": null,
+          "qcdata_version": "0.24.0a2"
         },
-        "energy": -74.96572651381558,
+        "energy": -74.9657265138156,
         "gradient": [
           [
-            -0.006964355659353422,
-            -0.005080714946022603,
-            0.003690061526434472
+            -0.006964355660500493,
+            -0.005080714946957055,
+            0.003690061526985554
           ],
           [
-            0.004052534356650333,
-            0.0004689682263185163,
-            -0.003591690168891154
+            0.004052534357266591,
+            0.00046896822676452925,
+            -0.0035916901692197474
           ],
           [
-            0.0029118213027030876,
-            0.004611746719704087,
-            -9.837135754331825e-05
+            0.002911821303233901,
+            0.004611746720192527,
+            -9.837135776580686e-05
           ]
         ],
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
+        "atomic_charges_kind": null,
+        "atomic_spin_populations": null,
+        "atomic_spin_populations_kind": null,
+        "atomic_dipoles": null,
+        "atomic_quadrupoles": null,
+        "shell_populations": null,
+        "shell_atoms": null,
+        "shell_angular_momenta": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.23.0"
+        "energy_components": {},
+        "scf_iterations": null,
+        "scf_s_squared": null,
+        "quadrupole_moment": null,
+        "polarizability": null,
+        "bond_orders": null,
+        "bond_orders_kind": null,
+        "vibrational_analysis": null,
+        "thermochemistry": [],
+        "qcdata_version": "0.24.0a2"
       },
-      "qcdata_version": "0.23.0",
+      "qcdata_version": "0.24.0a2",
+      "warnings": [],
+      "error": null,
+      "record": {},
       "logs": null,
       "traceback": null
     },
@@ -219,19 +256,19 @@
         ],
         "geometry": [
           [
-            -0.03506600780514452,
-            -0.02579773953996948,
-            0.018454288286944405
+            -0.03506600780541792,
+            -0.02579773954016842,
+            0.01845428828708958
           ],
           [
-            0.5416761086709143,
-            1.6991636498438307,
-            0.4702094732358023
+            0.5416761086709974,
+            1.6991636498441034,
+            0.47020947323588136
           ],
           [
-            1.16338989913423,
-            -0.4363659103038612,
-            -1.362663761522747
+            1.1633898991344205,
+            -0.4363659103039349,
+            -1.362663761522971
           ]
         ],
         "charge": 0,
@@ -252,10 +289,10 @@
           "pubchem_cid": null,
           "pubchem_sid": null,
           "pubchem_conformerid": null,
-          "qcdata_version": "0.23.0"
+          "qcdata_version": "0.24.0a2"
         },
         "connectivity": [],
-        "qcdata_version": "0.23.0"
+        "qcdata_version": "0.24.0a2"
       },
       "results": {
         "calcinfo_natoms": null,
@@ -269,38 +306,56 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.23.0"
+          "program_commit": null,
+          "qcdata_version": "0.24.0a2"
         },
-        "energy": -74.9658756841419,
+        "energy": -74.96587568414184,
         "gradient": [
           [
-            -0.001153151922715718,
-            -0.0008358775515928153,
-            0.0006141228938665543
+            -0.0011531519230446492,
+            -0.0008358775518430962,
+            0.0006141228940348481
           ],
           [
-            -0.00014271938427603897,
-            0.002863039803745959,
-            0.001798619045560816
+            -0.00014271938415886035,
+            0.002863039804043117,
+            0.001798619045621644
           ],
           [
-            0.0012958713069917572,
-            -0.0020271622521531437,
-            -0.00241274193942737
+            0.0012958713072035092,
+            -0.0020271622522000203,
+            -0.0024127419396564923
           ]
         ],
         "hessian": null,
         "nuclear_repulsion_energy": null,
         "wavefunction": null,
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": null,
+        "dipole_moment": null,
         "atomic_charges": null,
+        "atomic_charges_kind": null,
+        "atomic_spin_populations": null,
+        "atomic_spin_populations_kind": null,
+        "atomic_dipoles": null,
+        "atomic_quadrupoles": null,
+        "shell_populations": null,
+        "shell_atoms": null,
+        "shell_angular_momenta": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.23.0"
+        "energy_components": {},
+        "scf_iterations": null,
+        "scf_s_squared": null,
+        "quadrupole_moment": null,
+        "polarizability": null,
+        "bond_orders": null,
+        "bond_orders_kind": null,
+        "vibrational_analysis": null,
+        "thermochemistry": [],
+        "qcdata_version": "0.24.0a2"
       },
-      "qcdata_version": "0.23.0",
+      "qcdata_version": "0.24.0a2",
+      "warnings": [],
+      "error": null,
+      "record": {},
       "logs": null,
       "traceback": null
     },
@@ -316,19 +371,19 @@
         ],
         "geometry": [
           [
-            -0.036971807082267966,
-            -0.027222387375854952,
-            0.0194441532314306
+            -0.03697180708228699,
+            -0.02722238737585746,
+            0.01944415323144729
           ],
           [
-            0.544522060448273,
-            1.6933928665972353,
-            0.46414487514283886
+            0.544522060448288,
+            1.693392866597195,
+            0.4641448751428009
           ],
           [
-            1.162449746633995,
-            -0.4291704792213803,
-            -1.3575890283742698
+            1.162449746633999,
+            -0.42917047922133733,
+            -1.3575890283742482
           ]
         ],
         "charge": 0,
@@ -349,10 +404,10 @@
           "pubchem_cid": null,
           "pubchem_sid": null,
           "pubchem_conformerid": null,
-          "qcdata_version": "0.23.0"
+          "qcdata_version": "0.24.0a2"
         },
         "connectivity": [],
-        "qcdata_version": "0.23.0"
+        "qcdata_version": "0.24.0a2"
       },
       "results": {
         "calcinfo_natoms": null,
@@ -362,22 +417,22 @@
         "calcinfo_nmo": 7,
         "extras": {
           "psi4_variables": {
-            "CURRENT ENERGY": -74.96590112165362,
-            "CURRENT REFERENCE ENERGY": -74.96590112165362,
+            "CURRENT ENERGY": -74.96590112165366,
+            "CURRENT REFERENCE ENERGY": -74.96590112165366,
             "DD SOLVATION ENERGY": 0.0,
-            "HF KINETIC ENERGY": 74.51845373905392,
-            "HF POTENTIAL ENERGY": -149.48435486070753,
-            "HF TOTAL ENERGY": -74.96590112165362,
-            "HF VIRIAL RATIO": 2.0060045178093273,
-            "NUCLEAR REPULSION ENERGY": 8.905849374720837,
-            "ONE-ELECTRON ENERGY": -121.83274988136556,
+            "HF KINETIC ENERGY": 74.51845373905404,
+            "HF POTENTIAL ENERGY": -149.4843548607077,
+            "HF TOTAL ENERGY": -74.96590112165364,
+            "HF VIRIAL RATIO": 2.0060045178093264,
+            "NUCLEAR REPULSION ENERGY": 8.905849374720933,
+            "ONE-ELECTRON ENERGY": -121.83274988136579,
             "OPTIMIZATION ITERATIONS": 4.0,
             "PCM POLARIZATION ENERGY": 0.0,
             "PE ENERGY": 0.0,
-            "SCF ITERATION ENERGY": -74.96590112165362,
+            "SCF ITERATION ENERGY": -74.96590112165366,
             "SCF ITERATIONS": 6.0,
-            "SCF TOTAL ENERGY": -74.96590112165362,
-            "TWO-ELECTRON ENERGY": 37.96099938499111
+            "SCF TOTAL ENERGY": -74.96590112165366,
+            "TWO-ELECTRON ENERGY": 37.960999384991204
           }
         },
         "files": {},
@@ -385,88 +440,115 @@
           "extras": {},
           "program": "psi4",
           "program_version": "1.11",
-          "qcdata_version": "0.23.0"
+          "program_commit": null,
+          "qcdata_version": "0.24.0a2"
         },
-        "energy": -74.96590112165362,
+        "energy": -74.96590112165366,
         "gradient": [
           [
-            -0.000178411690058325,
-            -0.00013412217455600756,
-            9.22287787373254e-05
+            -0.00017841169006057672,
+            -0.00013412217453681117,
+            9.222877875061945e-05
           ],
           [
-            9.159915021950734e-05,
-            6.17487571193272e-05,
-            -5.1481178288688606e-05
+            9.15991502176924e-05,
+            6.174875708977056e-05,
+            -5.1481178304121295e-05
           ],
           [
-            8.681253983881766e-05,
-            7.237341743668035e-05,
-            -4.074760044863679e-05
+            8.681253984288431e-05,
+            7.23734174470406e-05,
+            -4.074760044649816e-05
           ]
         ],
         "hessian": null,
-        "nuclear_repulsion_energy": 8.905849374720837,
+        "nuclear_repulsion_energy": 8.905849374720933,
         "wavefunction": {
           "extras": {},
-          "scf_eigenvalues_a": [
-            -20.251631434812328,
-            -1.2575498908416345,
-            -0.5937495254356362,
-            -0.45980691794544604,
-            -0.3926377865538957,
-            0.5817730644585021,
-            0.692484637311669
-          ],
-          "scf_eigenvalues_b": [
-            -20.251631434812328,
-            -1.2575498908416345,
-            -0.5937495254356362,
-            -0.45980691794544604,
-            -0.3926377865538957,
-            0.5817730644585021,
-            0.692484637311669
-          ],
-          "scf_occupations_a": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0
-          ],
-          "scf_occupations_b": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0
-          ],
-          "qcdata_version": "0.23.0"
+          "orbitals": {
+            "extras": {},
+            "spin": "restricted",
+            "kind": "canonical",
+            "localization": null,
+            "energies_a": [
+              -20.251631434812538,
+              -1.2575498908416605,
+              -0.5937495254356349,
+              -0.4598069179454593,
+              -0.3926377865538961,
+              0.5817730644585212,
+              0.6924846373116806
+            ],
+            "energies_b": null,
+            "occupations_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "occupations_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "electronic_temperature": 0.0,
+            "fermi_level_a": null,
+            "fermi_level_b": null,
+            "core_electrons": null,
+            "coefficients_a": null,
+            "coefficients_b": null,
+            "qcdata_version": "0.24.0a2"
+          },
+          "overlap": null,
+          "hamiltonian_a": null,
+          "hamiltonian_b": null,
+          "core_hamiltonian": null,
+          "qcdata_version": "0.24.0a2"
         },
-        "freqs_wavenumber": [],
-        "normal_modes_cartesian": null,
-        "gibbs_free_energy": null,
-        "scf_dipole_moment": [
-          0.49816738689513107,
-          0.3688634515691942,
-          -0.2607978981016169
+        "dipole_moment": [
+          0.49816738689512596,
+          0.3688634515691892,
+          -0.2607978981016176
         ],
         "atomic_charges": [
           -0.33040864210645715,
-          0.16520387371582723,
-          0.16520476839063636
+          0.16520387371582457,
+          0.16520476839063436
         ],
+        "atomic_charges_kind": null,
+        "atomic_spin_populations": null,
+        "atomic_spin_populations_kind": null,
+        "atomic_dipoles": null,
+        "atomic_quadrupoles": null,
+        "shell_populations": null,
+        "shell_atoms": null,
+        "shell_angular_momenta": null,
         "point_charge_gradient": null,
-        "qcdata_version": "0.23.0"
+        "energy_components": {},
+        "scf_iterations": null,
+        "scf_s_squared": null,
+        "quadrupole_moment": null,
+        "polarizability": null,
+        "bond_orders": null,
+        "bond_orders_kind": null,
+        "vibrational_analysis": null,
+        "thermochemistry": [],
+        "qcdata_version": "0.24.0a2"
       },
-      "qcdata_version": "0.23.0",
+      "qcdata_version": "0.24.0a2",
+      "warnings": [],
+      "error": null,
+      "record": {},
       "logs": null,
       "traceback": null
     }
   ],
-  "qcdata_version": "0.23.0"
+  "qcdata_version": "0.24.0a2"
 }

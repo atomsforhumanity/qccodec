@@ -1,10 +1,10 @@
 """MACE single point: energy, gradient, or Hessian from a MACE potential.
 
-Requires: ``pip install qccompute mace-torch``, in an environment without
+Requires: ``pip install qccompute[qccodec] mace-torch``, in an environment without
 ``fairchem-core`` (the two need different versions of e3nn). MACE is a Python library,
-so nothing has to be on PATH: the model runs inside this Python process, on the GPU
-when PyTorch sees one. Models download on first use; later calculations in the same
-process reuse the loaded model.
+so nothing has to be on PATH: the model runs in a qccompute worker process of this
+Python environment, on the GPU the runner grants (the CPU when it grants none). Models
+download on first use; the worker keeps the loaded model for later calculations.
 
 How the codec talks to MACE (https://github.com/ACEsuit/mace):
 
@@ -41,7 +41,7 @@ prog_input = ProgramInput(
     structure=structure,
     model=Model(method="mace-off-small"),  # or "mace-off", "mace-omol", "mace-mp", ...
     keywords={
-        "device": "cpu",  # or "cuda"; leave out to use a GPU when present
+        "device": "cpu",  # or "cuda"; leave out for the GPU the runner grants
         # "default_dtype": "float32",  # faster, less precise
     },
 )

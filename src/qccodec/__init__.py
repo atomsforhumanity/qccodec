@@ -14,6 +14,8 @@ from .native import (
     SubprocessInput,
     SubprocessOutput,
 )
+from .program import CodecProgram
+from .programs._common import reject_unknown
 from .registry import (
     decode,
     encode,
@@ -26,6 +28,7 @@ from .utils import re_finditer, re_search
 
 __all__ = [
     "Codec",
+    "CodecProgram",
     "Context",
     "ParserSpec",
     "NativeInput",
@@ -43,4 +46,5 @@ __all__ = [
     "unregister",
     "re_finditer",
     "re_search",
+    "reject_unknown",
 ]

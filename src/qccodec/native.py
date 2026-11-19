@@ -19,8 +19,10 @@ class SubprocessInput:
         files: Files written to the calculation directory before running.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the program.
-        threads: CPU threads the calculation uses, so a runner computing several
-            at once can keep their total within the available cores.
+        threads: CPU threads the calculation requests (ORCA ``pal``, Psi4 ``-n``), so
+            a runner computing several at once can keep their total within the
+            available cores. None: no request; it runs with the runner's grant
+            (through ``OMP_NUM_THREADS``) and counts one thread when packed.
         gpus: GPUs the calculation uses; a runner gives each calculation its own.
     """
 
@@ -28,7 +30,7 @@ class SubprocessInput:
     files: Mapping[str, str | bytes] = field(default_factory=dict)
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
-    threads: int = 1
+    threads: int | None = None
     gpus: int = 0
 
 
@@ -51,11 +53,24 @@ class PythonInput:
             as a path optimization's images. A runner that does not support it
             leaves the keyword out, so the function should fall back to
             ``child_callback`` one input at a time.
-        loggers: Python logger names whose output should be captured.
+        directory_keyword: Keyword name into which the runner injects the calculation
+            directory (an absolute ``Path``). Naming it declares that the function
+            writes its files there and reports only through ``loggers``, so the
+            runner calls it without changing the working directory, environment or
+            output streams (`qccodec.run.call_python`), and it may run in the
+            caller's process; ``environment`` is then not applied.
+        device_keyword: Keyword name into which the runner injects the device it
+            granted a calculation that uses GPUs (``gpus``): ``cuda:N``, the first
+            granted GPU as this process's CUDA device (`RunContext.device_ordinals
+            <qccompute.program.RunContext.device_ordinals>`), or ``cpu`` when it
+            granted none. Left out when the function is called without a runner,
+            so the library chooses.
+        loggers: Python logger names whose output should be captured: the loggers
+            that emit the records, since a logger's own filters do not see its
+            children's.
         wavefunction_files: Relative glob patterns of restart files worth keeping.
         environment: Environment defaults required by the library.
-        threads: CPU threads the calculation uses, so a runner computing several
-            at once can keep their total within the available cores.
+        threads: CPU threads the calculation requests; None: the runner's grant.
         gpus: GPUs the calculation uses; a runner gives each calculation its own.
     """
 
@@ -65,10 +80,12 @@ class PythonInput:
     files: Mapping[str, str | bytes] = field(default_factory=dict)
     child_callback: str | None = None
     children_callback: str | None = None
+    directory_keyword: str | None = None
+    device_keyword: str | None = None
     loggers: tuple[str, ...] = ()
     wavefunction_files: tuple[str, ...] = ()
     environment: Mapping[str, str] = field(default_factory=dict)
-    threads: int = 1
+    threads: int | None = None
     gpus: int = 0
 
 

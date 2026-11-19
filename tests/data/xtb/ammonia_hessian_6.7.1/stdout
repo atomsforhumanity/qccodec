@@ -95,7 +95,7 @@
    C. Plett, P. Pracht, F. Pultar, J. Seibert, P. Shushkov, S. Spicher,
    M. Stahn, M. Steiner, T. Strunk, J. Stückrath, T. Rose, and J. Unsleber
    
- * started run on 2026/10/20 at 17:01:44.367     
+ * started run on 2026/11/18 at 01:20:33.268     
    ID    Z sym.   atoms
     1    7 N      1
     2    1 H      2-4
@@ -104,7 +104,7 @@
           |                Calculation Setup                |
            -------------------------------------------------
 
-          program call               : xtb structure.xyz --hess --chrg 0 --uhf 0 --gfn 2
+          program call               : xtb structure.xyz --hess --grad --chrg 0 --uhf 0 --gfn 2 --input xcontrol
           coordinate file            : structure.xyz
           omp threads                :                     1
 
@@ -166,9 +166,9 @@
    4     -4.4893621 -0.177554E-04  0.423E-02   12.62       1.2  T
    5     -4.4893622 -0.681789E-07  0.164E-02   12.61       3.0  T
    6     -4.4893624 -0.254786E-06  0.127E-03   12.61      39.5  T
-   7     -4.4893624 -0.404592E-09  0.691E-04   12.61      72.3  T
-   8     -4.4893624 -0.187099E-09  0.171E-05   12.61    2922.7  T
-   9     -4.4893624 -0.123457E-12  0.462E-07   12.61  100000.0  T
+   7     -4.4893624 -0.404586E-09  0.691E-04   12.61      72.3  T
+   8     -4.4893624 -0.187103E-09  0.171E-05   12.61    2922.7  T
+   9     -4.4893624 -0.122569E-12  0.462E-07   12.61  100000.0  T
 
    *** convergence criteria satisfied after 9 iterations ***
 
@@ -186,13 +186,13 @@
              Fermi-level           -0.1512087 Eh           -4.1146 eV
 
  SCC (total)                   0 d,  0 h,  0 min,  0.002 sec
- SCC setup                      ...        0 min,  0.000 sec (  3.293%)
- Dispersion                     ...        0 min,  0.000 sec (  1.030%)
- classical contributions        ...        0 min,  0.000 sec (  0.408%)
- integral evaluation            ...        0 min,  0.000 sec (  3.239%)
- iterations                     ...        0 min,  0.002 sec ( 84.535%)
- molecular gradient             ...        0 min,  0.000 sec (  5.491%)
- printout                       ...        0 min,  0.000 sec (  1.662%)
+ SCC setup                      ...        0 min,  0.000 sec (  1.752%)
+ Dispersion                     ...        0 min,  0.000 sec (  0.662%)
+ classical contributions        ...        0 min,  0.000 sec (  0.159%)
+ integral evaluation            ...        0 min,  0.000 sec (  8.478%)
+ iterations                     ...        0 min,  0.002 sec ( 84.171%)
+ molecular gradient             ...        0 min,  0.000 sec (  3.700%)
+ printout                       ...        0 min,  0.000 sec (  0.772%)
 
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
          ::                     SUMMARY                     ::
@@ -208,7 +208,7 @@
          :: -> dispersion             -0.000365418574 Eh    ::
          :: repulsion energy           0.063625801166 Eh    ::
          :: add. restraining           0.000000000000 Eh    ::
-         :: total charge               0.000000000000 e     ::
+         :: total charge              -0.000000000000 e     ::
          :::::::::::::::::::::::::::::::::::::::::::::::::::::
 
            ------------------------------------------------- 
@@ -221,6 +221,7 @@ frozen atoms in %    :   0.00000    0
 RMS gradient         :   0.02421 !! INCOMPLETELY OPTIMIZED GEOMETRY !!
 estimated CPU  time      0.00 min
 estimated wall time      0.00 min
+DFTB+ style hessian.out written
 
 writing file <hessian>, containing the non-mass-weighted Hessian matrix in atomic units (Eₕ/Bohr²).
 
@@ -289,10 +290,10 @@ molecular quadrupole (traceless):
 eigval :       -0.00    -0.00    -0.00     0.00     0.00     0.00
 eigval :     1034.26  1554.36  1554.41  3612.76  3669.29  3669.82
  reduced masses (amu)
-    1:      1.12    2:      4.17    3:      2.70    4:      2.52    5:      1.19    6:      1.13
+    1:      1.10    2:      1.27    3:      4.37    4:      3.22    5:      2.28    6:      1.06
     7:      1.19    8:      1.07    9:      1.07   10:      1.02   11:      1.09   12:      1.09
  IR intensities (km·mol⁻¹)
-    1:     57.35    2:      2.84    3:      9.41    4:     18.45    5:      2.43    6:     62.15
+    1:     68.89    2:     57.35    3:      0.13    4:      0.15    5:     21.62    6:      4.50
     7:    235.83    8:     30.38    9:     30.35   10:      0.73   11:      3.81   12:      3.81
  Raman intensities (Ä⁴*amu⁻¹)
     1:      0.00    2:      0.00    3:      0.00    4:      0.00    5:      0.00    6:      0.00
@@ -363,19 +364,19 @@ c3v symmetry found (for desy threshold:  0.10E+00) used in thermo
 ########################################################################
 
 ------------------------------------------------------------------------
- * finished run on 2026/10/20 at 17:01:44.381     
+ * finished run on 2026/11/18 at 01:20:33.278     
 ------------------------------------------------------------------------
  total:
- * wall-time:     0 d,  0 h,  0 min,  0.014 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.013 sec
- * ratio c/w:     0.918 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.010 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.009 sec
+ * ratio c/w:     0.941 speedup
  SCF:
  * wall-time:     0 d,  0 h,  0 min,  0.002 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.001 sec
- * ratio c/w:     0.611 speedup
+ *  cpu-time:     0 d,  0 h,  0 min,  0.002 sec
+ * ratio c/w:     0.762 speedup
  analytical hessian:
- * wall-time:     0 d,  0 h,  0 min,  0.006 sec
- *  cpu-time:     0 d,  0 h,  0 min,  0.006 sec
- * ratio c/w:     0.991 speedup
+ * wall-time:     0 d,  0 h,  0 min,  0.004 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.003 sec
+ * ratio c/w:     0.990 speedup
 
 normal termination of xtb

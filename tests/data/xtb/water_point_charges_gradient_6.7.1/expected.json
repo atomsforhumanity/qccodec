@@ -10,6 +10,7 @@
     "extras": {},
     "program": "xtb",
     "program_version": "6.7.1",
+    "program_commit": "26dd68d",
     "qcdata_version": "0.20.1"
   },
   "energy": -5.063342446428,
@@ -33,10 +34,7 @@
   "hessian": null,
   "nuclear_repulsion_energy": null,
   "wavefunction": null,
-  "freqs_wavenumber": [],
-  "normal_modes_cartesian": null,
-  "gibbs_free_energy": null,
-  "scf_dipole_moment": null,
+  "dipole_moment": null,
   "atomic_charges": [
     -0.52602708,
     0.28540412,

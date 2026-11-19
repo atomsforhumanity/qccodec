@@ -20,7 +20,8 @@ from .test_cases import DATA
 WITH_MODES = [
     case
     for case in cases(DATA)
-    if getattr(case.expected, "normal_modes_cartesian", None) is not None
+    if getattr(case.expected, "vibrational_analysis", None) is not None
+    and not case.raises
 ]
 
 
