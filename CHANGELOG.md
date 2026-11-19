@@ -17,6 +17,8 @@ The release candidate: these are the final interfaces; only bug fixes follow bef
 - A batch input rerun alone gets its `threads` keyword, else its share of the batch's threads.
 - Requires qccompute 0.23.0rc1.
 
+## [0.21.1] - 2026-11-17
+
 ### Added
 
 - xtb Hessians carry the energy and gradient from the same run (`--hess --grad`); the Hessian is unchanged.
@@ -149,6 +151,7 @@ that qccompute runs like any other. Breaking changes come without compatibility 
 
 ### Changed (since 0.21.0)
 
+- Requires `qcdata<0.24`. The next releases of the qc* stack change these interfaces without compatibility, so this release line keeps resolving to a working set.
 - IRC paths from both `geometric` and `sella` are aligned outward from the transition state by a shared mass-weighted best fit (`programs/_common.py::align_path`), which also rotates Hessians. geomeTRIC's internal-coordinate steps drifted by up to 10% rigid motion and 2.4e-3 bohr in the center of mass on HCN; aligned, both are zero.
 - Moved documentation from `qccodec.docs.atomsforhumanity.org` to `qccodec.docs.afh.org`.
 
