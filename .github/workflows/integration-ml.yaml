@@ -98,7 +98,7 @@ jobs:
       # requests from forks can restore caches saved on master, so FAIR-Chem's gated
       # weights are downloaded with the token on every run instead.
       - name: Cache open model weights
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/aimnet

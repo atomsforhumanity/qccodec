@@ -77,7 +77,7 @@ jobs:
       # Psi4 ships through conda only. A wrapper exposes the psi4 command without
       # putting the environment's python ahead of uv's on PATH.
       - name: Install Psi4
-        uses: mamba-org/setup-micromamba@v2
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-name: psi4
           create-args: -c conda-forge psi4=1.11 pyddx=0.7 python=3.12
